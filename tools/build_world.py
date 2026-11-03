@@ -349,7 +349,14 @@ def cont_block(path, cname):
     for k in range(src.index("{", j), len(src)):
         d += src[k] == "{"; d -= src[k] == "}"
         if d == 0: return src[j:k + 1]
-for fname in ("00_portraits.txt", "998_scientist_portraits.txt"):
+_sp = open(os.path.join(GAME, "portraits", "998_scientist_portraits.txt"), encoding="utf-8-sig").read()
+_g = re.findall(r'"(GFX_[^"]+)"', _sp)
+_fem = sorted({g for g in _g if "female" in g.lower()}); _mal = sorted({g for g in _g if "female" not in g.lower()})
+_q = lambda L: NL.join(f'			"{g}"' for g in L)
+w("portraits/kazual_998_scientist_portraits.txt", NL.join(
+    f"continent = {{{NL}	name = {c}{NL}	scientist = {{{NL}		female = {{{NL}{_q(_fem)}{NL}		}}{NL}		male = {{{NL}{_q(_mal)}{NL}		}}{NL}	}}{NL}}}"
+    for c in ("kazual_mainland", "kazual_islands")) + NL, bom=True)
+for fname in ("00_portraits.txt",):
     blk = cont_block(os.path.join(GAME, "portraits", fname), "europe")
     out = NL.join(blk.replace("name = europe", f"name = {c}") for c in ("kazual_mainland", "kazual_islands"))
     w(f"portraits/kazual_{fname}", out + NL, bom=True)
