@@ -37,10 +37,10 @@ C = {
  "SVA": ("Северная Ассамблея", "северный", (142, 160, 232), (490, 232), "Ослорвик", 9, 5),
  "FDP": ("Федерация Депутатов", "депутатский", (230, 184, 78), (705, 405), "Депутатск", 5, 5),
  "DMK": ("Дмитровское Княжество", "дмитровский", (217, 138, 163), (850, 730), "Ордабад", 9, 5),
- "CHL": ("Челяба", "челябинский", (169, 184, 201), (975, 412), "Челябинск", 11, 5),
+ "CLB": ("Челяба", "челябинский", (169, 184, 201), (975, 412), "Челябинск", 11, 5),
  "MGN": ("Магнолия", "магнольский", (236, 217, 160), (1240, 530), "Улан-Батыр", 17, 5),
  "KTY": ("Кытай", "кытайский", (201, 116, 74), (1490, 380), "Бэйчжао", 28, 5),
- "CHR": ("Чёрная Республика", "чёрный", (85, 90, 110), (1426, 788), "Токомэ", 5, 100),
+ "BLK": ("Чёрная Республика", "чёрный", (85, 90, 110), (1426, 788), "Токомэ", 5, 100),
  "SRK": ("Сарайкумское Ханство", "сарайкумский", (184, 167, 106), (1100, 603), "Кумыс-Орда", 11, 40),
  "Z01": ("Заготовка страны 1", "заготовочный", (201, 201, 232), None, "Столица заготовки 1", 1, 2),
  "Z02": ("Заготовка страны 2", "заготовочный", (183, 211, 232), None, "Столица заготовки 2", 1, 2),
@@ -178,7 +178,7 @@ WEATHER = {"cold": vblock("10-Southern Sweden.txt"), "temp": vblock("1-Southern 
            "sea": vblock("16-North Sea.txt")}
 def climate(t, y):
     if t in ("MGN", "SRK"): return "desert"
-    if t in ("IRR", "IRK", "MUS", "TRV", "CHR"): return "trop"
+    if t in ("IRR", "IRK", "MUS", "TRV", "BLK"): return "trop"
     return "cold" if y < 300 * SY else "temp"
 regions = []
 for t in C:
@@ -292,20 +292,22 @@ for t in C:
 w("map/railways.txt", "".join(f"1 2 {a} {b}\n" for a, b in sorted(rail)))
 
 bl = []
-STATE_B = ["arms_factory", "industrial_complex", "air_base", "anti_air_building", "synthetic_refinery",
-           "fuel_silo", "radar_station", "rocket_site", "nuclear_reactor"]
+STATE_B = ["industrial_complex"] * 6 + ["arms_factory"] * 6 + ["anti_air_building"] * 3 + [
+    "synthetic_refinery", "stronghold_network", "rocket_site_spawn", "radar_station",
+    "nuclear_reactor_spawn", "fuel_silo", "air_base"]
+COAST_B = ["naval_supply_hub", "naval_headquarters", "naval_base_spawn", "coastal_bunker", "floating_harbor"]
 for s in states:
     sea_adj = {i: [j for j in ADJ[i] if P[j]["type"] == "sea"] for i in s["provs"]}
     for n, b in enumerate(STATE_B):
-        bl.append(f"{s['id']};{b};{xyz(s['main'], (n % 3) * 3 - 3, (n // 3) * 3 - 3)};0.00;0")
+        bl.append(f"{s['id']};{b};{xyz(s['main'], (n % 5) * 2 - 4, (n // 5) * 2 - 4)};0.00;0")
     coast = [i for i in s["provs"] if sea_adj[i]]
     if coast: bl.append(f"{s['id']};dockyard;{xyz(coast[0], 2, 2)};0.00;0")
     for i in s["provs"]:
-        bl.append(f"{s['id']};bunker;{xyz(i)};0.00;0")
         bl.append(f"{s['id']};supply_node;{xyz(i, 1, 0)};0.00;0")
-        if sea_adj[i]:
-            bl.append(f"{s['id']};naval_base;{xyz(i, 0, 1)};0.00;{sea_adj[i][0]}")
-            bl.append(f"{s['id']};coastal_bunker;{xyz(i, 1, 1)};0.00;0")
+        bl.append(f"{s['id']};special_project_facility_spawn;{xyz(i, -1, 0)};0.00;0")
+        bl.append(f"{s['id']};bunker;{xyz(i)};0.00;0")
+        for n, b in enumerate(COAST_B if sea_adj[i] else []):
+            bl.append(f"{s['id']};{b};{xyz(i, n - 2, 1)};0.00;{sea_adj[i][0] if b in ('naval_base_spawn', 'floating_harbor') else 0}")
 w("map/buildings.txt", "\n".join(bl) + "\n")
 wp = []
 for rid, r in enumerate(regions, 1):
@@ -337,5 +339,27 @@ w("map/adjacency_rules.txt", "# Правил пока нет (Казуально
 w("map/positions.txt", "")
 shutil.copy(os.path.join(GAME, "map", "default.map"), os.path.join(ROOT, "map", "default.map"))
 os.makedirs(os.path.join(ROOT, "map", "supplyareas"), exist_ok=True)
+
+# --- портреты (по континентам) и имена (по тегам)
+NL = chr(10)
+def cont_block(path, cname):
+    src = open(path, encoding="utf-8-sig").read()
+    i = src.index(f"name = {cname}")
+    j = src.rindex("continent", 0, i); d = 0
+    for k in range(src.index("{", j), len(src)):
+        d += src[k] == "{"; d -= src[k] == "}"
+        if d == 0: return src[j:k + 1]
+for fname in ("00_portraits.txt", "998_scientist_portraits.txt"):
+    blk = cont_block(os.path.join(GAME, "portraits", fname), "europe")
+    out = NL.join(blk.replace("name = europe", f"name = {c}") for c in ("kazual_mainland", "kazual_islands"))
+    w(f"portraits/kazual_{fname}", out + NL, bom=True)
+MALE = "Иван Пётр Алексей Сергей Николай Дмитрий Андрей Михаил Константин Булат Саид Рустам Тимур Олег Виктор Павел Григорий Фёдор Артём Ильдар"
+FEMALE = "Анна Мария Дарья Ольга Елена Альфия Наталья Ирина Светлана Татьяна Екатерина Вера Лиля Зарина Юлия"
+SURN = "Иванов Петров Сидоров Кузнецов Смирнов Попов Соколов Лебедев Козлов Новиков Морозов Волков Арифуллин Багаутдинов Юзеев Пименов Сабиров Алексеев Орлов Зайцев"
+nm = ""
+for t in C:
+    nm += (f"{t} = {{" + NL + f"	male = {{ names = {{ {MALE} }} }}" + NL + f"	female = {{ names = {{ {FEMALE} }} }}" + NL
+           + f"	surnames = {{ {SURN} }}" + NL + "	callsigns = { \"Казуал\" \"Болотник\" }" + NL + "}" + NL)
+w("common/names/kazual_names.txt", nm, bom=True)
 
 print("штатов:", len(states), "регионов:", len(regions), "ж/д:", len(rail), "зданий:", len(bl))

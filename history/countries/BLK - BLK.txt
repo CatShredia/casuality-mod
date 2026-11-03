@@ -1,5 +1,5 @@
 capital = 207
-oob = "CHR_1936"
+oob = "BLK_1936"
 set_politics = {
 	ruling_party = neutrality
 	last_election = "1932.1.1"
