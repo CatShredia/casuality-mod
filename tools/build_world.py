@@ -369,4 +369,17 @@ for t in C:
            + f"	surnames = {{ {SURN} }}" + NL + "	callsigns = { \"Казуал\" \"Болотник\" }" + NL + "}" + NL)
 w("common/names/kazual_names.txt", nm, bom=True)
 
+# --- ИИ: ванильные зоны/театры/стратегии ссылаются на чужие регионы и теги
+_aa = open(os.path.join(GAME, "common", "ai_areas", "default.txt"), encoding="utf-8-sig").read()
+_names, _d = [], 0
+for tok in re.finditer(r"([A-Za-z_]+)\s*=\s*\{|\{|\}", _aa):
+    if tok.group(0) == "}": _d -= 1; continue
+    if _d == 1 and tok.group(1): _names.append(tok.group(1))
+    _d += 1
+w("common/ai_areas/default.txt", "areas = {" + NL + "".join(
+    f"	{n} = {{ continents = {{ kazual_mainland kazual_islands }} }}{NL}" for n in dict.fromkeys(_names)) + "}" + NL)
+w("common/ai_faction_theaters/kazual_theaters.txt", "# театры ИИ пока не заданы" + NL)
+w("common/ai_strategy/kazual_default.txt", "# стратегии ИИ пока не заданы" + NL)
+w("common/ai_strategy_plans/kazual_plans.txt", "# планы ИИ пока не заданы" + NL)
+
 print("штатов:", len(states), "регионов:", len(regions), "ж/д:", len(rail), "зданий:", len(bl))

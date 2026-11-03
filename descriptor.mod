@@ -5,6 +5,9 @@ tags={
 	"Alternative History"
 	"Map"
 }
+replace_path="common/ai_faction_theaters"
+replace_path="common/ai_strategy"
+replace_path="common/ai_strategy_plans"
 replace_path="common/bookmarks"
 replace_path="common/country_tags"
 replace_path="history/countries"
