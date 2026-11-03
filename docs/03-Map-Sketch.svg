@@ -1,0 +1,367 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040" font-family="Segoe UI, Arial, sans-serif">
+  <!-- Схема построена только по docs/01-Contries-Description.md. Прошлая версия: 03-Map-Sketch-legacy.svg -->
+  <defs>
+    <pattern id="swamp" width="10" height="8" patternUnits="userSpaceOnUse">
+      <path d="M1 6 h3 M6 3 h3" stroke="#3f7f6a" stroke-width="1.4" fill="none"/>
+    </pattern>
+    <pattern id="forest" width="14" height="12" patternUnits="userSpaceOnUse">
+      <path d="M4 10 L7 3 L10 10 Z" fill="#2e7d4f" opacity="0.8"/>
+    </pattern>
+    <pattern id="city" width="8" height="8" patternUnits="userSpaceOnUse">
+      <rect x="1" y="1" width="5" height="5" fill="#3a3a3a" opacity="0.75"/>
+    </pattern>
+    <pattern id="desert" width="12" height="9" patternUnits="userSpaceOnUse">
+      <circle cx="3" cy="3" r="1" fill="#b8902f"/><circle cx="9" cy="7" r="1" fill="#b8902f"/>
+    </pattern>
+    <pattern id="mount" width="14" height="10" patternUnits="userSpaceOnUse"><path d="M2 9 L7 2 L12 9" stroke="#6b4a2b" stroke-width="1.3" fill="none"/></pattern>
+    <style>
+      .c { stroke:#222; stroke-width:1.5; stroke-linejoin:round; }
+      .inf { stroke-dasharray:7 4; }
+      .men { fill:#ebebeb; stroke:#777; stroke-width:1.3; stroke-dasharray:2 3; }
+      .t { text-anchor:middle; font-size:12px; fill:#111; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round; }
+      .tag { font-weight:700; font-size:14px; }
+      .big { font-size:18px; }
+      .sm { font-size:10px; }
+      .gr { fill:#666; }
+      .sea { fill:#bcdcf0; stroke:#4a86b3; stroke-width:1.2; }
+      .lbl { text-anchor:middle; font-style:italic; fill:#2c5d83; font-size:13px; paint-order:stroke; stroke:#cfe6f5; stroke-width:3px; }
+      .river { fill:none; stroke:#3b82c4; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+      .rl { font-size:10px; fill:#1f5e99; font-style:italic; paint-order:stroke; stroke:#fff; stroke-width:2.5px; }
+      .mtn { fill:none; stroke:#6b4a2b; stroke-width:3; stroke-dasharray:2 5; stroke-linecap:round; }
+      .eth { font-size:10px; fill:#6b3f1d; font-style:italic; text-anchor:middle; paint-order:stroke; stroke:#fff; stroke-width:2.5px; }
+      .cap { fill:#111; stroke:#fff; stroke-width:1.5; }
+      .cl { font-size:9.5px; fill:#111; paint-order:stroke; stroke:#fff; stroke-width:2.5px; }
+    </style>
+  </defs>
+
+  <!-- океан -->
+  <rect width="1600" height="1040" fill="#d9ecf8"/>
+  <text class="lbl" x="150" y="620" font-size="16">Океан</text>
+  <text class="lbl" x="560" y="42" font-size="16">Океан</text>
+
+  <!-- острова Бриттана -->
+  <polygon class="c" fill="#b79ad0" points="70,340 170,330 200,400 170,480 100,470 60,410"/>
+  <polygon class="c" fill="#cdb8e0" points="20,270 70,260 80,310 30,320"/>
+
+  <!-- материк: земли без описания -->
+  <polygon fill="#dedacb" stroke="#999" stroke-width="1.2" points="250,400 300,400 300,330 330,330 330,70 1450,70 1450,310 1514,335 1519,590 1500,650 1420,655 1370,650 1250,690 1000,700 900,710 870,650 780,670 740,640 700,720 660,715 630,640 630,610 580,720 530,700 470,640 440,610 380,630 300,640 250,600"/>
+
+  <!-- упомянуты в тексте, раздела нет -->
+  <polygon class="c" fill="#555a6e" points="1445,726 1462,734 1428,800 1388,857 1359,871 1367,834 1405,789"/> <!-- Чёрная Республика (аналог Японии) -->
+
+  <!-- заготовки будущих стран (аналог Балкан и южной Европы) -->
+  <polygon fill="#c9c9e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="520,520 620,520 620,600 520,600"/> <!-- заготовка страны 1 -->
+  <text class="t sm gr" x="570" y="558" style="font-size:9px">Заготовка</text><text class="t sm gr" x="570" y="569" style="font-size:9px">страны 1</text>
+  <polygon fill="#c9c9e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="620,520 715,520 715,600 620,600"/> <!-- заготовка страны 3 -->
+  <text class="t sm gr" x="667" y="558" style="font-size:9px">Заготовка</text><text class="t sm gr" x="667" y="569" style="font-size:9px">страны 3</text>
+  <polygon fill="#c9c9e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="520,600 620,600 620,670 520,670"/> <!-- заготовка страны 2 -->
+  <text class="t sm gr" x="570" y="633" style="font-size:9px">Заготовка</text><text class="t sm gr" x="570" y="644" style="font-size:9px">страны 2</text>
+  <polygon fill="#c9c9e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="620,600 715,600 715,670 620,670"/> <!-- заготовка страны 4 -->
+  <text class="t sm gr" x="667" y="633" style="font-size:9px">Заготовка</text><text class="t sm gr" x="667" y="644" style="font-size:9px">страны 4</text>
+
+  <!-- описаны в документе -->
+  <polygon class="c" fill="#7fa7e0" points="250,400 440,400 440,610 380,630 300,640 250,600"/> <!-- Соевая Республика -->
+  <polygon class="c" fill="#5fc0c8" points="300,330 445,330 445,362 300,362"/> <!-- Зеленодольск: Мирный -->
+  <polygon class="c" fill="#5fc0c8" points="300,362 445,362 445,400 300,400"/> <!-- Зеленодольск: Центр -->
+  <polygon fill="url(#city)" points="300,340 445,340 445,362 300,362"/>
+  <polygon fill="url(#forest)" points="300,362 445,362 445,400 300,400"/>
+  <polygon class="c" fill="#7d7d7d" points="445,330 630,330 630,430 620,520 560,520 445,520"/> <!-- Тямовский рейх -->
+  <polygon class="c" fill="#f0d86a" points="440,520 520,520 520,580 440,580"/> <!-- Айдалия -->
+  <polygon class="c" fill="#8ea0e8" points="330,70 700,70 700,300 330,300"/> <!-- Северная Ассамблея -->
+  <polygon class="c" fill="#e6b84e" points="630,330 700,325 790,320 790,430 630,430"/> <!-- Федерация Депутатов -->
+  <polygon class="c" fill="#e07a74" points="700,70 1450,70 1450,310 1380,330 1240,350 1150,350 1150,440 1075,440 1075,350 925,350 925,440 870,430 790,430 790,330 745,325 700,300"/> <!-- Советский Союз -->
+  <polygon fill="url(#swamp)" opacity="0.7" points="1010,150 1150,150 1150,335 1010,335"/>
+  <polygon fill="url(#swamp)" opacity="0.7" points="1075,335 1150,335 1150,440 1075,440"/> <!-- Наши Болота у Казуалии: Казуалы -->
+  <polygon class="c" fill="#d98aa3" points="758,545 860,545 866,585 895,642 905,690 900,710 880,770 840,830 780,840 735,800 745,680 750,600"/> <!-- Дмитровское Княжество -->
+  <polygon class="c" fill="#ef9f4f" points="775,430 860,430 860,545 790,545 775,530"/> <!-- Казачья Земля -->
+  <polygon class="c" fill="#c3cf84" points="1075,440 1150,440 1150,510 1075,510"/> <!-- Казуалия -->
+  <polygon fill="url(#swamp)" points="1075,440 1150,440 1150,510 1075,510"/>
+  <polygon class="c" fill="#a9b8c9" points="925,350 1075,350 1075,525 1010,555 945,545 925,510"/> <!-- Челяба -->
+  <polygon class="c" fill="#b79ad0" points="900,710 980,690 990,780 930,810 880,770"/> <!-- Иракиккистан -->
+  <polygon class="c" fill="#b79ad0" points="980,690 1190,690 1175,780 1105,880 1045,925 1010,860 990,780"/> <!-- Ирракия (площадь как у Индии) -->
+  <polygon class="c inf" fill="#78c7a0" points="1190,690 1270,700 1310,760 1285,825 1215,880 1150,885 1105,880 1175,780"/> <!-- Муси -->
+  <g class="c inf" fill="#8fd18a"> <!-- Травинная Федерация -->
+    <polygon points="1100,965 1220,950 1250,985 1140,1010"/>
+    <polygon points="1270,945 1390,925 1420,975 1310,1000"/>
+    <polygon points="1440,905 1490,920 1470,965"/>
+  </g>
+
+  <!-- Магнолия (пустыня) и леса -->
+  <polygon class="c" fill="#ecd9a0" points="1150,350 1240,350 1302,335 1302,640 1262,660 1212,690 1170,690 1170,510 1150,510"/> <!-- Магнолия -->
+  <polygon class="c" fill="#b8a76a" points="942,548 1010,555 1075,525 1075,510 1170,510 1170,690 980,690 905,690 895,642 930,600"/> <!-- Сарайкумское Ханство -->
+  <polygon class="c" fill="#c9744a" points="1302,335 1380,330 1450,310 1514,335 1519,590 1500,650 1420,655 1370,650 1302,640"/> <!-- Кытай -->
+  <path d="M1150,440 L1302,440 M1170,600 L1302,600" stroke="#7a5a1a" stroke-width="1.5" stroke-dasharray="5 3" fill="none"/>
+  <polygon fill="url(#desert)" points="1150,350 1240,350 1302,335 1302,640 1262,660 1212,690 1170,690 1170,510 1150,510"/>
+  <g opacity="0.6">
+    <polygon fill="url(#forest)" points="360,175 690,175 690,248 360,248"/>
+    <polygon fill="url(#forest)" points="720,140 940,140 940,285 800,285 720,260"/>
+    <polygon fill="url(#forest)" points="1160,130 1440,130 1440,290 1160,290"/>
+    <polygon fill="url(#forest)" points="700,345 780,345 780,425 700,425"/>
+    <polygon fill="url(#forest)" points="460,430 600,430 600,505 460,505"/>
+    <polygon fill="url(#forest)" points="270,490 420,490 420,600 300,620"/>
+    <polygon fill="url(#forest)" points="1205,735 1285,760 1265,820 1215,850 1190,800"/>
+  </g>
+
+  <!-- моря и озёра (поверх суши) -->
+  <polygon class="sea" points="290,255 470,262 560,272 650,255 720,285 745,330 700,345 560,342 460,335 290,340"/>
+  <polygon class="sea" points="700,455 735,440 775,455 780,500 755,535 715,530 700,500"/>
+  <polygon class="sea" points="868,440 925,448 942,520 930,600 895,642 866,585 858,505"/>
+  <polygon class="sea" points="715,530 758,533 754,600 748,680 742,800 720,790 712,740 716,650 718,570"/>
+  <text class="lbl" x="520" y="302">Синее море</text>
+  <text class="lbl" style="font-size:10px" x="740" y="492">Кряхтское</text>
+  <text class="lbl" style="font-size:10px" x="740" y="504">море</text>
+  <text class="lbl" style="font-size:9px" x="900" y="525">Каспийская</text>
+  <text class="lbl" style="font-size:9px" x="900" y="537">Дырка</text>
+  <text class="lbl" x="420" y="700">Среднее море</text>
+  <text class="lbl" style="font-size:9px" x="222" y="418">Технический</text><text class="lbl" style="font-size:9px" x="222" y="429">пролив</text>
+  <text class="lbl" style="font-size:9px" x="731" y="640">пролив</text>
+
+  <!-- горы -->
+  <path class="mtn" d="M990,120 L1000,230 L1000,350"/>
+  <path class="mtn" d="M778,546 L860,546"/>
+  <path class="mtn" d="M1000,352 L985,430 L1000,500 L1010,548"/>
+  <path class="mtn" d="M1170,360 L1182,440 L1175,520 L1188,610 L1195,685"/>
+  <text class="rl" x="1196" y="556">Хангарский хребет</text>
+  <text class="rl" x="1010" y="541" style="font-size:9.5px;text-anchor:middle">Велико-Урурские горы</text>
+  <text class="rl" x="1004" y="130">Древние Урурские горы</text>
+  <text class="rl" x="790" y="563">Куштунский хребет</text>
+  <text class="rl" x="1040" y="245" style="fill:#2f6b57">Наши Болота</text>
+  <text x="1112" y="454" font-size="8" fill="#6b4a2b" text-anchor="middle">▲</text>
+  <text x="1084" y="484" font-size="8" fill="#6b4a2b" text-anchor="middle">▲</text>
+  <text x="1140" y="484" font-size="8" fill="#6b4a2b" text-anchor="middle">▲</text>
+
+  <!-- реки -->
+  <path class="river" d="M1112,440 L1110,350 L1115,200 L1110,70"/>
+  <text class="rl" x="1106" y="180" style="text-anchor:end">р. Казуахия</text>
+  <path class="river" d="M845,335 L862,400 L880,444"/>
+  <text class="rl" x="826" y="336" style="text-anchor:end">Окра</text>
+  <path class="river" d="M940,250 L905,350 L864,405"/>
+  <text class="rl" x="910" y="290">Перемяч</text>
+  <path class="river" d="M835,335 L822,395 L792,430 L772,452"/>
+  <text class="rl" x="812" y="419" style="text-anchor:end">Димитров</text>
+  <path class="river" d="M1280,120 L1340,220 L1440,300"/>
+  <text class="rl" x="1330" y="190">Жёлтая Река</text>
+  <path class="river" d="M985,700 L988,780 L1008,858 L1030,900"/>
+  <text class="rl" x="962" y="722" style="text-anchor:end">Инди</text>
+  <path class="river" d="M1070,692 L1075,740 L1055,800 L1062,860 L1060,905"/>
+  <path class="river" d="M1120,692 L1115,750 L1095,800 L1085,850 L1078,868"/>
+  <path class="river" d="M1160,692 L1150,740 L1135,790 L1120,830 L1100,862"/>
+  <path class="river" d="M1020,770 L1055,790"/>
+  <path class="river" d="M1100,780 L1070,800"/>
+  <path class="river" d="M120,350 L130,420 L125,465"/>
+  <text class="rl" x="135" y="395">Джинстон</text>
+
+  <!-- народы Советского Союза -->
+  <text class="eth" x="850" y="120">Русы (титульная нация)</text>
+  <text class="eth" x="1100" y="105">Тунгусы</text>
+  <text class="eth" x="935" y="230">татары и башкиры</text>
+  <text class="eth" x="1360" y="255">Желтороссы</text>
+  <text class="eth" x="1330" y="140">рельеф Сибири</text>
+  <text class="eth" x="830" y="352">Кряхты</text>
+  <text class="eth" x="1112" y="395" style="font-size:9px">Казуалы (диаспора)</text>
+
+  <!-- подписи стран -->
+  <text class="t tag big" x="1220" y="100">Советский Союз</text>
+  <text class="t tag" x="515" y="150">Северная Ассамблея</text>
+  <text class="t sm" x="372" y="376" style="font-size:9px">Демократический</text><text class="t sm" x="372" y="387" style="font-size:9px">Зеленодольск</text><text class="t" x="372" y="354" style="font-size:8px">Мирный (город)</text><text class="t" x="420" y="397" style="font-size:7px">Центр (лес)</text>
+  <text class="t tag" x="345" y="480">Соевая</text><text class="t tag" x="345" y="496">Республика</text>
+  <text class="t tag" x="535" y="365">Тямовский</text><text class="t tag" x="535" y="381">рейх</text>
+  <text class="t sm" x="480" y="548">Айдалия</text>
+  <text class="t sm" x="740" y="368">Федерация</text><text class="t sm" x="740" y="380">Депутатов</text>
+  <text class="t tag" x="817" y="458" style="font-size:12px">Казачья</text><text class="t tag" x="817" y="472" style="font-size:12px">Земля</text>
+  <text class="t sm gr" x="700" y="485" style="text-anchor:end;display:none">.</text>
+  <text class="t sm" x="1500" y="800" style="font-weight:700">Чёрная</text><text class="t sm" x="1500" y="812" style="font-weight:700">Республика</text>
+  
+  <text class="t tag" x="805" y="690">Дмитровское</text><text class="t tag" x="805" y="706">Княжество</text>
+  <text class="t tag" x="1112" y="470" style="font-size:12px">Казуалия</text>
+  <text class="t tag" x="940" y="760" style="font-size:10px">Иракиккистан</text>
+  <text class="t tag" x="1115" y="800" style="font-size:13px">Ирракия</text>
+  <text class="t tag" x="1250" y="792" style="font-size:12px">Королевство</text><text class="t tag" x="1250" y="806" style="font-size:12px">Муси</text>
+  <text class="t tag" x="1300" y="1032" style="font-size:12px">Травинная Федерация</text>
+  <text class="t tag" x="130" y="415" style="font-size:13px">Бриттан</text>
+  <text class="t sm" x="50" y="298">Айцланд</text>
+  <text class="t tag" x="1000" y="372" style="font-size:13px">Челяба</text>
+
+  <!-- столицы и города -->
+  <circle class="cap" cx="1112" cy="498" r="4"/><text class="cl" x="1100" y="530">Ставка Казуала</text>
+  <circle class="cap" cx="862" cy="400" r="4.5"/><text class="cl" x="870" y="414" style="font-weight:700">Ваньград-на-Окре</text>
+  <circle class="cap" cx="822" cy="395" r="3"/>
+  <text class="cl" x="640" y="430" style="display:none">.</text>
+  <circle class="cap" cx="1340" cy="220" r="3"/><text class="cl" x="1348" y="224">Ваньград-на-Жёлтой-Реке</text>
+  <circle class="cap" cx="816" cy="515" r="3.5"/><text class="cl" x="818" y="527" style="text-anchor:middle;font-size:8.5px">Станица Дарьевская</text>
+  <circle class="cap" cx="140" cy="445" r="3.5"/><text class="cl" x="146" y="449">Большой Джон</text>
+  <circle class="cap" cx="540" cy="410" r="3.5"/><text class="cl" x="546" y="414">Барбинсберг</text>
+  <circle class="cap" cx="340" cy="540" r="3.5"/><text class="cl" x="346" y="544">Поридж-Сити</text>
+
+  <!-- британские базы и колония Сои на юге Муси -->
+  <circle cx="1170" cy="862" r="5" fill="#b79ad0" stroke="#222"/>
+  <rect x="1230" y="836" width="9" height="9" fill="#7fa7e0" stroke="#222"/>
+
+  <!-- реки и города (дополнено) -->
+  <path class="river" d="M405,100 L415,170 L430,215 L440,256"/>
+  <text class="rl" x="410" y="135" style="text-anchor:end">Свартэльва</text>
+  <path class="river" d="M530,100 L520,160 L535,215 L545,262"/>
+  <text class="rl" x="526" y="118" style="text-anchor:end">Фрейэльв</text>
+  <path class="river" d="M655,120 L645,175 L650,225 L652,254"/>
+  <text class="rl" x="662" y="140">Ульвеа</text>
+  <circle class="cap" cx="433" cy="218" r="2.5"/><text class="cl" x="439" y="222">Скъёльдборг</text>
+  <circle class="cap" cx="545" cy="258" r="2.5"/><text class="cl" x="551" y="262">Эльвесунд</text>
+  <circle class="cap" cx="350" cy="160" r="2.5"/><text class="cl" x="356" y="164">Фьордвик</text>
+  <circle class="cap" cx="470" cy="95" r="2.5"/><text class="cl" x="476" y="99">Ульфхейм</text>
+  <circle class="cap" cx="600" cy="238" r="2.5"/><text class="cl" x="606" y="242">Хельмстад</text>
+  <circle class="cap" cx="648" cy="175" r="2.5"/><text class="cl" x="642" y="179" style="text-anchor:end">Бьорнстад</text>
+  <circle class="cap" cx="775" cy="305" r="2.5"/><text class="cl" x="781" y="309">Ладожь</text>
+  <circle class="cap" cx="820" cy="240" r="2.5"/><text class="cl" x="826" y="244">Велеград</text>
+  <circle class="cap" cx="885" cy="170" r="2.5"/><text class="cl" x="891" y="174">Радогощь</text>
+  <circle class="cap" cx="985" cy="300" r="2.5"/><text class="cl" x="991" y="304">Ак-Тау</text>
+  <circle class="cap" cx="922" cy="300" r="2.5"/><text class="cl" x="916" y="304" style="text-anchor:end">Идель-Кала</text>
+  <ellipse class="sea" cx="1000" cy="450" rx="26" ry="16"/>
+  <text class="lbl" style="font-size:8px" x="1000" y="453">оз. Челяба</text>
+  <circle class="cap" cx="975" cy="412" r="4.5"/><text class="cl" x="982" y="416" style="font-weight:700">Челябинск</text>
+  <circle class="cap" cx="1025" cy="385" r="2.5"/><text class="cl" x="1019" y="389" style="text-anchor:end">Тяжпромск</text>
+  <circle class="cap" cx="1028" cy="495" r="2.5"/><text class="cl" x="1022" y="499" style="text-anchor:end">Нью-Челябинск</text>
+  <circle class="cap" cx="1045" cy="480" r="2.5"/><text class="cl" x="1039" y="484" style="text-anchor:end">Угольдар</text>
+  <path class="river" d="M912,722 L950,728 L985,735"/>
+  <text class="rl" x="930" y="719">Джалам</text>
+  <path class="river" d="M910,780 L950,778 L987,770"/>
+  <text class="rl" x="925" y="775">Сатлай</text>
+  <circle class="cap" cx="930" cy="742" r="2.5"/><text class="cl" x="936" y="746">Лахарабад</text>
+  <circle class="cap" cx="905" cy="722" r="2.5"/><text class="cl" x="911" y="726">Пешаркот</text>
+  <circle class="cap" cx="968" cy="790" r="2.5"/><text class="cl" x="962" y="794" style="text-anchor:end">Мултанпур</text>
+  <text class="rl" x="1081" y="745">Нарбара</text><text class="rl" x="1118" y="716" style="text-anchor:end">Годара</text><text class="rl" x="1166" y="716" style="text-anchor:start">Гангара</text>
+  <text class="rl" x="1022" y="768">Кришара</text><text class="rl" x="1105" y="790">Таптара</text>
+  <circle class="cap" cx="1090" cy="722" r="2.5"/><text class="cl" x="1096" y="726">Дехлагарх</text>
+  <circle class="cap" cx="1095" cy="758" r="2.5"/><text class="cl" x="1101" y="762">Варанагар</text>
+  <circle class="cap" cx="1152" cy="742" r="2.5"/><text class="cl" x="1158" y="746">Ганджапур</text>
+  <circle class="cap" cx="1002" cy="820" r="2.5"/><text class="cl" x="1008" y="824">Мумбадеви</text>
+  <circle class="cap" cx="1100" cy="860" r="2.5"/><text class="cl" x="1094" y="864" style="text-anchor:end">Каликата</text>
+  <circle class="cap" cx="1050" cy="905" r="2.5"/><text class="cl" x="1044" y="909" style="text-anchor:end">Мадраспур</text>
+
+  <!-- реки и города (3) -->
+  <circle class="cap" cx="490" cy="232" r="4.5"/><text class="cl" x="497" y="236" style="font-weight:700">Ослорвик</text>
+  <circle class="cap" cx="150" cy="350" r="2.5"/><text class="cl" x="156" y="354">Йорквик</text>
+  <circle class="cap" cx="100" cy="462" r="2.5"/><text class="cl" x="94" y="466" style="text-anchor:end">Кентбридж</text>
+  <circle class="cap" cx="80" cy="430" r="2.5"/><text class="cl" x="74" y="434" style="text-anchor:end">Ливерпорт</text>
+  <circle class="cap" cx="95" cy="380" r="2.5"/><text class="cl" x="89" y="384" style="text-anchor:end">Мэнчестон</text>
+  <circle class="cap" cx="170" cy="455" r="2.5"/><text class="cl" x="176" y="459">Бристау</text>
+  <path class="river" d="M830,745 L815,790 L800,836"/>
+  <text class="rl" x="822" y="815">Ширчай</text>
+  <circle class="cap" cx="850" cy="730" r="2.5"/><text class="cl" x="856" y="734">Ордабад</text>
+  <circle class="cap" cx="815" cy="790" r="2.5"/><text class="cl" x="821" y="794">Ширкент</text>
+  <circle class="cap" cx="755" cy="770" r="2.5"/><text class="cl" x="761" y="774">Кзыл-Шахр</text>
+  <path class="river" d="M1215,700 L1225,760 L1240,820 L1240,845"/>
+  <text class="rl" x="1210" y="725" style="text-anchor:end">Иравара</text>
+  <path class="river" d="M1255,715 L1270,770 L1262,815 L1258,826"/>
+  <text class="rl" x="1262" y="712">Салавин</text>
+  <path class="river" d="M1195,720 L1200,780 L1195,830 L1185,870"/>
+  <text class="rl" x="1182" y="852" style="text-anchor:end">Мэнхонг</text>
+  <circle class="cap" cx="1228" cy="718" r="2.5"/><text class="cl" x="1234" y="722">Мандалаят</text>
+  <circle class="cap" cx="1198" cy="760" r="2.5"/><text class="cl" x="1204" y="764">Аюттара</text>
+  <circle class="cap" cx="1200" cy="846" r="2.5"/><text class="cl" x="1206" y="850">Ангкорат</text>
+  <circle class="cap" cx="1215" cy="872" r="2.5"/><text class="cl" x="1221" y="876">Сингапара</text>
+  <circle class="cap" cx="1238" cy="838" r="2.5"/><text class="cl" x="1232" y="842" style="text-anchor:end">Рангавади</text>
+  <circle class="cap" cx="1240" cy="530" r="4.5"/><text class="cl" x="1247" y="534" style="font-weight:700">Улан-Батыр</text>
+  <text class="t tag" x="1245" y="478" style="font-size:14px">Магнолия</text><text class="t sm" x="1245" y="403">Первый улус</text><text class="t sm" x="1245" y="500">Третий улус</text><text class="t sm" x="1245" y="596">Второй улус</text><text class="t tag big" x="1450" y="485">Кытай</text>
+
+  <!-- Травинная, Соевая, Магнолия (4) -->
+  <path class="river" d="M1180,958 L1190,985 L1185,1005"/>
+  <text class="rl" x="1195" y="975">Расслабиха</text>
+  <path class="river" d="M1335,935 L1345,965 L1340,995"/>
+  <text class="rl" x="1350" y="950">Кайфуша</text>
+  <circle class="cap" cx="1130" cy="990" r="2.5"/><text class="cl" x="1136" y="994">Травопорт</text>
+  <circle class="cap" cx="1215" cy="968" r="2.5"/><text class="cl" x="1221" y="972">Бонгкок</text>
+  <circle class="cap" cx="1300" cy="975" r="2.5"/><text class="cl" x="1306" y="979">Пыхалово</text>
+  <circle class="cap" cx="1385" cy="962" r="2.5"/><text class="cl" x="1391" y="966">Раскурайя</text>
+  <circle class="cap" cx="1465" cy="948" r="2.5"/><text class="cl" x="1471" y="952">Чиллтаун</text>
+  <circle class="cap" cx="1235" cy="990" r="2.5"/><text class="cl" x="1241" y="994">Умиротворенск</text>
+  <text class="rl" x="1115" y="1022">о. Кайфа</text><text class="rl" x="1290" y="1018">о. Расслабон</text><text class="rl" x="1445" y="985">о. Лени</text>
+  <path class="river" d="M330,430 L300,470 L262,505 L250,520"/>
+  <text class="rl" x="305" y="455">Гудзонка</text>
+  <path class="river" d="M400,430 L390,500 L388,560 L378,628"/>
+  <text class="rl" x="405" y="470">Охайо</text>
+  <path class="river" d="M300,545 L285,580 L262,600 L252,598"/>
+  <text class="rl" x="270" y="615">Колумбина</text>
+  <circle class="cap" cx="275" cy="425" r="2.5"/><text class="cl" x="281" y="429">Нью-Бостон</text>
+  <circle class="cap" cx="430" cy="445" r="2.5"/><text class="cl" x="424" y="449" style="text-anchor:end">Спрингфилд</text>
+  <circle class="cap" cx="325" cy="612" r="2.5"/><text class="cl" x="331" y="616">Вашингтаун</text>
+  <circle class="cap" cx="395" cy="580" r="2.5"/><text class="cl" x="401" y="584">Чикагтаун</text>
+  <circle class="cap" cx="262" cy="540" r="2.5"/><text class="cl" x="268" y="544">Сиэттлвилл</text>
+
+  <!-- (5) -->
+  <text class="t tag" x="1060" y="655" style="font-size:12px">Сарайкумское</text><text class="t tag" x="1060" y="669" style="font-size:12px">Ханство</text>
+  <path class="river" d="M1100,603 L1030,612 L960,592 L936,582"/>
+  <text class="rl" x="1020" y="626">Жайлыч</text>
+  <path class="river" d="M1135,590 L1125,640 L1112,688"/>
+  <text class="rl" x="1142" y="640">Сарысуй</text>
+  <circle class="cap" cx="1100" cy="603" r="4.5"/><text class="cl" x="1107" y="607" style="font-weight:700">Кумыс-Орда</text>
+  <circle class="cap" cx="1000" cy="578" r="2.5"/><text class="cl" x="1006" y="582">Ак-Сарай</text>
+  <circle class="cap" cx="1148" cy="668" r="2.5"/><text class="cl" x="1154" y="672">Тамгабад</text>
+  <circle class="cap" cx="950" cy="655" r="2.5"/><text class="cl" x="956" y="659">Караван-Кала</text>
+  <circle class="cap" cx="1450" cy="737" r="2.5"/><text class="cl" x="1456" y="741">Саппорока</text>
+  <circle class="cap" cx="1426" cy="788" r="4.5"/><text class="cl" x="1433" y="792" style="font-weight:700">Токомэ</text>
+  <circle class="cap" cx="1405" cy="812" r="2.5"/><text class="cl" x="1399" y="816" style="text-anchor:end">Нагоясу</text>
+  <circle class="cap" cx="1393" cy="838" r="2.5"/><text class="cl" x="1399" y="842">Осакара</text>
+  <circle class="cap" cx="1373" cy="862" r="2.5"/><text class="cl" x="1367" y="866" style="text-anchor:end">Фукусава</text>
+  <path class="river" d="M1440,760 L1432,780"/>
+  <text class="rl" x="1452" y="772">Синанога</text>
+  <path class="river" d="M1404,826 L1396,845"/>
+  <text class="rl" x="1408" y="852">Тонегара</text>
+  <path class="river" d="M1350,420 L1430,445 L1490,430 L1552,455"/>
+  <text class="rl" x="1360" y="414">Хуанхая</text>
+  <path class="river" d="M1350,530 L1420,545 L1490,525 L1556,550"/>
+  <text class="rl" x="1360" y="548">Янзыгэ</text>
+  <path class="river" d="M1400,610 L1450,598 L1500,618 L1510,645"/>
+  <text class="rl" x="1400" y="626">Сицзя</text>
+  <circle class="cap" cx="1490" cy="380" r="4.5"/><text class="cl" x="1483" y="384" style="font-weight:700;text-anchor:end">Бэйчжао</text>
+
+  <!-- (6) горы и Тямовский рейх -->
+  <polygon fill="url(#mount)" opacity="0.85" points="1175,604 1298,604 1298,638 1260,657 1212,686 1175,686"/>
+  <text class="rl" x="1237" y="650" style="font-weight:700;text-anchor:middle;font-size:10px">Нагорье Шамбалы</text>
+  <path class="mtn" d="M925,672 L990,678 L1060,674 L1120,681 L1165,677"/>
+  <text class="rl" x="1055" y="689" style="font-size:9px;text-anchor:middle">Кумысский хребет</text>
+  <path class="mtn" d="M995,699 L1060,703 L1120,699 L1185,703"/>
+  <text class="rl" x="1003" y="711" style="font-size:8.5px">Химагирский хребет</text>
+  <path class="mtn" d="M902,716 L935,709 L975,704"/>
+  <text class="rl" x="942" y="701" style="font-size:8.5px;text-anchor:middle">Хиндугарский хр.</text>
+  <path class="river" d="M470,500 L540,492 L610,472 L626,466"/>
+  <text class="rl" x="520" y="505">Донауэр</text>
+  <path class="river" d="M470,450 L480,400 L470,350 L465,336"/>
+  <text class="rl" x="478" y="440" style="text-anchor:start">Рейнау</text>
+  <path class="river" d="M555,520 L560,455 L575,395 L585,345"/>
+  <text class="rl" x="563" y="500">Эльбера</text>
+  <circle class="cap" cx="470" cy="400" r="2.5"/><text class="cl" x="476" y="404">Кёльнбург</text>
+  <circle class="cap" cx="580" cy="440" r="2.5"/><text class="cl" x="574" y="444" style="text-anchor:end">Дрезденвальд</text>
+  <circle class="cap" cx="500" cy="490" r="2.5"/><text class="cl" x="506" y="494">Мюнхенштадт</text>
+  <circle class="cap" cx="600" cy="348" r="2.5"/><text class="cl" x="594" y="352" style="text-anchor:end">Гамбургсхафен</text>
+
+  <!-- компас -->
+  <g transform="translate(1530,110)">
+    <circle r="26" fill="#fff" stroke="#444"/>
+    <path d="M0,-22 L6,0 L0,22 L-6,0 Z" fill="#c33"/>
+    <text class="t" y="-30" style="font-size:13px;font-weight:700">С</text>
+  </g>
+
+  <!-- легенда -->
+  <g transform="translate(20,820)">
+    <rect width="590" height="210" rx="6" fill="#fff" stroke="#444" opacity="0.96"/>
+    <text x="12" y="22" font-size="14" font-weight="700" fill="#111">Схема по docs/01-Contries-Description.md. Не в масштабе</text>
+    <rect x="12" y="34" width="18" height="12" class="c" fill="#e07a74"/>
+    <text x="36" y="45" font-size="12" fill="#111">страна описана в документе, положение следует из текста</text>
+    <rect x="12" y="56" width="18" height="12" class="c inf" fill="#78c7a0"/>
+    <text x="36" y="67" font-size="12" fill="#111">положение выведено по аналогу (Муси, Травинная Федерация): в тексте не указано</text>
+    <rect x="12" y="78" width="18" height="12" fill="#c9c9e8" stroke="#556" stroke-dasharray="4 2"/>
+    <text x="36" y="89" font-size="12" fill="#111">заготовка будущей страны (место зарезервировано)</text>
+    <rect x="12" y="100" width="18" height="12" fill="#dedacb" stroke="#999"/>
+    <text x="36" y="111" font-size="12" fill="#111">земли, которые в документе не описаны</text>
+    <rect x="12" y="122" width="18" height="12" fill="#b79ad0" stroke="#222"/>
+    <text x="36" y="133" font-size="12" fill="#111">Бриттан и его колонии (Айцланд светлее)</text>
+    <circle cx="21" cy="149" r="5" fill="#b79ad0" stroke="#222"/><text x="36" y="153" font-size="12" fill="#111">британские военные базы</text>
+    <rect x="262" y="144" width="9" height="9" fill="#7fa7e0" stroke="#222"/><text x="278" y="153" font-size="12" fill="#111">провинция-колония Сои (юг Муси)</text>
+    <rect x="330" y="100" width="18" height="12" fill="#cfe5c9" stroke="#2e7d4f"/><path d="M335 110 L339 102 L343 110 Z" fill="#2e7d4f"/>
+    <text x="354" y="111" font-size="12" fill="#111">леса</text>
+    <rect x="330" y="122" width="18" height="12" fill="#ecd9a0" stroke="#222"/>
+    <text x="354" y="133" font-size="12" fill="#111">пустыня (Магнолия)</text>
+    <circle cx="21" cy="170" r="4" class="cap"/><text x="36" y="174" font-size="12" fill="#111">столица и города, названные в тексте</text>
+    <text x="12" y="196" font-size="11" fill="#444">Каспийская Дырка (аналог Каспийского моря) добавлена по запросу: в документе пока не описана.</text>
+  </g>
+</svg>

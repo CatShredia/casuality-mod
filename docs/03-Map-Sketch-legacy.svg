@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040" font-family="Segoe UI, Arial, sans-serif">
+  <defs>
+    <pattern id="swamp" width="10" height="8" patternUnits="userSpaceOnUse">
+      <path d="M1 6 h3 M6 3 h3" stroke="#3f7f6a" stroke-width="1.4" fill="none"/>
+    </pattern>
+    <style>
+      .c { stroke:#222; stroke-width:1.5; stroke-linejoin:round; }
+      .h { stroke-dasharray:7 4; }
+      .t { text-anchor:middle; font-size:12px; fill:#111; paint-order:stroke; stroke:#fff; stroke-width:3px; stroke-linejoin:round; }
+      .tag { font-weight:700; font-size:14px; }
+      .big { font-size:17px; }
+      .sm { font-size:10px; }
+      .sea { fill:#bcdcf0; stroke:#4a86b3; stroke-width:1.2; }
+      .lbl { text-anchor:middle; font-style:italic; fill:#2c5d83; font-size:13px; paint-order:stroke; stroke:#cfe6f5; stroke-width:3px; }
+      .river { fill:none; stroke:#3b82c4; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+      .rl { font-size:10px; fill:#1f5e99; font-style:italic; paint-order:stroke; stroke:#fff; stroke-width:2.5px; }
+      .mtn { fill:none; stroke:#6b4a2b; stroke-width:3; stroke-dasharray:2 5; stroke-linecap:round; }
+      .dem { fill:#7fa7e0; } .com { fill:#e07a74; } .fas { fill:#8a8a8a; } .neu { fill:#ecc65b; }
+      .brit { fill:#b79ad0; }
+    </style>
+  </defs>
+
+  <!-- океан -->
+  <rect width="1600" height="1040" fill="#d9ecf8"/>
+  <text class="lbl" x="150" y="600" font-size="16">Океан</text>
+  <text class="lbl" x="560" y="42" font-size="16">Северный океан</text>
+
+  <!-- острова Бриттана -->
+  <polygon class="c brit" points="70,340 170,330 200,400 170,480 100,470 60,410"/>
+  <polygon class="c brit" points="20,270 70,260 80,310 30,320"/>
+
+  <!-- Запад -->
+  <polygon class="c dem" points="250,400 440,400 440,610 380,630 300,640 250,600"/> <!-- SOY -->
+  <polygon class="c dem" points="300,330 445,330 445,400 300,400"/> <!-- ZLD -->
+  <polygon class="c fas" points="445,330 620,330 630,430 620,520 560,520 445,520"/> <!-- BTR -->
+  <polygon class="c dem" points="440,520 520,520 520,580 440,580"/> <!-- ADL -->
+  <polygon class="c dem h" points="520,520 620,520 630,610 580,720 530,700 470,640 440,610 440,580 520,580"/> <!-- ZKR -->
+  <polygon class="c dem h" points="620,320 690,320 690,430 630,430"/> <!-- HRL -->
+  <polygon class="c neu" points="690,320 790,320 790,430 690,430"/> <!-- FDP -->
+
+  <!-- Север -->
+  <polygon class="c dem" points="330,70 700,70 700,300 330,300"/> <!-- SVA -->
+  <polygon class="c com" points="700,70 1450,70 1450,310 1380,330 1240,350 1100,350 1000,350 1000,440 925,440 860,430 790,430 790,330 745,325 700,250"/> <!-- KRZ -->
+  <polygon fill="url(#swamp)" opacity="0.7" points="1010,150 1150,150 1150,335 1010,335"/>
+
+  <!-- Юго-запад / Кавказ -->
+  <polygon class="c fas h" points="630,430 775,430 775,545 640,545 620,520"/> <!-- CRE -->
+  <polygon class="c neu" points="775,430 860,430 860,545 790,545 775,530"/> <!-- KZS -->
+  <polygon class="c neu h" points="630,545 740,545 740,640 700,720 660,715 630,640"/> <!-- ZNS -->
+  <polygon class="c fas h" points="740,545 860,545 870,650 780,670 740,640"/> <!-- DMK -->
+  <polygon class="c neu h" points="860,545 925,510 1000,510 1000,600 980,690 900,710 870,650"/> <!-- ISL -->
+
+  <!-- Центр -->
+  <polygon class="c neu h" points="860,430 925,440 925,510 860,545"/> <!-- ART -->
+  <polygon class="c neu" points="925,440 1000,440 1000,510 925,510"/> <!-- VCI -->
+  <polygon fill="url(#swamp)" points="925,440 1000,440 1000,510 925,510"/>
+  <polygon class="c neu h" points="1000,350 1100,350 1100,470 1000,470"/> <!-- CLB -->
+  <polygon class="c com h" points="1100,350 1240,350 1380,330 1380,470 1100,470"/> <!-- ZML -->
+  <polygon class="c neu h" points="1000,470 1380,470 1380,640 1250,690 1090,690 980,690 1000,600 1000,510"/> <!-- SHF -->
+  <polygon class="c neu h" points="1380,470 1470,490 1500,560 1450,640 1380,640"/> <!-- NBL -->
+
+  <!-- Юг и юго-восток -->
+  <polygon class="c brit" points="900,710 980,690 990,780 930,810 880,770"/> <!-- Иракиккистан -->
+  <polygon class="c brit" points="980,690 1090,690 1110,760 1040,860 990,780"/> <!-- Ирракия -->
+  <polygon class="c dem" points="1090,690 1250,690 1300,740 1270,830 1200,860 1130,810 1110,760"/> <!-- MUS -->
+  <polygon class="c com" points="1020,880 1130,870 1160,900 1060,920"/> <!-- TRF -->
+  <polygon class="c com" points="1160,890 1260,880 1280,920 1190,930"/>
+  <polygon class="c com" points="1300,860 1345,870 1335,912"/>
+  <polygon class="c com h" points="590,770 650,760 670,800 620,820"/> <!-- ISG -->
+  <polygon class="c dem h" points="1400,700 1450,690 1470,740 1420,760"/> <!-- KMS -->
+  <polygon class="c dem h" points="1440,780 1480,800 1450,830"/>
+
+  <!-- моря (поверх суши) -->
+  <polygon class="sea" points="290,255 470,262 560,272 650,255 720,285 745,330 700,345 560,342 460,335 290,340"/>
+  <polygon class="sea" points="700,455 735,440 775,455 780,500 755,535 715,530 700,500"/>
+  <text class="lbl" x="520" y="302">Синее море</text>
+  <text class="lbl" style="font-size:10px" x="740" y="492">Кряхтское</text>
+  <text class="lbl" style="font-size:10px" x="740" y="504">море</text>
+  <text class="lbl" x="420" y="700">Среднее море</text>
+
+  <!-- горы -->
+  <path class="mtn" d="M990,120 L1000,230 L1000,345"/>
+  <path class="mtn" d="M778,546 L860,546"/>
+  <text class="rl" x="1004" y="130">Урурские горы</text>
+  <text class="rl" x="790" y="563">Куштунский хребет</text>
+  <text class="rl" x="1040" y="245" style="fill:#2f6b57">Наши Болота</text>
+  <text x="944" y="454" font-size="8" fill="#6b4a2b" text-anchor="middle">▲▲▲</text>
+
+  <!-- реки -->
+  <path class="river" d="M962,440 L960,350 L965,200 L960,70"/>
+  <text class="rl" x="970" y="180">р. Казуахия</text>
+  <path class="river" d="M835,335 L822,395 L792,430 L772,452"/>
+  <text class="rl" x="812" y="365">Димитров</text>
+  <path class="river" d="M1280,120 L1340,220 L1440,300"/>
+  <text class="rl" x="1330" y="190">Жёлтая Река</text>
+  <path class="river" d="M985,700 L986,770 L966,790"/>
+  <text class="rl" x="990" y="722">Инди</text>
+  <path class="river" d="M120,350 L130,420 L125,465"/>
+  <text class="rl" x="135" y="395">Джинстон</text>
+
+  <!-- подписи стран -->
+  <text class="t tag big" x="1190" y="190">KRZ</text><text class="t" x="1190" y="208">Красная Земля</text>
+  <text class="t tag" x="515" y="150">SVA</text><text class="t" x="515" y="166">Северная Ассамблея</text>
+  <text class="t tag" x="372" y="360">ZLD</text><text class="t sm" x="372" y="374">Зеленодольск</text>
+  <text class="t tag" x="345" y="500">SOY</text><text class="t" x="345" y="516">Соевая Республика</text>
+  <text class="t tag" x="535" y="430">BTR</text><text class="t" x="535" y="446">Чёрная Тартария</text>
+  <text class="t tag" x="480" y="545">ADL</text><text class="t sm" x="480" y="558">Айдалия</text>
+  <text class="t tag" x="555" y="590">ZKR</text><text class="t sm" x="555" y="603">Закария</text>
+  <text class="t tag" x="655" y="372">HRL</text><text class="t sm" x="655" y="385">Лига</text>
+  <text class="t tag" x="740" y="372">FDP</text><text class="t sm" x="740" y="385">Федерация</text><text class="t sm" x="740" y="397">Депутатов</text>
+  <text class="t tag" x="665" y="485">CRE</text><text class="t sm" x="665" y="498">Чёрная</text><text class="t sm" x="665" y="510">Республика</text>
+  <text class="t tag" x="820" y="470">KZS</text><text class="t sm" x="820" y="483">Казачьи</text><text class="t sm" x="820" y="495">штаты</text>
+  <text class="t tag" x="685" y="610">ZNS</text><text class="t sm" x="685" y="623">Зайнутдиновский</text><text class="t sm" x="685" y="635">Союз</text>
+  <text class="t tag" x="815" y="605">DMK</text><text class="t sm" x="815" y="618">Дмитро-</text><text class="t sm" x="815" y="630">Княжество</text>
+  <text class="t tag" x="935" y="590">ISL</text><text class="t sm" x="935" y="603">Исламская</text><text class="t sm" x="935" y="615">Республика</text>
+  <text class="t tag" x="892" y="478">ART</text>
+  <text class="t tag" x="962" y="470">VCI</text><text class="t sm" x="962" y="483">Казуалия</text>
+  <text class="t tag" x="1050" y="405">CLB</text><text class="t sm" x="1050" y="418">Челяба</text>
+  <text class="t tag" x="1240" y="405">ZML</text><text class="t sm" x="1240" y="418">Земля Замалия</text>
+  <text class="t tag big" x="1190" y="570">SHF</text><text class="t" x="1190" y="588">Шарафутдиновская</text><text class="t" x="1190" y="603">Федерация</text>
+  <text class="t tag" x="1440" y="555">NBL</text><text class="t sm" x="1440" y="568">Новая Булатия</text>
+  <text class="t tag" x="1200" y="770">MUS</text><text class="t sm" x="1200" y="783">Королевство Муси</text>
+  <text class="t sm" x="940" y="760">Иракиккистан</text>
+  <text class="t sm" x="1045" y="790">Ирракия</text>
+  <text class="t tag" x="1100" y="905">TRF</text><text class="t sm" x="1100" y="918" style="font-size:9px">Травинная Федерация</text>
+  <text class="t tag" x="632" y="795">ISG</text>
+  <text class="t tag" x="1437" y="728">KMS</text>
+  <text class="t" x="130" y="415">Бриттан</text>
+  <text class="t sm" x="50" y="298">Айцланд</text>
+
+  <!-- компас -->
+  <g transform="translate(1530,110)">
+    <circle r="26" fill="#fff" stroke="#444"/>
+    <path d="M0,-22 L6,0 L0,22 L-6,0 Z" fill="#c33"/>
+    <text class="t" y="-30" style="font-size:13px;font-weight:700">С</text>
+  </g>
+
+  <!-- легенда -->
+  <g transform="translate(20,860)">
+    <rect width="520" height="170" rx="6" fill="#fff" stroke="#444" opacity="0.95"/>
+    <text x="12" y="22" font-size="14" font-weight="700" fill="#111">LEGACY. Схема мира (по таблице 24 стран). Не в масштабе</text>
+    <rect x="12" y="34" width="18" height="12" class="c dem"/><text x="36" y="45" font-size="12" fill="#111">демократия</text>
+    <rect x="130" y="34" width="18" height="12" class="c com"/><text x="154" y="45" font-size="12" fill="#111">коммунизм</text>
+    <rect x="240" y="34" width="18" height="12" class="c fas"/><text x="264" y="45" font-size="12" fill="#111">фашизм</text>
+    <rect x="330" y="34" width="18" height="12" class="c neu"/><text x="354" y="45" font-size="12" fill="#111">нейтральные</text>
+    <rect x="12" y="56" width="18" height="12" class="c brit"/><text x="36" y="67" font-size="12" fill="#111">Бриттан и колонии (нет в таблице стран)</text>
+    <rect x="12" y="78" width="18" height="12" class="c" fill="#fff"/>
+    <text x="36" y="89" font-size="12" fill="#111">сплошная рамка: положение следует из лора в документе</text>
+    <rect x="12" y="100" width="18" height="12" class="c h" fill="#fff"/>
+    <text x="36" y="111" font-size="12" fill="#111">пунктир: положение предложено, в документе его нет</text>
+    <text x="12" y="132" font-size="11" fill="#444">Цвет по группе HOI4. Казуалия (VCI) заштрихована как болото.</text>
+    <text x="12" y="150" font-size="11" fill="#444">Источник: docs/01-Contries-Description.md, docs/02-Geography.md</text>
+  </g>
+</svg>
