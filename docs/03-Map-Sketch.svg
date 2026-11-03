@@ -44,7 +44,7 @@
   <polygon class="c" fill="#cdb8e0" points="20,270 70,260 80,310 30,320"/>
 
   <!-- материк: земли без описания -->
-  <polygon fill="#dedacb" stroke="#999" stroke-width="1.2" points="250,400 300,400 300,330 330,330 330,70 1450,70 1450,310 1514,335 1519,590 1500,650 1420,655 1370,650 1250,690 1000,700 900,710 870,650 780,670 740,640 700,720 660,715 630,640 630,610 580,720 530,700 470,640 440,610 380,630 300,640 250,600"/>
+  <polygon fill="#dedacb" stroke="#999" stroke-width="1.2" points="250,400 300,400 300,330 330,330 330,70 1450,70 1450,310 1514,335 1519,590 1500,650 1420,655 1370,650 1302,640 1262,660 1212,690 1000,700 900,710 870,650 780,670 740,640 715,670 520,670 520,580 440,580 440,610 380,630 300,640 250,600"/>
 
   <!-- упомянуты в тексте, раздела нет -->
   <polygon class="c" fill="#555a6e" points="1445,726 1462,734 1428,800 1388,857 1359,871 1367,834 1405,789"/> <!-- Чёрная Республика (аналог Японии) -->
@@ -52,12 +52,15 @@
   <!-- заготовки будущих стран (аналог Балкан и южной Европы) -->
   <polygon fill="#c9c9e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="520,520 620,520 620,600 520,600"/> <!-- заготовка страны 1 -->
   <text class="t sm gr" x="570" y="558" style="font-size:9px">Заготовка</text><text class="t sm gr" x="570" y="569" style="font-size:9px">страны 1</text>
-  <polygon fill="#c9c9e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="620,520 715,520 715,600 620,600"/> <!-- заготовка страны 3 -->
+  <polygon fill="#e8c9d8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="620,520 715,520 715,600 620,600"/> <!-- заготовка страны 3 -->
   <text class="t sm gr" x="667" y="558" style="font-size:9px">Заготовка</text><text class="t sm gr" x="667" y="569" style="font-size:9px">страны 3</text>
-  <polygon fill="#c9c9e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="520,600 620,600 620,670 520,670"/> <!-- заготовка страны 2 -->
+  <polygon fill="#b7d3e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="520,600 620,600 620,670 520,670"/> <!-- заготовка страны 2 -->
   <text class="t sm gr" x="570" y="633" style="font-size:9px">Заготовка</text><text class="t sm gr" x="570" y="644" style="font-size:9px">страны 2</text>
-  <polygon fill="#c9c9e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="620,600 715,600 715,670 620,670"/> <!-- заготовка страны 4 -->
+  <polygon fill="#d6e8c9" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="620,600 715,600 715,670 620,670"/> <!-- заготовка страны 4 -->
   <text class="t sm gr" x="667" y="633" style="font-size:9px">Заготовка</text><text class="t sm gr" x="667" y="644" style="font-size:9px">страны 4</text>
+
+  <polygon fill="#d9c9e8" stroke="#556" stroke-width="1.3" stroke-dasharray="6 3" points="630,430 775,430 775,530 715,530 715,520 620,520"/> <!-- заготовка страны 5 -->
+  <text class="t sm gr" x="675" y="478" style="font-size:9px">Заготовка</text><text class="t sm gr" x="675" y="489" style="font-size:9px">страны 5</text>
 
   <!-- описаны в документе -->
   <polygon class="c" fill="#7fa7e0" points="250,400 440,400 440,610 380,630 300,640 250,600"/> <!-- Соевая Республика -->
@@ -73,12 +76,12 @@
   <polygon fill="url(#swamp)" opacity="0.7" points="1010,150 1150,150 1150,335 1010,335"/>
   <polygon fill="url(#swamp)" opacity="0.7" points="1075,335 1150,335 1150,440 1075,440"/> <!-- Наши Болота у Казуалии: Казуалы -->
   <polygon class="c" fill="#d98aa3" points="758,545 860,545 866,585 895,642 905,690 900,710 880,770 840,830 780,840 735,800 745,680 750,600"/> <!-- Дмитровское Княжество -->
-  <polygon class="c" fill="#ef9f4f" points="775,430 860,430 860,545 790,545 775,530"/> <!-- Казачья Земля -->
+  <polygon class="c" fill="#ef9f4f" points="775,430 870,430 868,440 858,505 860,545 790,545 775,530"/> <!-- Казачья Земля -->
   <polygon class="c" fill="#c3cf84" points="1075,440 1150,440 1150,510 1075,510"/> <!-- Казуалия -->
   <polygon fill="url(#swamp)" points="1075,440 1150,440 1150,510 1075,510"/>
   <polygon class="c" fill="#a9b8c9" points="925,350 1075,350 1075,525 1010,555 945,545 925,510"/> <!-- Челяба -->
-  <polygon class="c" fill="#b79ad0" points="900,710 980,690 990,780 930,810 880,770"/> <!-- Иракиккистан -->
-  <polygon class="c" fill="#b79ad0" points="980,690 1190,690 1175,780 1105,880 1045,925 1010,860 990,780"/> <!-- Ирракия (площадь как у Индии) -->
+  <polygon class="c" fill="#9b7fc4" points="900,710 980,690 990,780 930,810 880,770"/> <!-- Иракиккистан -->
+  <polygon class="c" fill="#c6a3e0" points="980,690 1190,690 1175,780 1105,880 1045,925 1010,860 990,780"/> <!-- Ирракия (площадь как у Индии) -->
   <polygon class="c inf" fill="#78c7a0" points="1190,690 1270,700 1310,760 1285,825 1215,880 1150,885 1105,880 1175,780"/> <!-- Муси -->
   <g class="c inf" fill="#8fd18a"> <!-- Травинная Федерация -->
     <polygon points="1100,965 1220,950 1250,985 1140,1010"/>
@@ -225,12 +228,12 @@
   <text class="rl" x="930" y="719">Джалам</text>
   <path class="river" d="M910,780 L950,778 L987,770"/>
   <text class="rl" x="925" y="775">Сатлай</text>
-  <circle class="cap" cx="930" cy="742" r="2.5"/><text class="cl" x="936" y="746">Лахарабад</text>
+  <circle class="cap" cx="930" cy="742" r="4.5"/><text class="cl" x="937" y="746" style="font-weight:700">Лахарабад</text>
   <circle class="cap" cx="905" cy="722" r="2.5"/><text class="cl" x="911" y="726">Пешаркот</text>
   <circle class="cap" cx="968" cy="790" r="2.5"/><text class="cl" x="962" y="794" style="text-anchor:end">Мултанпур</text>
   <text class="rl" x="1081" y="745">Нарбара</text><text class="rl" x="1118" y="716" style="text-anchor:end">Годара</text><text class="rl" x="1166" y="716" style="text-anchor:start">Гангара</text>
   <text class="rl" x="1022" y="768">Кришара</text><text class="rl" x="1105" y="790">Таптара</text>
-  <circle class="cap" cx="1090" cy="722" r="2.5"/><text class="cl" x="1096" y="726">Дехлагарх</text>
+  <circle class="cap" cx="1090" cy="722" r="4.5"/><text class="cl" x="1097" y="726" style="font-weight:700">Дехлагарх</text>
   <circle class="cap" cx="1095" cy="758" r="2.5"/><text class="cl" x="1101" y="762">Варанагар</text>
   <circle class="cap" cx="1152" cy="742" r="2.5"/><text class="cl" x="1158" y="746">Ганджапур</text>
   <circle class="cap" cx="1002" cy="820" r="2.5"/><text class="cl" x="1008" y="824">Мумбадеви</text>
@@ -246,7 +249,7 @@
   <circle class="cap" cx="170" cy="455" r="2.5"/><text class="cl" x="176" y="459">Бристау</text>
   <path class="river" d="M830,745 L815,790 L800,836"/>
   <text class="rl" x="822" y="815">Ширчай</text>
-  <circle class="cap" cx="850" cy="730" r="2.5"/><text class="cl" x="856" y="734">Ордабад</text>
+  <circle class="cap" cx="850" cy="730" r="4.5"/><text class="cl" x="857" y="734" style="font-weight:700">Ордабад</text>
   <circle class="cap" cx="815" cy="790" r="2.5"/><text class="cl" x="821" y="794">Ширкент</text>
   <circle class="cap" cx="755" cy="770" r="2.5"/><text class="cl" x="761" y="774">Кзыл-Шахр</text>
   <path class="river" d="M1215,700 L1225,760 L1240,820 L1240,845"/>
@@ -255,7 +258,7 @@
   <text class="rl" x="1262" y="712">Салавин</text>
   <path class="river" d="M1195,720 L1200,780 L1195,830 L1185,870"/>
   <text class="rl" x="1182" y="852" style="text-anchor:end">Мэнхонг</text>
-  <circle class="cap" cx="1228" cy="718" r="2.5"/><text class="cl" x="1234" y="722">Мандалаят</text>
+  <circle class="cap" cx="1228" cy="718" r="4.5"/><text class="cl" x="1235" y="722" style="font-weight:700">Мандалаят</text>
   <circle class="cap" cx="1198" cy="760" r="2.5"/><text class="cl" x="1204" y="764">Аюттара</text>
   <circle class="cap" cx="1200" cy="846" r="2.5"/><text class="cl" x="1206" y="850">Ангкорат</text>
   <circle class="cap" cx="1215" cy="872" r="2.5"/><text class="cl" x="1221" y="876">Сингапара</text>
@@ -268,7 +271,7 @@
   <text class="rl" x="1195" y="975">Расслабиха</text>
   <path class="river" d="M1335,935 L1345,965 L1340,995"/>
   <text class="rl" x="1350" y="950">Кайфуша</text>
-  <circle class="cap" cx="1130" cy="990" r="2.5"/><text class="cl" x="1136" y="994">Травопорт</text>
+  <circle class="cap" cx="1130" cy="990" r="4.5"/><text class="cl" x="1137" y="994" style="font-weight:700">Травопорт</text>
   <circle class="cap" cx="1215" cy="968" r="2.5"/><text class="cl" x="1221" y="972">Бонгкок</text>
   <circle class="cap" cx="1300" cy="975" r="2.5"/><text class="cl" x="1306" y="979">Пыхалово</text>
   <circle class="cap" cx="1385" cy="962" r="2.5"/><text class="cl" x="1391" y="966">Раскурайя</text>
@@ -333,6 +336,10 @@
   <circle class="cap" cx="580" cy="440" r="2.5"/><text class="cl" x="574" y="444" style="text-anchor:end">Дрезденвальд</text>
   <circle class="cap" cx="500" cy="490" r="2.5"/><text class="cl" x="506" y="494">Мюнхенштадт</text>
   <circle class="cap" cx="600" cy="348" r="2.5"/><text class="cl" x="594" y="352" style="text-anchor:end">Гамбургсхафен</text>
+
+  <circle class="cap" cx="330" cy="352" r="4.5"/><text class="cl" x="337" y="346" style="font-weight:700;font-size:8px">Мирный</text>
+  <circle class="cap" cx="500" cy="566" r="4.5"/><text class="cl" x="480" y="577" style="font-weight:700;font-size:8.5px;text-anchor:middle">Бернхорн</text>
+  <circle class="cap" cx="705" cy="405" r="4.5"/><text class="cl" x="712" y="418" style="font-weight:700;font-size:8.5px">Депутатск</text>
 
   <!-- компас -->
   <g transform="translate(1530,110)">
