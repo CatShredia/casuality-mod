@@ -1,0 +1,191 @@
+type={
+	type="ambient_wind_entity"
+	use_animation=no
+	always_visible=yes
+	object={
+		name="ambient_wind"
+		position={
+			0 0 0 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+}
+type={
+	type="ambient_water_entity"
+	use_animation=no
+	scale=10.000000
+	object={
+		name="ambient_water"
+position={
+			324.62 10 526.17 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			954.23 10 560.23 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			1963.61 10 509.95 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			3246.71 10 493.02 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			529.43 10 1386.40 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			77.27 10 1375.00 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			2986.85 10 763.43 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			4032.02 10 1382.40 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			4223.67 10 769.55 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			158.49 10 2087.13 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			1370.52 10 1781.13 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			1719.16 10 1744.32 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			4107.17 10 1826.92 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+	object={
+		name="ambient_water"
+position={
+			1875.64 10 2276.59 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+}
+type={
+	type="frame_border_entity"
+	use_animation=no
+	scale=100.000000
+	always_visible=yes
+	object={
+		name="frame_border_entity_top"
+		position={
+			0 0 2958 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+}
+type={
+	type="frame_border_bottom_entity"
+	use_animation=no
+	scale=100.000000
+	always_visible=yes
+	object={
+		name="frame_border_bottom_entity_bottom"
+		position={
+			0 0 -140 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+}
+type={
+	type="frame_border_logo_entity"
+	use_animation=no
+	scale=300.000000
+	always_visible=yes
+	object={
+		name="frame_border_logo_entity_top"
+		position={
+			2176 -1 2898 
+		}
+		rotation={
+			0 0 0 
+		}
+	}
+}
+
