@@ -1,0 +1,17 @@
+state = {
+	id = 63
+	name = "STATE_63"
+	manpower = 17857142
+	state_category = city
+	provinces = { 573 575 583 588 591 }
+	history = {
+		owner = IRK
+		add_core_of = IRK
+		victory_points = { 588 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

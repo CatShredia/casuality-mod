@@ -1,0 +1,15 @@
+state = {
+	id = 5
+	name = "STATE_5"
+	manpower = 6000000
+	state_category = rural
+	provinces = { 306 308 312 315 317 324 326 327 }
+	history = {
+		owner = CSL
+		add_core_of = CSL
+		victory_points = { 312 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

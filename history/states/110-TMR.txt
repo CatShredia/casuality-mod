@@ -1,0 +1,15 @@
+state = {
+	id = 110
+	name = "STATE_110"
+	manpower = 555555
+	state_category = rural
+	provinces = { 2481 2486 2488 2493 2501 2505 2518 2527 2529 2531 2541 2542 2544 2566 2569 2574 2590 2608 2618 2619 2646 }
+	history = {
+		owner = TMR
+		add_core_of = TMR
+		victory_points = { 2542 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

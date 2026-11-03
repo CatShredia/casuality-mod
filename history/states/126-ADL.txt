@@ -1,0 +1,15 @@
+state = {
+	id = 126
+	name = "STATE_126"
+	manpower = 2500000
+	state_category = rural
+	provinces = { 175 176 177 180 185 186 188 190 191 195 197 198 }
+	history = {
+		owner = ADL
+		add_core_of = ADL
+		victory_points = { 195 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

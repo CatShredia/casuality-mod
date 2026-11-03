@@ -1,0 +1,15 @@
+state = {
+	id = 54
+	name = "STATE_54"
+	manpower = 11666666
+	state_category = rural
+	provinces = { 11 12 15 20 27 35 38 49 58 63 64 72 79 82 84 94 }
+	history = {
+		owner = BRT
+		add_core_of = BRT
+		victory_points = { 58 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

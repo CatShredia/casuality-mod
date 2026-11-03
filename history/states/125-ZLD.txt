@@ -1,0 +1,17 @@
+state = {
+	id = 125
+	name = "STATE_125"
+	manpower = 2500000
+	state_category = city
+	provinces = { 2854 2855 2857 2859 2860 2861 2862 2863 2864 2866 2868 2869 2873 2874 2875 2876 2877 2880 2882 2883 2887 2888 2889 2890 2893 2895 2899 }
+	history = {
+		owner = ZLD
+		add_core_of = ZLD
+		victory_points = { 2887 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

@@ -1,0 +1,17 @@
+state = {
+	id = 2
+	name = "STATE_2"
+	manpower = 6000000
+	state_category = city
+	provinces = { 299 300 302 310 319 325 331 }
+	history = {
+		owner = CSL
+		add_core_of = CSL
+		victory_points = { 319 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

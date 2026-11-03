@@ -1,0 +1,15 @@
+state = {
+	id = 184
+	name = "STATE_184"
+	manpower = 178571
+	state_category = rural
+	provinces = { 756 799 827 }
+	history = {
+		owner = KTY
+		add_core_of = KTY
+		victory_points = { 756 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

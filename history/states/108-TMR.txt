@@ -1,0 +1,17 @@
+state = {
+	id = 108
+	name = "STATE_108"
+	manpower = 555555
+	state_category = city
+	provinces = { 2479 2514 2523 2526 2540 2549 2555 2556 2559 2563 2565 2592 2601 2607 2627 2632 2633 2641 2645 }
+	history = {
+		owner = TMR
+		add_core_of = TMR
+		victory_points = { 2645 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

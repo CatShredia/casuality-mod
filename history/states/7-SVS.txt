@@ -1,0 +1,17 @@
+state = {
+	id = 7
+	name = "STATE_7"
+	manpower = 3000000
+	state_category = city
+	provinces = { 1853 1870 1913 1924 1974 2064 2139 2382 2389 2394 2396 2418 2476 }
+	history = {
+		owner = SVS
+		add_core_of = SVS
+		victory_points = { 2389 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

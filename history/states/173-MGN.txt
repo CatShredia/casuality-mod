@@ -1,0 +1,15 @@
+state = {
+	id = 173
+	name = "STATE_173"
+	manpower = 294117
+	state_category = rural
+	provinces = { 1022 1029 1030 1037 1046 1055 1058 1083 1085 }
+	history = {
+		owner = MGN
+		add_core_of = MGN
+		victory_points = { 1058 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

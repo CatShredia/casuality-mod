@@ -1,0 +1,15 @@
+state = {
+	id = 142
+	name = "STATE_142"
+	manpower = 555555
+	state_category = rural
+	provinces = { 333 334 359 360 387 392 396 399 402 405 412 416 442 448 451 467 }
+	history = {
+		owner = DMK
+		add_core_of = DMK
+		victory_points = { 359 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

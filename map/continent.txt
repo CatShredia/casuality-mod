@@ -1,0 +1,4 @@
+continents = {
+	kazual_mainland
+	kazual_islands
+}

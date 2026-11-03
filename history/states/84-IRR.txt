@@ -1,0 +1,15 @@
+state = {
+	id = 84
+	name = "STATE_84"
+	manpower = 15909090
+	state_category = rural
+	provinces = { 638 647 725 }
+	history = {
+		owner = IRR
+		add_core_of = IRR
+		victory_points = { 647 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

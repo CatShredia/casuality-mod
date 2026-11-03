@@ -1,0 +1,52 @@
+bookmarks = {
+	bookmark = {
+		name = "KAZUAL_BOOKMARK_NAME"
+		desc = "KAZUAL_BOOKMARK_DESC"
+		date = 1936.1.1.12
+		picture = "GFX_select_date_1936"
+		default_country = "CSL"
+		default = yes
+		"SVS" = {
+			history = "KAZUAL_SVS_DESC"
+			ideology = neutrality
+			ideas = { }
+			focuses = { }
+		}
+		"BRT" = {
+			history = "KAZUAL_BRT_DESC"
+			ideology = neutrality
+			ideas = { }
+			focuses = { }
+		}
+		"TMR" = {
+			history = "KAZUAL_TMR_DESC"
+			ideology = neutrality
+			ideas = { }
+			focuses = { }
+		}
+		"SOY" = {
+			history = "KAZUAL_SOY_DESC"
+			ideology = neutrality
+			ideas = { }
+			focuses = { }
+		}
+		"KTY" = {
+			history = "KAZUAL_KTY_DESC"
+			ideology = neutrality
+			ideas = { }
+			focuses = { }
+		}
+		"CSL" = {
+			history = "KAZUAL_CSL_DESC"
+			ideology = neutrality
+			ideas = { }
+			focuses = { }
+		}
+		"---" = {
+			history = "OTHER_GATHERING_STORM_DESC"
+		}
+		effect = {
+			randomize_weather = 22345
+		}
+	}
+}

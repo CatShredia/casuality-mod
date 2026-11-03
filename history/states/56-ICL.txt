@@ -1,0 +1,17 @@
+state = {
+	id = 56
+	name = "STATE_56"
+	manpower = 500000
+	state_category = city
+	provinces = { 98 100 102 103 105 106 107 111 }
+	history = {
+		owner = ICL
+		add_core_of = ICL
+		victory_points = { 111 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

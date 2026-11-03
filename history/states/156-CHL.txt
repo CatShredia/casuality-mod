@@ -1,0 +1,15 @@
+state = {
+	id = 156
+	name = "STATE_156"
+	manpower = 454545
+	state_category = rural
+	provinces = { 210 213 225 240 248 250 257 263 }
+	history = {
+		owner = CHL
+		add_core_of = CHL
+		victory_points = { 250 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

@@ -1,0 +1,15 @@
+state = {
+	id = 92
+	name = "STATE_92"
+	manpower = 5384615
+	state_category = rural
+	provinces = { 1094 1118 1136 1142 1154 }
+	history = {
+		owner = MUS
+		add_core_of = MUS
+		victory_points = { 1154 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

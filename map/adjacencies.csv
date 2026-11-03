@@ -1,0 +1,4 @@
+From;To;Type;Through;start_x;start_y;stop_x;stop_y;adjacency_rule_name;Comment
+46;1176;sea;3338;-1;-1;-1;-1;;Technical strait
+433;2796;sea;2999;-1;-1;-1;-1;;Kryakht-Middle strait
+-1;-1;-1;-1;-1;-1;-1;-1;-1

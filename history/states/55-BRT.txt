@@ -1,0 +1,17 @@
+state = {
+	id = 55
+	name = "STATE_55"
+	manpower = 11666666
+	state_category = city
+	provinces = { 14 17 21 25 28 32 57 61 65 77 85 92 96 }
+	history = {
+		owner = BRT
+		add_core_of = BRT
+		victory_points = { 21 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

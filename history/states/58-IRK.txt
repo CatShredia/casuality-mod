@@ -1,0 +1,15 @@
+state = {
+	id = 58
+	name = "STATE_58"
+	manpower = 17857142
+	state_category = rural
+	provinces = { 565 568 579 587 604 }
+	history = {
+		owner = IRK
+		add_core_of = IRK
+		victory_points = { 568 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

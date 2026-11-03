@@ -1,0 +1,17 @@
+state = {
+	id = 161
+	name = "STATE_161"
+	manpower = 454545
+	state_category = city
+	provinces = { 258 261 267 269 278 }
+	history = {
+		owner = CHL
+		add_core_of = CHL
+		victory_points = { 258 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

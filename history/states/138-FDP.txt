@@ -1,0 +1,15 @@
+state = {
+	id = 138
+	name = "STATE_138"
+	manpower = 1000000
+	state_category = rural
+	provinces = { 489 490 493 495 497 501 503 505 507 508 519 523 526 534 546 551 552 553 556 558 561 }
+	history = {
+		owner = FDP
+		add_core_of = FDP
+		victory_points = { 493 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

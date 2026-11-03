@@ -1,0 +1,15 @@
+state = {
+	id = 49
+	name = "STATE_49"
+	manpower = 2500000
+	state_category = rural
+	provinces = { 958 959 960 964 965 968 969 973 975 977 981 985 988 994 995 }
+	history = {
+		owner = KZZ
+		add_core_of = KZZ
+		victory_points = { 959 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

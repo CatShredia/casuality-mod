@@ -1,0 +1,15 @@
+state = {
+	id = 135
+	name = "STATE_135"
+	manpower = 555555
+	state_category = rural
+	provinces = { 1489 1503 1507 1509 1519 1545 1554 1556 1566 1582 1595 1622 1630 1634 1635 1647 1649 1662 1671 1687 1688 1692 1697 1699 1704 1719 1743 1753 1757 1759 1777 1778 1789 1800 1812 1816 1826 1829 1832 1844 }
+	history = {
+		owner = SVA
+		add_core_of = SVA
+		victory_points = { 1556 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}

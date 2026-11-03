@@ -1,0 +1,17 @@
+state = {
+	id = 131
+	name = "STATE_131"
+	manpower = 555555
+	state_category = city
+	provinces = { 1482 1490 1494 1496 1501 1520 1521 1528 1530 1551 1563 1573 1575 1590 1591 1600 1603 1605 1619 1620 1641 1652 1656 1661 1669 1678 1696 1698 1700 1706 1720 1724 1727 1728 1739 1742 1746 1749 1751 1781 1784 1797 1840 1841 1847 }
+	history = {
+		owner = SVA
+		add_core_of = SVA
+		victory_points = { 1706 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

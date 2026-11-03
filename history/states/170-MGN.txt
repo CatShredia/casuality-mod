@@ -1,0 +1,17 @@
+state = {
+	id = 170
+	name = "STATE_170"
+	manpower = 294117
+	state_category = city
+	provinces = { 1017 1047 1053 1071 }
+	history = {
+		owner = MGN
+		add_core_of = MGN
+		victory_points = { 1017 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

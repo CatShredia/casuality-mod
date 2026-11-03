@@ -1,0 +1,17 @@
+state = {
+	id = 144
+	name = "STATE_144"
+	manpower = 555555
+	state_category = city
+	provinces = { 336 349 350 379 404 410 421 460 469 471 477 479 }
+	history = {
+		owner = DMK
+		add_core_of = DMK
+		victory_points = { 460 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

@@ -1,0 +1,17 @@
+state = {
+	id = 137
+	name = "STATE_137"
+	manpower = 1000000
+	state_category = city
+	provinces = { 487 488 496 498 499 504 509 511 516 518 527 530 536 537 542 548 550 554 563 }
+	history = {
+		owner = FDP
+		add_core_of = FDP
+		victory_points = { 487 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

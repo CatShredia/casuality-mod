@@ -1,0 +1,17 @@
+state = {
+	id = 48
+	name = "STATE_48"
+	manpower = 2500000
+	state_category = city
+	provinces = { 953 954 955 956 963 966 970 971 979 980 983 984 987 993 999 1001 1002 }
+	history = {
+		owner = KZZ
+		add_core_of = KZZ
+		victory_points = { 1001 15 }
+		buildings = {
+			infrastructure = 2
+			industrial_complex = 2
+			arms_factory = 1
+		}
+	}
+}

@@ -1,0 +1,15 @@
+state = {
+	id = 41
+	name = "STATE_41"
+	manpower = 3000000
+	state_category = rural
+	provinces = { 1923 1928 1941 1962 1972 1992 2000 2017 2023 2150 2163 2241 2310 2318 2328 2330 2352 2448 2474 }
+	history = {
+		owner = SVS
+		add_core_of = SVS
+		victory_points = { 1941 1 }
+		buildings = {
+			infrastructure = 2
+		}
+	}
+}
