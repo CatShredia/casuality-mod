@@ -7,7 +7,6 @@ state = {
 	history = {
 		owner = CSL
 		add_core_of = CSL
-		victory_points = { 319 15 }
 		buildings = {
 			infrastructure = 2
 			industrial_complex = 2

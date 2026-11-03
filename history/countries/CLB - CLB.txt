@@ -1,5 +1,4 @@
 capital = 161
-oob = "CLB_1936"
 set_politics = {
 	ruling_party = neutrality
 	last_election = "1932.1.1"
@@ -14,3 +13,4 @@ set_popularities = {
 }
 set_stability = 0.5
 set_war_support = 0.2
+recruit_character = CLB_kazual_leader

@@ -7,7 +7,6 @@ state = {
 	history = {
 		owner = IRR
 		add_core_of = IRR
-		victory_points = { 733 15 }
 		buildings = {
 			infrastructure = 2
 			industrial_complex = 2

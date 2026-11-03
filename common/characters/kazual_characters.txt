@@ -1,0 +1,191 @@
+characters = {
+	ADL_kazual_leader = {
+		name = ADL_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	BLK_kazual_leader = {
+		name = BLK_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	BRT_kazual_leader = {
+		name = BRT_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	CLB_kazual_leader = {
+		name = CLB_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	CSL_kazual_leader = {
+		name = CSL_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	DMK_kazual_leader = {
+		name = DMK_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	FDP_kazual_leader = {
+		name = FDP_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	ICL_kazual_leader = {
+		name = ICL_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	IRK_kazual_leader = {
+		name = IRK_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	IRR_kazual_leader = {
+		name = IRR_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	KTY_kazual_leader = {
+		name = KTY_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	KZZ_kazual_leader = {
+		name = KZZ_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	MGN_kazual_leader = {
+		name = MGN_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	MUS_kazual_leader = {
+		name = MUS_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	SOY_kazual_leader = {
+		name = SOY_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	SRK_kazual_leader = {
+		name = SRK_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	SVA_kazual_leader = {
+		name = SVA_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	SVS_kazual_leader = {
+		name = SVS_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	TMR_kazual_leader = {
+		name = TMR_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	TRV_kazual_leader = {
+		name = TRV_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+	ZLD_kazual_leader = {
+		name = ZLD_kazual_leader
+		portraits = { civilian = { large = GFX_portrait_unknown } }
+		country_leader = {
+			ideology = despotism
+			expire = "1965.1.1.1"
+			id = -1
+		}
+	}
+}

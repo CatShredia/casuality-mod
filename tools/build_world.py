@@ -316,7 +316,10 @@ for rid, r in enumerate(regions, 1):
 w("map/weatherpositions.txt", "\n".join(wp) + "\n")
 us = []
 for i in sorted(P):
-    for ty in range(39):
+    LAND_T = [0, 1, 2, 3, 4, 5, 6, 9, 10, 21, 22, 23, 24, 25, 26, 27, 38]
+    SEA_T = sorted(LAND_T + [11, 12, 13, 14, 15, 16, 30, 31, 32, 33, 34, 35])
+    if P[i]["type"] == "lake": continue
+    for ty in (SEA_T if P[i]["type"] == "sea" else LAND_T):
         us.append(f"{i};{ty};{xyz(i, (ty % 5) - 2, (ty // 5) % 5 - 2)};0.00;0.00")
 w("map/unitstacks.txt", "\n".join(us) + "\n")
 
@@ -355,11 +358,11 @@ _fem = sorted({g for g in _g if "female" in g.lower()}); _mal = sorted({g for g 
 _q = lambda L: NL.join(f'			"{g}"' for g in L)
 w("portraits/kazual_998_scientist_portraits.txt", NL.join(
     f"continent = {{{NL}	name = {c}{NL}	scientist = {{{NL}		female = {{{NL}{_q(_fem)}{NL}		}}{NL}		male = {{{NL}{_q(_mal)}{NL}		}}{NL}	}}{NL}}}"
-    for c in ("kazual_mainland", "kazual_islands")) + NL, bom=True)
+    for c in ("kazual_mainland", "kazual_islands")) + NL)
 for fname in ("00_portraits.txt",):
     blk = cont_block(os.path.join(GAME, "portraits", fname), "europe")
     out = NL.join(blk.replace("name = europe", f"name = {c}") for c in ("kazual_mainland", "kazual_islands"))
-    w(f"portraits/kazual_{fname}", out + NL, bom=True)
+    w(f"portraits/kazual_{fname}", out + NL)
 MALE = "Иван Пётр Алексей Сергей Николай Дмитрий Андрей Михаил Константин Булат Саид Рустам Тимур Олег Виктор Павел Григорий Фёдор Артём Ильдар"
 FEMALE = "Анна Мария Дарья Ольга Елена Альфия Наталья Ирина Светлана Татьяна Екатерина Вера Лиля Зарина Юлия"
 SURN = "Иванов Петров Сидоров Кузнецов Смирнов Попов Соколов Лебедев Козлов Новиков Морозов Волков Арифуллин Багаутдинов Юзеев Пименов Сабиров Алексеев Орлов Зайцев"
@@ -367,7 +370,7 @@ nm = ""
 for t in C:
     nm += (f"{t} = {{" + NL + f"	male = {{ names = {{ {MALE} }} }}" + NL + f"	female = {{ names = {{ {FEMALE} }} }}" + NL
            + f"	surnames = {{ {SURN} }}" + NL + "	callsigns = { \"Казуал\" \"Болотник\" }" + NL + "}" + NL)
-w("common/names/kazual_names.txt", nm, bom=True)
+w("common/names/kazual_names.txt", nm)
 
 # --- ИИ: ванильные зоны/театры/стратегии ссылаются на чужие регионы и теги
 _aa = open(os.path.join(GAME, "common", "ai_areas", "default.txt"), encoding="utf-8-sig").read()
@@ -381,5 +384,16 @@ w("common/ai_areas/default.txt", "areas = {" + NL + "".join(
 w("common/ai_faction_theaters/kazual_theaters.txt", "# театры ИИ пока не заданы" + NL)
 w("common/ai_strategy/kazual_default.txt", "# стратегии ИИ пока не заданы" + NL)
 w("common/ai_strategy_plans/kazual_plans.txt", "# планы ИИ пока не заданы" + NL)
+
+# --- флаги-заглушки: цвет страны, полоса светлее (TGA 32 бит, как в ванили)
+from PIL import Image
+for t, c in C.items():
+    for sub, (fw, fh) in (("", (82, 52)), ("medium/", (41, 26)), ("small/", (10, 7))):
+        im = Image.new("RGBA", (fw, fh), c[2] + (255,))
+        light = tuple(min(255, v + 60) for v in c[2]) + (255,)
+        for y in range(fh // 3, 2 * fh // 3):
+            for x in range(fw): im.putpixel((x, y), light)
+        d = os.path.join(ROOT, "gfx", "flags", sub); os.makedirs(d, exist_ok=True)
+        im.save(os.path.join(d, f"{t}.tga"))
 
 print("штатов:", len(states), "регионов:", len(regions), "ж/д:", len(rail), "зданий:", len(bl))

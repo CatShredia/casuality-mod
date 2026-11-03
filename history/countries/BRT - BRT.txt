@@ -1,5 +1,4 @@
 capital = 55
-oob = "BRT_1936"
 set_politics = {
 	ruling_party = neutrality
 	last_election = "1932.1.1"
@@ -14,15 +13,4 @@ set_popularities = {
 }
 set_stability = 0.5
 set_war_support = 0.2
-set_autonomy = {
-	target = ICL
-	autonomous_state = autonomy_puppet
-}
-set_autonomy = {
-	target = IRK
-	autonomous_state = autonomy_puppet
-}
-set_autonomy = {
-	target = IRR
-	autonomous_state = autonomy_puppet
-}
+recruit_character = BRT_kazual_leader

@@ -7,7 +7,6 @@ state = {
 	history = {
 		owner = FDP
 		add_core_of = FDP
-		victory_points = { 549 1 }
 		buildings = {
 			infrastructure = 2
 		}

@@ -7,7 +7,6 @@ state = {
 	history = {
 		owner = MUS
 		add_core_of = MUS
-		victory_points = { 1095 1 }
 		buildings = {
 			infrastructure = 2
 		}

@@ -268,14 +268,14 @@ for i in range(1, N + 1):
     elif z == LAKE: typ, ter, cont = "lake", "lakes", 0
     else:
         typ = "land"; ter = TERR_NAME[int(terr_count[i].argmax())]
-        cont = 1 if comp[i] == mainland else 2
+        cont = 8 if comp[i] == mainland else 9
     coastal = typ == "land" and any(zone_of[j] == WATER for j in adj[i])
     rows.append(f"{i};{col[0]};{col[1]};{col[2]};{typ};{str(coastal).lower()};{ter};{cont}")
     info[i] = dict(color=col, type=typ, terrain=ter, coastal=coastal, cont=cont,
                    tag=INV.get(int(z)) if typ == "land" else None, px=int(cntp[i]),
                    x=float(sx_[i] / cntp[i]), y=float(sy_[i] / cntp[i]), adj=sorted(adj[i]))
 open(os.path.join(OUT, "definition.csv"), "w", newline="\r\n").write("\n".join(rows) + "\n")
-open(os.path.join(OUT, "continent.txt"), "w").write("continents = {\n\tkazual_mainland\n\tkazual_islands\n}\n")
+open(os.path.join(OUT, "continent.txt"), "w").write("continents = {\n\teurope\n\tnorth_america\n\tsouth_america\n\taustralia\n\tafrica\n\tasia\n\tmiddle_east\n\tkazual_mainland\n\tkazual_islands\n}\n")
 
 lut = np.zeros((N + 1, 3), np.uint8)
 for i, d in info.items(): lut[i] = d["color"]

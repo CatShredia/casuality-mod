@@ -1,4 +1,4 @@
-﻿continent = {
+continent = {
 	name = kazual_mainland
 	scientist = {
 		female = {

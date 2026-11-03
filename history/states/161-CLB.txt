@@ -7,7 +7,6 @@ state = {
 	history = {
 		owner = CLB
 		add_core_of = CLB
-		victory_points = { 258 15 }
 		buildings = {
 			infrastructure = 2
 			industrial_complex = 2
