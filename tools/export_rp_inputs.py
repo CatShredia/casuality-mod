@@ -357,8 +357,98 @@ def stage1():
     for k, c in checks.items():
         print(f"  {k}: {comp_area(*c) / 1000:.0f}")
     print("stage_01:", {k: int((img == np.array(v)).all(-1).sum()) for k, v in COL.items()})
+    return {"land": land, "lake": lake, "peaks": peaks, "steep": steep}
+
+
+# --- этап 2: климат (цвета из справки вкладки Climate Input; в PDF другие, сверять с экраном программы)
+CLIM = {
+    "ocean": (21, 39, 92), "tropicsrainforest": (64, 80, 41), "tropicsmonsoon": (69, 87, 61), "tropicssavanna": (92, 82, 54),
+    "desert": (200, 163, 128), "colddesert": (176, 158, 135), "hotsemiarid": (147, 134, 107), "coldsemiarid": (140, 126, 107),
+    "temperatehot": (74, 88, 66), "temperatewarm": (54, 78, 56), "temperatecold": (29, 68, 50),
+    "continentalwarm": (75, 86, 75), "continentalcold": (94, 95, 84), "polartundra": (133, 116, 96),
+    "polararctic": (158, 170, 187), "snow": (240, 240, 240),
+}
+CLIM_BY_NAME = {
+    "Тямовский рейх": "temperatewarm", "Айдалия": "temperatewarm", "Северная Ассамблея": "temperatecold",
+    "Федерация Депутатов": "temperatewarm", "Советский Союз": "continentalcold", "Дмитровское Княжество": "coldsemiarid",
+    "Казачья Земля": "coldsemiarid", "Казуалия": "temperatecold", "Челяба": "temperatewarm", "Иракиккистан": "tropicsmonsoon",
+    "Ирракия": "tropicsmonsoon", "Муси": "tropicsrainforest", "Травинная Федерация": "tropicssavanna", "Магнолия": "desert",
+    "Сарайкумское Ханство": "hotsemiarid", "Кытай": "temperatewarm", "Соевая Республика": "temperatehot",
+    "Зеленодольск": "temperatewarm", "Наши Болота": "temperatecold", "Заготовка": "temperatehot",
+}
+def cwarp(im):
+    return np.asarray(im)[CSYI, CSXI] > 127
+
+
+def stage2():
+    m1 = stage1()
+    global CSXI, CSYI
+    CLIM_DX = field((30, 20), 45) + field((90, 60), 18)                                # доп. смещение: границы зон неровные, переходы мягче
+    CLIM_DY = field((30, 20), 45) + field((90, 60), 18)
+    CSXI = np.clip((xx_ + DX + CLIM_DX).round().astype(np.int32), 0, W - 1)
+    CSYI = np.clip((yy_ + DY + CLIM_DY).round().astype(np.int32), 0, H - 1)
+    land = m1["land"] | m1["lake"]
+    codes = {k: i + 1 for i, k in enumerate(CLIM)}
+    lab = np.zeros((H, W), np.uint8)
+
+    def paint(polys, kind):
+        mk = cwarp(mask(poly_mask(polys)))
+        lab[mk] = codes[kind]
+
+    named = []
+    for m in re.finditer(r"<polygon([^>]*)points=\"([^\"]+)\"([^>]*)/>\s*<!--\s*([^>]*?)\s*-->", svg):
+        attrs = m.group(1) + m.group(3)
+        if 'class="c' not in attrs and "dedacb" not in attrs:
+            continue
+        key = next((v for k, v in CLIM_BY_NAME.items() if m.group(4).startswith(k)), None)
+        if key:
+            named.append((parse(m.group(2)), key))
+    for poly, key in named:
+        paint([poly], key)
+    inf = []
+    for g in re.findall(r"<g class=\"c inf\"[^>]*>(.*?)</g>", svg, re.S):
+        for k, s_ in enumerate(re.findall(r"points=\"([^\"]+)\"", g)):
+            inf.append([(x + (0, 20, 45)[min(k, 2)], y + 30) for x, y in parse(s_)])
+    paint(inf, "tropicssavanna")
+    paint([JAPAN], "temperatewarm"); paint([CEYLON], "tropicsrainforest"); paint([LEDYSHKA], "polararctic")
+    paint([SPAIN, SPAIN_BRIDGE], "temperatehot"); paint([DM_WIDER], "coldsemiarid")
+    paint([SOUTH], "tropicssavanna")
+    paint([KAMCHATKA] + SSSR_CAPES, "polartundra")
+    paint([SIBERIA_PLATEAU], "continentalcold")
+    paint([parse("700,60 1460,60 1460,200 1180,215 940,190 700,170")], "polartundra")          # север СССР: тундра
+    paint([parse("700,60 1460,60 1460,115 1180,125 940,110 700,105")], "polararctic")          # северный берег СССР: арктика
+    paint([parse("322,60 388,60 388,305 322,305")], "polartundra")                              # горы Северной Ассамблеи
+    paint([FIG_JUNGLE], "tropicsrainforest"); paint([FIG_HILLS], "tropicsmonsoon")
+    jb = cwarp(mask(lambda d: d.line(px(JUNGARIK), fill=255, width=int(120 * SX), joint="curve")))
+    lab[jb] = codes["temperatewarm"]                                                                     # восток Фигарии у реки: умеренный
+    lab[m1["peaks"] | m1["steep"]] = codes["snow"]
+    # земля без метки (кайма из-за смещения границ) берёт ближайшую метку: растим метки на 1/4 разрешения
+    sm = lab[::4, ::4].copy()
+    for _ in range(40):
+        for sh, ax in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+            nb = np.roll(sm, sh, axis=ax)
+            sm = np.where((sm == 0) & (nb > 0), nb, sm)
+    grown = np.repeat(np.repeat(sm, 4, axis=0), 4, axis=1)[:H, :W]
+    lab = np.where(lab == 0, grown, lab)
+    lab[lab == 0] = codes["temperatewarm"]
+
+    img = np.zeros((H, W, 3), np.uint8)
+    img[:] = CLIM["ocean"]
+    for k, v in CLIM.items():
+        if k == "ocean":
+            continue
+        img[(lab == codes[k]) & land] = v
+    d = os.path.join(OUT, "stage_02")
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(img, "RGB").save(os.path.join(d, "climate.png"))
+    Image.fromarray(img, "RGB").resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "climate_preview.png"))
+    with open(os.path.join(d, "colors.txt"), "w", encoding="utf-8") as f:
+        f.write("Цвета climate.png (RGB), справка вкладки Climate Input" + chr(10))
+        for k, v in CLIM.items():
+            f.write(f"{v[0]:3d} {v[1]:3d} {v[2]:3d}  {k}" + chr(10))
+    print("stage_02:", {k: int((img == np.array(v)).all(-1).sum()) for k, v in CLIM.items()})
 
 
 if __name__ == "__main__":
     st = sys.argv[1] if len(sys.argv) > 1 else "1"
-    {"1": stage1}[st]()
+    {"1": stage1, "2": stage2}[st]()
