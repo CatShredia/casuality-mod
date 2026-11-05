@@ -511,6 +511,166 @@ def stage3():
     print("stage_03: рек (участков):", n_runs, "пикселей реки:", int((img == np.array(RIV["river"])).all(-1).sum()))
 
 
+# --- этап 4: страны (countries.png + countryMappings.txt по справке вкладки Countries: r;g;b;tag;name;adjective, без пробелов в именах)
+# (префикс комментария в SVG или ключ) -> tag, цвет, имя латиницей без пробелов, прилагательное, русское название, столица
+COUNTRIES = [
+    ("CSL", (195, 207, 132), "Kazualia", "Kazualian", "Казуалия", "Ставка Казуала"),
+    ("SVS", (224, 122, 116), "SovetskiySoyuz", "Sovetsky", "Советский Союз", "Ваньград-на-Окре"),
+    ("KZZ", (239, 159, 79), "KazachyaZemlya", "Kazachy", "Казачья Земля", "Станица Дарьевская"),
+    ("BRT", (183, 154, 208), "Brittan", "Brittish", "Бриттан", "Большой Джон"),
+    ("IRK", (155, 127, 196), "Irakikkistan", "Irakikkistani", "Иракиккистан", "Лахарабад"),
+    ("IRR", (198, 163, 224), "Irrakia", "Irrakian", "Ирракия", "Дехлагарх"),
+    ("MUS", (120, 199, 160), "Musi", "Musian", "Королевство Муси", "Мандалаят"),
+    ("TRV", (143, 209, 138), "Travinnaya", "Travinny", "Травинная Федерация", "Травопорт"),
+    ("TMR", (125, 125, 125), "Tyamovreich", "Tyamovian", "Тямовский рейх", "Барбинсберг"),
+    ("SOY", (127, 167, 224), "Soyevaya", "Soyevy", "Соевая Республика", "Поридж-Сити"),
+    ("ZLD", (95, 192, 200), "Zelenodolsk", "Zelenodolsky", "Демократический Зеленодольск", "Мирный"),
+    ("ADL", (240, 216, 106), "Aidalia", "Aidalian", "Айдалия", "Бернхорн"),
+    ("SVA", (142, 160, 232), "SevernayaAssambleya", "Assamblean", "Северная Ассамблея", "Ослорвик"),
+    ("FDP", (230, 184, 78), "FederatsiyaDeputatov", "Deputatsky", "Федерация Депутатов", "Депутатск"),
+    ("DMK", (217, 138, 163), "Dmitrovskoye", "Dmitrovsky", "Дмитровское Княжество", "Ордабад"),
+    ("CLB", (169, 184, 201), "Chelyaba", "Chelyabinsky", "Челяба", "Челябинск"),
+    ("MGN", (236, 217, 160), "Magnoliya", "Magnolian", "Магнолия", "Улан-Батыр"),
+    ("KTY", (201, 116, 74), "Kytay", "Kytayan", "Кытай", "Бэйчжао"),
+    ("BLK", (85, 90, 110), "ChernayaRespublika", "Chernorespublikansky", "Чёрная Республика", "Токомэ"),
+    ("SRK", (184, 167, 106), "Saraykum", "Saraykumsky", "Сарайкумское Ханство", "Кумыс-Орда"),
+    ("CEY", (170, 120, 200), "Tseylon", "Tseyami", "Цейлон", "-"),
+    ("Z01", (201, 201, 232), "Zagotovka1", "Zagotovkin1", "Заготовка страны 1", "-"),
+    ("Z02", (183, 211, 232), "Zagotovka2", "Zagotovkin2", "Заготовка страны 2", "-"),
+    ("Z03", (232, 201, 216), "Zagotovka3", "Zagotovkin3", "Заготовка страны 3", "-"),
+    ("Z04", (214, 232, 201), "Zagotovka4", "Zagotovkin4", "Заготовка страны 4", "-"),
+    ("Z05", (217, 201, 232), "Zagotovka5", "Zagotovkin5", "Заготовка страны 5", "-"),
+    ("UNL", (150, 150, 150), "NeopisannyeZemli", "Neopisanny", "Неописанные земли материка (заглушка)", "-"),
+    ("FIG", (120, 110, 90), "Figariya", "Figarsky", "Фигария (южный материк, заглушка)", "-"),
+    ("LED", (200, 215, 235), "Ledyshka", "Ledyshkin", "Ледышка (остров, заглушка)", "-"),
+]
+SVG_TO_TAG = [("острова Бриттана", "BRT"), ("Соевая Республика", "SOY"), ("Зеленодольск", "ZLD"), ("Айдалия", "ADL"),
+              ("Северная Ассамблея", "SVA"), ("Федерация Депутатов", "FDP"), ("Советский Союз", "SVS"), ("Дмитровское", "DMK"),
+              ("Казачья Земля", "KZZ"), ("Казуалия", "CSL"), ("Иракиккистан", "IRK"), ("Ирракия", "IRR"), ("Муси", "MUS"),
+              ("Травинная Федерация", "TRV"), ("Магнолия", "MGN"), ("Сарайкумское", "SRK"), ("Кытай", "KTY"), ("Тямовский рейх", "TMR"),
+              ("Челяба", "CLB"), ("заготовка страны 1", "Z01"), ("заготовка страны 2", "Z02"), ("заготовка страны 3", "Z03"),
+              ("заготовка страны 4", "Z04"), ("заготовка страны 5", "Z05")]
+
+
+def country_labels():
+    global CSXI, CSYI
+    CSXI, CSYI = SXI, SYI                                                    # границы стран по той же деформации, что и берег
+    codes = {c[0]: i + 1 for i, c in enumerate(COUNTRIES)}
+    lab = np.zeros((H, W), np.uint8)
+
+    def paint(polys, tag):
+        lab[cwarp(mask(poly_mask(polys)))] = codes[tag]
+
+    paint([q for q in land_polys], "UNL")                                    # неописанный материк (суша из схемы без владельца)
+    for m in re.finditer(r"<polygon([^>]*)points=\"([^\"]+)\"([^>]*)/>\s*<!--\s*([^>]*?)\s*-->", svg):
+        attrs = m.group(1) + m.group(3)
+        if 'url(#' in attrs or 'class="men"' in attrs:
+            continue
+        tag = next((t for k, t in SVG_TO_TAG if m.group(4).startswith(k)), None)
+        if tag:
+            paint([parse(m.group(2))], tag)
+    inf = []
+    for g in re.findall(r"<g class=\"c inf\"[^>]*>(.*?)</g>", svg, re.S):
+        for k, s_ in enumerate(re.findall(r"points=\"([^\"]+)\"", g)):
+            inf.append([(x + (0, 20, 45)[min(k, 2)], y + 30) for x, y in parse(s_)])
+    paint(inf, "TRV")
+    paint([britain], "BRT"); paint([JAPAN], "BLK"); paint([CEYLON], "CEY"); paint([LEDYSHKA], "LED"); paint([SPAIN], "Z05"); paint([SPAIN_BRIDGE], "SOY")
+    paint([DM_WIDER], "DMK"); paint([SOUTH], "FIG"); paint([KAMCHATKA] + SSSR_CAPES, "SVS")
+    sm = lab[::4, ::4].copy()
+    for _ in range(40):
+        for sh, ax in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+            nb = np.roll(sm, sh, axis=ax)
+            sm = np.where((sm == 0) & (nb > 0), nb, sm)
+    lab = np.where(lab == 0, np.repeat(np.repeat(sm, 4, axis=0), 4, axis=1)[:H, :W], lab)
+    return lab, codes
+
+
+def stage4():
+    m1 = stage1()
+    land = m1["land"] | m1["lake"]
+    lab, codes = country_labels()
+    img = np.zeros((H, W, 3), np.uint8)                                      # вода чёрная [uncertain: программа сама знает, где суша]
+    for tag, i in codes.items():
+        img[(lab == i) & land] = COUNTRIES[i - 1][1]
+    d = os.path.join(OUT, "stage_04")
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(img, "RGB").save(os.path.join(d, "countries.png"))
+    Image.fromarray(img, "RGB").resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "countries_preview.png"))
+    with open(os.path.join(d, "countryMappings.txt"), "w", encoding="utf-8") as f:
+        f.write("#r;g;b;tag;name;adjective" + chr(10))
+        for tag, (r, g, b), nm, adj, ru, cap in COUNTRIES:
+            if (img == np.array((r, g, b))).all(-1).any():
+                f.write(f"{r};{g};{b};{tag};{nm};{adj}" + chr(10))
+    caps = {t.strip(): (float(cx), float(cy)) for cx, cy, t in
+            re.findall(r'<circle class="cap" cx="([\d.]+)" cy="([\d.]+)" r="[\d.]+"/><text[^>]*>([^<]+)</text>', svg)}
+    with open(os.path.join(d, "capitals.txt"), "w", encoding="utf-8") as f:
+        f.write("tag;страна;столица;x_px;y_px (по схеме, где искать столичный штат на карте программы)" + chr(10))
+        for tag, col, nm, adj, ru, cap in COUNTRIES:
+            c = caps.get(cap)
+            f.write(f"{tag};{ru};{cap};" + (f"{int(c[0] * SX + OX)};{int(c[1] * SY + OY)}" if c else "нет на схеме") + chr(10))
+    print("stage_04: стран на карте:", sum((img == np.array(c[1])).all(-1).any() for c in COUNTRIES))
+
+
+# --- этап 3.5: Civilisation (Topography, Development, Population) по справке вкладки Civilisation
+TOPO = {"marsh": (40, 255, 40), "wasteland": (255, 0, 0), "background": (0, 0, 0)}
+# уровень по странам, 0..255: (развитость, население)
+CIV_LEVEL = {
+    "CSL": (60, 90), "SVS": (120, 110), "KZZ": (70, 110), "BRT": (170, 150), "IRK": (90, 190), "IRR": (110, 235), "MUS": (100, 170),
+    "TRV": (110, 130), "TMR": (170, 160), "SOY": (190, 170), "ZLD": (150, 150), "ADL": (140, 100), "SVA": (140, 100), "FDP": (110, 120),
+    "DMK": (90, 110), "CLB": (235, 180), "MGN": (30, 25), "KTY": (150, 225), "BLK": (180, 220), "SRK": (80, 100), "CEY": (90, 160),
+    "Z01": (80, 90), "Z02": (80, 90), "Z03": (80, 90), "Z04": (80, 90), "Z05": (100, 110), "UNL": (60, 50), "FIG": (20, 20), "LED": (10, 8),
+}
+
+
+def stage3b():
+    m1 = stage1()
+    land = m1["land"] | m1["lake"]
+    lab, codes = country_labels()
+    global CSXI, CSYI
+    CSXI, CSYI = SXI, SYI
+    # --- Topography: болота Казуалии и Наших Болот, пустошь на Нагорье Шамбалы
+    swamps = [parse(m.group(1)) for m in re.finditer(r'<polygon[^>]*fill="url\(#swamp\)"[^>]*points="([^"]+)"', svg)]
+    sw = cwarp(mask(poly_mask(swamps))) & m1["land"]
+    soft = np.asarray(Image.fromarray(sw.astype(np.uint8) * 255).filter(ImageFilter.GaussianBlur(45)), dtype=np.float32) / 255.0
+    n_edge = field((40, 26), 1.0) + 0.5 * field((120, 78), 1.0)                  # рваные края
+    n_hole = field((70, 46), 1.0) + 0.5 * field((200, 130), 1.0)                  # просветы (суша среди болот)
+    marsh = (soft + 0.35 * n_edge > 0.5) & (n_hole < 0.12) & m1["land"]
+    waste = cwarp(mask(poly_mask(mount_polys))) & m1["land"]
+    topo = np.zeros((H, W, 3), np.uint8)
+    topo[marsh] = TOPO["marsh"]
+    topo[waste] = TOPO["wasteland"]
+    # --- Development / Population: уровень страны плюс пятна вокруг городов (столицы больше)
+    cities = [(float(cx), float(cy), float(r)) for cx, cy, r in re.findall(r'<circle class="cap" cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"', svg)]
+    yy0, xx0 = np.mgrid[0:H:4, 0:W:4]
+
+    def make(idx, boost):
+        base = np.zeros((H, W), np.float32)
+        for tag, i in codes.items():
+            base[(lab == i) & land] = CIV_LEVEL[tag][idx]
+        small = base[::4, ::4].copy()
+        for cx, cy, r in cities:
+            px_, py_ = cx * SX + OX, cy * SY + OY
+            rad = (30 + (r - 2.5) * 22) / 1.0
+            d2 = (xx0 - px_) ** 2 + (yy0 - py_) ** 2
+            small += boost * np.exp(-d2 / (2 * (rad ** 2)))
+        out = np.asarray(Image.fromarray(np.clip(small, 0, 255).astype(np.uint8)).resize((W, H), Image.BILINEAR), dtype=np.float32)
+        out = np.array(Image.fromarray(out.astype(np.uint8)).filter(ImageFilter.GaussianBlur(10)), dtype=np.uint8)
+        out[~land] = 0
+        return out
+
+    dev = make(0, 70)
+    pop = make(1, 50)
+    d = os.path.join(OUT, "stage_03b")
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(topo, "RGB").save(os.path.join(d, "topography.png"))
+    Image.fromarray(dev, "L").save(os.path.join(d, "development.png"))
+    Image.fromarray(pop, "L").save(os.path.join(d, "population.png"))
+    for nm, im in (("development", dev), ("population", pop)):
+        Image.fromarray(im, "L").resize((W // 4, H // 4), Image.BILINEAR).save(os.path.join(d, nm + "_preview.png"))
+    Image.fromarray(topo, "RGB").resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "topography_preview.png"))
+    print("stage_03b: болота px", int(marsh.sum()), "пустошь px", int(waste.sum()), "городов", len(cities))
+
+
 if __name__ == "__main__":
     st = sys.argv[1] if len(sys.argv) > 1 else "1"
-    {"1": stage1, "2": stage2, "3": stage3}[st]()
+    {"1": stage1, "2": stage2, "3": stage3, "4": stage4, "3b": stage3b}[st]()
