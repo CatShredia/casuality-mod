@@ -124,6 +124,7 @@ FIG_JUNGLE = parse("40,905 640,908 600,1000 440,1030 280,1030 130,1015 40,960") 
 FIG_HILLS = parse("12,800 150,790 175,900 170,1000 40,965 10,880")                  # холмы на западе Фигарии
 FIG_RIDGE, FIG_JUNGLE, FIG_HILLS, JUNGARIK = (tsouth(q) for q in (FIG_RIDGE, FIG_JUNGLE, FIG_HILLS, JUNGARIK))
 rivers[-1] = JUNGARIK
+AID_PEAKS = [(482, 550), (503, 541), (492, 562), (470, 566), (512, 570)]
 AID_RIDGES = [parse("444,572 478,548 516,532"), parse("450,546 486,560 516,576"), parse("470,522 478,560 468,580")]
 
 
@@ -295,7 +296,12 @@ def stage1():
     mount = (warp(mask(line_mask(RL, 15)))
              | warp(mask(line_mask([japan_axis()], 3))) | warp(mask(draw_core)) | warp(mask(poly_mask([aid])))) & land
     steep = warp(mask(draw_steep)) & land
-    peaks = (warp(mask(draw_peaks)) | warp(mask(line_mask(AID_RIDGES, 9)))) & land
+    def draw_aid_peaks(d):                                                       # Айдалия: несколько отдельных вершин вместо перекрещенных линий
+        for cx, cy in AID_PEAKS:
+            r = 6 * SX
+            d.ellipse([cx * SX + OX - r, cy * SY + OY - r, cx * SX + OX + r, cy * SY + OY + r], fill=255)
+    snow = (warp(mask(draw_peaks)) | warp(mask(draw_steep))) & land
+    peaks = (warp(mask(draw_peaks)) | warp(mask(draw_aid_peaks))) & land
     plateau = warp(mask(poly_mask([SIBERIA_PLATEAU, chelyaba]))) & land         # плоскогорья: Сибирь и Челяба
 
     small = Image.fromarray((land | lake).astype(np.uint8) * 255).resize((W // 8, H // 8), Image.BILINEAR)
@@ -357,7 +363,7 @@ def stage1():
     for k, c in checks.items():
         print(f"  {k}: {comp_area(*c) / 1000:.0f}")
     print("stage_01:", {k: int((img == np.array(v)).all(-1).sum()) for k, v in COL.items()})
-    return {"land": land, "lake": lake, "peaks": peaks, "steep": steep}
+    return {"land": land, "lake": lake, "peaks": peaks, "steep": steep, "snow": snow}
 
 
 # --- этап 2: климат (цвета из справки вкладки Climate Input; в PDF другие, сверять с экраном программы)
@@ -421,7 +427,7 @@ def stage2():
     paint([FIG_JUNGLE], "tropicsrainforest"); paint([FIG_HILLS], "tropicsmonsoon")
     jb = cwarp(mask(lambda d: d.line(px(JUNGARIK), fill=255, width=int(120 * SX), joint="curve")))
     lab[jb] = codes["temperatewarm"]                                                                     # восток Фигарии у реки: умеренный
-    lab[m1["peaks"] | m1["steep"]] = codes["snow"]
+    lab[m1["snow"]] = codes["snow"]
     # земля без метки (кайма из-за смещения границ) берёт ближайшую метку: растим метки на 1/4 разрешения
     sm = lab[::4, ::4].copy()
     for _ in range(40):
@@ -449,6 +455,62 @@ def stage2():
     print("stage_02:", {k: int((img == np.array(v)).all(-1).sum()) for k, v in CLIM.items()})
 
 
+# --- этап 3: реки (цвета из справки вкладки Rivers)
+RIV = {"background": (255, 255, 255), "river": (0, 0, 255), "start": (0, 255, 0), "end": (255, 100, 0)}
+
+
+def stage3():
+    m1 = stage1()
+    land = m1["land"]
+    img = np.zeros((H, W, 3), np.uint8)
+    img[:] = RIV["background"]
+    n_runs = 0
+    for r in rivers:
+        pts = []
+        P = px(r)
+        for (x1, y1), (x2, y2) in zip(P[:-1], P[1:]):
+            n = int(max(abs(x2 - x1), abs(y2 - y1))) + 1
+            for t in np.linspace(0, 1, n, endpoint=False):
+                pts.append((x1 + (x2 - x1) * t, y1 + (y2 - y1) * t))
+        pts.append(P[-1])
+        cells = []
+        for x, y in pts:
+            xi, yi = int(round(x)), int(round(y))
+            xi, yi = int(round(x - DX[min(max(yi, 0), H - 1), min(max(xi, 0), W - 1)])), int(round(y - DY[min(max(yi, 0), H - 1), min(max(xi, 0), W - 1)]))
+            if 0 <= xi < W and 0 <= yi < H and land[yi, xi]:
+                if not cells or cells[-1] != (xi, yi):
+                    cells.append((xi, yi))
+            else:
+                cells.append(None)
+        run = []
+        runs = []
+        for c in cells + [None]:
+            if c is None:
+                if len(run) > 12:
+                    runs.append(run)
+                run = []
+            else:
+                run.append(c)
+        for run in runs:                                        # 8-связная линия шириной 1 px
+            for (xa, ya), (xb, yb) in zip(run[:-1], run[1:]):          # смещение карты рвёт линию: соединяем соседние точки
+                n = max(abs(xb - xa), abs(yb - ya)) + 1
+                for t in np.linspace(0, 1, n):
+                    img[int(round(ya + (yb - ya) * t)), int(round(xa + (xb - xa) * t))] = RIV["river"]
+            img[run[0][1], run[0][0]] = RIV["start"]
+            img[run[-1][1], run[-1][0]] = RIV["end"]
+            n_runs += 1
+    d = os.path.join(OUT, "stage_03")
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(img, "RGB").save(os.path.join(d, "rivers.png"))
+    big = np.array(Image.fromarray(img, "RGB").filter(ImageFilter.MinFilter(3)))      # для превью реки жирнее
+    Image.fromarray(big).resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "rivers_preview.png"))
+    with open(os.path.join(d, "colors.txt"), "w", encoding="utf-8") as f:
+        f.write("Цвета rivers.png (RGB), справка вкладки Rivers" + chr(10))
+        for k, v in RIV.items():
+            f.write(f"{v[0]:3d} {v[1]:3d} {v[2]:3d}  {k}" + chr(10))
+    print("stage_03: рек (участков):", n_runs, "пикселей реки:", int((img == np.array(RIV["river"])).all(-1).sum()))
+
+
 if __name__ == "__main__":
     st = sys.argv[1] if len(sys.argv) > 1 else "1"
-    {"1": stage1, "2": stage2}[st]()
+    {"1": stage1, "2": stage2, "3": stage3}[st]()
