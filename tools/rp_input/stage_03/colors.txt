@@ -1,0 +1,5 @@
+Цвета rivers.png (RGB), справка вкладки Rivers
+255 255 255  background
+  0   0 255  river
+  0 255   0  start
+255 100   0  end

@@ -1,0 +1,17 @@
+Цвета climate.png (RGB), справка вкладки Climate Input
+ 21  39  92  ocean
+ 64  80  41  tropicsrainforest
+ 69  87  61  tropicsmonsoon
+ 92  82  54  tropicssavanna
+200 163 128  desert
+176 158 135  colddesert
+147 134 107  hotsemiarid
+140 126 107  coldsemiarid
+ 74  88  66  temperatehot
+ 54  78  56  temperatewarm
+ 29  68  50  temperatecold
+ 75  86  75  continentalwarm
+ 94  95  84  continentalcold
+133 116  96  polartundra
+158 170 187  polararctic
+240 240 240  snow
