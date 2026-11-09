@@ -429,8 +429,9 @@ def stage2():
     lab[jb] = codes["temperatewarm"]                                                                     # восток Фигарии у реки: умеренный
     lab[m1["snow"]] = codes["snow"]
     # земля без метки (кайма из-за смещения границ) берёт ближайшую метку: растим метки на 1/4 разрешения
+    lab[lab == codes["UNL"]] = 0                                             # заглушка UNL не оставляется: остатки суши отходят ближайшей стране
     sm = lab[::4, ::4].copy()
-    for _ in range(40):
+    for _ in range(300):
         for sh, ax in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
             nb = np.roll(sm, sh, axis=ax)
             sm = np.where((sm == 0) & (nb > 0), nb, sm)
@@ -576,8 +577,9 @@ def country_labels():
     paint(inf, "TRV")
     paint([britain], "BRT"); paint([JAPAN], "BLK"); paint([CEYLON], "CEY"); paint([LEDYSHKA], "LED"); paint([SPAIN], "Z05"); paint([SPAIN_BRIDGE], "SOY")
     paint([DM_WIDER], "DMK"); paint([SOUTH], "FIG"); paint([KAMCHATKA] + SSSR_CAPES, "SVS")
+    lab[lab == codes["UNL"]] = 0                                             # заглушка UNL не оставляется: остатки суши отходят ближайшей стране
     sm = lab[::4, ::4].copy()
-    for _ in range(40):
+    for _ in range(300):
         for sh, ax in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
             nb = np.roll(sm, sh, axis=ax)
             sm = np.where((sm == 0) & (nb > 0), nb, sm)
