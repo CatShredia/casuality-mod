@@ -1,0 +1,13 @@
+Цвета land.png (RGB): программа понимает их сама (справка вкладки Land Input)
+  0   0 255  deepOcean
+  0   0 128  ocean
+  0  80 140  lake
+128 128 128  plains
+200 180 180  highlands
+150 180 150  lowhills
+140 160 150  hills
+220 220 220  mountains
+240 240 240  peaks
+255 255 255  steeppeaks
+220 200 200  cliffs
+180 250 180  valley

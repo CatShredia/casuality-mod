@@ -1,0 +1,676 @@
+"""Картинки для загрузки в RandomParadox (Ktits-Mod 0.1.0), по этапам.
+
+Запуск из корня репозитория: python tools/export_rp_inputs.py [этап]
+Выход: no_commit/temp/rp_input/stage_NN/*.png (4352x2816, RGB).
+Источник: docs/03-Map-Sketch.svg плюс правки из docs/08-map-fix.md (описаны в разделе EXTRA ниже).
+Масштаб: 1 единица SVG ~ 9,85 км, 1 единица^2 ~ 97 км^2, 1 единица SVG = 2,72 px.
+"""
+import os, re, sys
+from collections import deque
+import numpy as np
+from PIL import Image, ImageDraw, ImageFilter
+
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+OUT = os.path.join(ROOT, "no_commit", "temp", "rp_input")
+W, H = 4608, 2816                                   # холст с полем океана вокруг суши
+LAND_K = 0.76                                        # суша занимает 76 % прежнего масштаба
+SX, SY = 4352 / 1600 * LAND_K, 2816 / 1040 * LAND_K
+OX, OY = (W - 1600 * SX) / 2, (H - 1040 * SY) / 2
+KM2_PER_U2 = 97.0
+rng = np.random.default_rng(1936)
+svg = open(os.path.join(ROOT, "docs", "03-Map-Sketch.svg"), encoding="utf-8").read()
+
+
+def parse(s):
+    return [(float(a), float(b)) for a, b in re.findall(r"(-?[\d.]+),(-?[\d.]+)", s)]
+
+
+def px(poly):
+    return [(x * SX + OX, y * SY + OY) for x, y in poly]
+
+
+def area(poly):
+    return abs(sum(poly[i][0] * poly[(i + 1) % len(poly)][1] - poly[(i + 1) % len(poly)][0] * poly[i][1]
+                   for i in range(len(poly)))) / 2
+
+
+def centroid(poly):
+    return (sum(p[0] for p in poly) / len(poly), sum(p[1] for p in poly) / len(poly))
+
+
+def fit(poly, target_km2):
+    """Масштабирует многоугольник (единицы SVG) вокруг центра до нужной площади, км^2."""
+    k = (target_km2 / KM2_PER_U2 / area(poly)) ** 0.5
+    cx, cy = centroid(poly)
+    return [(cx + (x - cx) * k, cy + (y - cy) * k) for x, y in poly]
+
+
+def field(lo, amp):
+    g = rng.standard_normal((lo[1], lo[0])).astype(np.float32)
+    a = np.asarray(Image.fromarray(g).resize((W, H), Image.BICUBIC), dtype=np.float32)
+    return a / (np.abs(a).max() + 1e-6) * amp
+
+
+def mask(draw_fn):
+    im = Image.new("L", (W, H), 0)
+    draw_fn(ImageDraw.Draw(im))
+    return im
+
+
+# --- схема (docs/03-Map-Sketch.svg)
+land_polys = []
+for m in re.finditer(r"<polygon([^>]*)points=\"([^\"]+)\"([^>]*)/>", svg):
+    attrs = m.group(1) + m.group(3)
+    if 'class="sea"' in attrs or "url(#" in attrs or 'class="men"' in attrs:
+        continue
+    if 'class="c' in attrs or 'fill="#dedacb"' in attrs or 'stroke-dasharray="6 3"' in attrs:
+        land_polys.append(parse(m.group(2)))
+for g in re.findall(r"<g class=\"c inf\"[^>]*>(.*?)</g>", svg, re.S):          # острова Травинной Федерации
+    for k, s in enumerate(re.findall(r"points=\"([^\"]+)\"", g)):
+        dx = (0, 20, 45)[k] if k < 3 else 45
+        land_polys.append([(x + dx, y + 30) for x, y in parse(s)])      # острова южнее и с большими промежутками
+seas = [parse(s) for s in re.findall(r'<polygon class="sea" points="([^"]+)"', svg)]
+ell = re.search(r'<ellipse class="sea" cx="([\d.]+)" cy="([\d.]+)" rx="([\d.]+)" ry="([\d.]+)"', svg)
+mount_polys = [parse(re.search(r'<polygon fill="url\(#mount\)"[^>]*points="([^"]+)"', svg).group(1))]
+ridges = [parse(d.replace("M", "").replace("L", " ")) for d in re.findall(r'<path class="mtn" d="([^"]+)"', svg)]
+ridges = [r for r in ridges if not (1340 < centroid(r)[0] < 1500 and 740 < centroid(r)[1] < 880)]   # хребет острова Чёрной Республики задаётся отдельно (japan_axis)
+aid = parse(re.search(r'points="([^"]+)"[^>]*/>\s*<!--\s*Айдалия', svg).group(1))
+chelyaba = parse(re.search(r'points="([^"]+)"[^>]*/>\s*<!--\s*Челяба', svg).group(1))
+japan0 = parse(re.search(r'points="([^"]+)"[^>]*/>\s*<!--\s*Чёрная Республика', svg).group(1))
+britain = parse("70,340 170,330 200,400 170,480 100,470 60,410")
+
+land_polys = [q for q in land_polys if q != japan0]
+rivers = [parse(d.replace("M", "").replace("L", " ")) for d in re.findall(r'<path class="river" d="([^"]+)"', svg)]
+JUNGARIK = parse("575,985 590,940 565,900 585,860 570,825 590,790 585,772")          # река Джунгарик: из джунглей на юге к Срединному морю
+rivers.append(JUNGARIK)
+# перешеек между СССР и Тямовским рейхом вдвое-втрое шире: Синее море короче с востока, Кряхтское короче с севера
+seas[0] = parse("290,255 470,262 560,272 600,270 600,342 560,342 460,335 290,340")
+seas[1] = parse("700,495 735,490 775,495 780,500 755,535 715,530 700,500")                          # исходный остров заменяется на JAPAN ниже
+
+# --- EXTRA: правки из docs/08-map-fix.md (в схему SVG и в лор пока не внесены), единицы SVG
+JAPAN = fit(japan0, 378_000 * 0.86)                                                     # площадь как у Японии
+CEYLON = fit(parse("1040,950 1066,944 1078,970 1062,994 1038,986 1030,966"), 65_600 * 1.2)
+LEDYSHKA = fit(parse("30,30 100,12 175,32 200,95 165,150 95,168 38,130"), 2_166_000 * 1.2)   # как Гренландия
+LEDYSHKA = [(centroid(LEDYSHKA)[0] + (x - centroid(LEDYSHKA)[0]) / 1.6, centroid(LEDYSHKA)[1] + (y - centroid(LEDYSHKA)[1]) * 1.6) for x, y in LEDYSHKA]  # вытянута с севера на юг, площадь та же
+SPAIN = fit(parse("330,628 420,618 438,652 412,698 366,716 336,692 320,656"), 506_000)
+SPAIN_BRIDGE = parse("335,600 420,600 420,640 335,640")                          # шов с Соевой Республикой
+SOUTH = parse("20,790 130,768 270,782 420,770 560,785 625,800 645,860 630,950 575,1005 440,1030 "
+              "280,1030 130,1015 40,960 10,880")                                 # ~1/2 Африки южнее Среднего моря
+def tsouth(pts):
+    """Вытягивает Фигарию с севера на юг (площадь та же): якорь - северный берег y=775, ось x=345."""
+    return [(345 + (x - 345) * 0.66, 775 + (y - 775) * 1.5) for x, y in pts]
+
+
+SOUTH = tsouth(SOUTH)
+KAMCHATKA = parse("1440,140 1500,125 1555,160 1585,240 1590,300 1560,312 1535,255 1500,205 1445,215")
+SSSR_CAPES = [parse("860,78 905,50 960,30 1005,48 985,82 930,95"),               # полуострова на севере СССР
+              parse("1180,78 1230,45 1300,30 1350,52 1320,85 1250,95")]
+DM_WIDER = parse("735,800 700,855 760,895 850,885 905,845 880,770 840,830 780,840")   # Дмитровское Княжество шире
+EXTRA_LAND = [JAPAN, CEYLON, LEDYSHKA, SPAIN, SPAIN_BRIDGE, SOUTH, KAMCHATKA, DM_WIDER] + SSSR_CAPES
+
+GULF_NORTH = parse("668,55 738,55 745,120 732,192 706,218 684,192 664,120")      # залив между Сев. Ассамблеей и СССР (перешеек южнее)
+SSSR_BAYS = [parse("780,68 830,66 862,92 845,126 805,116"), parse("1040,68 1100,66 1126,100 1090,136 1050,112")]
+KYTAI_GULF = parse("1522,316 1440,334 1392,362 1402,396 1452,406 1522,386")      # большой залив на севере Кытая
+WIDE_STRAIT = parse("698,515 785,515 790,560 782,680 772,800 705,800 702,740 704,650 706,570")
+EXTRA_WATER = [GULF_NORTH, KYTAI_GULF, WIDE_STRAIT] + SSSR_BAYS
+
+SIBERIA_RIDGES = [parse("1200,260 1230,200 1280,170 1330,120"), parse("1260,285 1320,240 1390,232 1440,185"),
+                  parse("1170,120 1210,160 1232,205"), parse("1340,280 1390,215 1425,150")]
+SIBERIA_PLATEAU = parse("1180,100 1440,100 1440,205 1380,245 1262,272 1190,232")
+BRITAIN_RIDGE = parse("70,352 110,342 150,350 188,368")
+KAZUAL_HILLS = [(1112, 452), (1084, 482), (1140, 482)]                           # 3 казуальные горы - теперь холмы
+FIG_RIDGE = parse("60,890 180,868 300,884 430,864 560,880 640,892")                 # хребет на юге Фигарии
+FIG_JUNGLE = parse("40,905 640,908 600,1000 440,1030 280,1030 130,1015 40,960")     # джунгли южнее хребта (этап 2)
+FIG_HILLS = parse("12,800 150,790 175,900 170,1000 40,965 10,880")                  # холмы на западе Фигарии
+FIG_RIDGE, FIG_JUNGLE, FIG_HILLS, JUNGARIK = (tsouth(q) for q in (FIG_RIDGE, FIG_JUNGLE, FIG_HILLS, JUNGARIK))
+rivers[-1] = JUNGARIK
+AID_PEAKS = [(482, 550), (503, 541), (492, 562), (470, 566), (512, 570)]
+AID_RIDGES = [parse("444,572 478,548 516,532"), parse("450,546 486,560 516,576"), parse("470,522 478,560 468,580")]
+
+
+def japan_axis():
+    best = max(((a, b) for a in JAPAN for b in JAPAN), key=lambda ab: (ab[0][0] - ab[1][0]) ** 2 + (ab[0][1] - ab[1][1]) ** 2)
+    (x1, y1), (x2, y2) = best
+    return [(x1 + (x2 - x1) * 0.12, y1 + (y2 - y1) * 0.12), (x1 + (x2 - x1) * 0.88, y1 + (y2 - y1) * 0.88)]
+
+
+def fjords():
+    """Фьорды у западного и северного берега Северной Ассамблеи (как Норвегия): узкие каналы от берега внутрь с ответвлениями."""
+    out = []
+    r = np.random.default_rng(7)
+    for y in np.arange(88, 292, 14):                                             # запад, x ~ 330
+        x, yy = 300.0, float(y)
+        path = [(x, yy)]
+        for _ in range(r.integers(3, 6)):
+            x += r.uniform(10, 18); yy += r.uniform(-7, 7)
+            path.append((x, yy))
+        out.append(path)
+        if r.random() < 0.5:                                                     # ответвление
+            bx, by = path[2]
+            out.append([(bx, by), (bx + r.uniform(8, 16), by + r.choice([-1, 1]) * r.uniform(8, 16))])
+    for x in np.arange(350, 690, 17):                                            # север, y ~ 70
+        yy, xx = 52.0, float(x)
+        path = [(xx, yy)]
+        for _ in range(r.integers(2, 5)):
+            yy += r.uniform(9, 15); xx += r.uniform(-6, 6)
+            path.append((xx, yy))
+        out.append(path)
+    return out
+
+
+FJORDS = fjords()
+
+
+def draw_land(d):
+    for p in land_polys + EXTRA_LAND:
+        d.polygon(px(p), fill=255)
+    d.line(px(japan_axis()), fill=255, width=int(46 * SX), joint="curve")      # равнины Чёрной Республики: остров шире
+    for p in seas:
+        d.polygon(px(p), fill=0)
+    for p in EXTRA_WATER:
+        d.polygon(px(p), fill=0)
+
+
+def draw_lakes(d):
+    d.polygon(px(seas[2]), fill=255)                                            # Каспийская Дырка
+    cx, cy, rx, ry = (float(v) for v in ell.groups())
+    d.ellipse([(cx - rx) * SX + OX, (cy - ry) * SY + OY, (cx + rx) * SX + OX, (cy + ry) * SY + OY], fill=255)
+
+
+def line_mask(lines, width_units):
+    def f(d):
+        for r in lines:
+            d.line(px(r), fill=255, width=int(width_units * SX), joint="curve")
+    return f
+
+
+def draw_fjords(d):
+    for path in FJORDS:
+        d.line(px(path), fill=255, width=int(7 * SX), joint="curve")
+
+
+def draw_core(d):
+    for p in mount_polys:
+        d.polygon(px(p), fill=255)
+    d.polygon(px(parse("330,70 372,70 372,300 330,300")), fill=255)             # горы на западе Северной Ассамблеи
+
+
+def draw_peaks(d):
+    for p in mount_polys:
+        c = np.mean(px(p), axis=0)
+        d.polygon([((x - c[0]) * 0.55 + c[0], (y - c[1]) * 0.55 + c[1]) for x, y in px(p)], fill=255)
+
+
+def draw_steep(d):
+    for p in mount_polys:
+        c = np.mean(px(p), axis=0)
+        d.polygon([((x - c[0]) * 0.25 + c[0], (y - c[1]) * 0.25 + c[1]) for x, y in px(p)], fill=255)
+
+
+def draw_kazual_hills(d):
+    for x, y in KAZUAL_HILLS:
+        r = 26 * SX
+        d.ellipse([x * SX + OX - r, y * SY + OY - r, x * SX + OX + r, y * SY + OY + r], fill=255)
+
+
+def poly_mask(polys):
+    def f(d):
+        for p in polys:
+            d.polygon(px(p), fill=255)
+    return f
+
+
+# --- естественные берега
+DX = field((22, 14), 70) + field((70, 46), 30) + field((240, 160), 8)
+DY = field((22, 14), 70) + field((70, 46), 30) + field((240, 160), 8)
+yy_, xx_ = np.mgrid[0:H, 0:W]
+SXI = np.clip((xx_ + DX).round().astype(np.int32), 0, W - 1)
+SYI = np.clip((yy_ + DY).round().astype(np.int32), 0, H - 1)
+
+
+def erode(m, r):
+    """Эрозия булевой маски на r пикселей (на 1/4 разрешения, быстро)."""
+    k = max(1, r // 4)
+    small = Image.fromarray(m.astype(np.uint8) * 255).resize((W // 4, H // 4), Image.NEAREST)
+    small = small.filter(ImageFilter.MinFilter(2 * k + 1))
+    return np.asarray(small.resize((W, H), Image.NEAREST)) > 127
+
+
+def warp(im):
+    return np.asarray(im)[SYI, SXI] > 127
+
+
+def stage1():
+    lake = warp(mask(draw_lakes))
+    land = warp(mask(draw_land)) | lake            # озёра на этапе берега считаем сушей: иначе вокруг них кайма «океана»
+    land_orig = land.copy()
+    smooth = np.asarray(Image.fromarray(land.astype(np.uint8) * 255).filter(ImageFilter.GaussianBlur(38)), dtype=np.float32) / 255.0
+    noise = (field((12, 8), 1.0) * 1.2 + field((30, 20), 1.0) * 1.0 + field((70, 46), 1.0) * 0.9
+             + field((160, 105), 1.0) * 0.6 + field((340, 220), 1.0) * 0.35)
+    core = erode(land, 17)                                                       # суша не исчезает целиком
+    band = 4.0 * smooth * (1.0 - smooth)                                         # шум действует только у берега
+    land = (smooth + 2.4 * band * noise > 0.5) | core
+
+    def inner_seas(d):                                                           # внутренние моря и проливы
+        for i, q in enumerate(seas):
+            if i != 2:
+                d.polygon(px(q), fill=255)
+        for q in (WIDE_STRAIT, GULF_NORTH):
+            d.polygon(px(q), fill=255)
+    water_core = erode(warp(mask(inner_seas)), 15)
+    gap_core = erode(~land_orig, 37)                                             # проливы между сушами не зарастают
+    land &= ~(water_core | gap_core)
+    land |= lake
+    # мелкие «озерца» воды среди суши заливаем сушей
+    sm = np.asarray(Image.fromarray((~land).astype(np.uint8) * 255).resize((W // 8, H // 8), Image.BILINEAR)) > 127
+    hh, ww = sm.shape
+    seen = np.zeros_like(sm, bool)
+    for y0 in range(hh):
+        for x0 in range(ww):
+            if sm[y0, x0] and not seen[y0, x0]:
+                q = deque([(y0, x0)]); seen[y0, x0] = True; cells = []
+                while q:
+                    cy, cx = q.popleft(); cells.append((cy, cx))
+                    for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                        ny, nx = cy + dy, cx + dx
+                        if 0 <= ny < hh and 0 <= nx < ww and sm[ny, nx] and not seen[ny, nx]:
+                            seen[ny, nx] = True; q.append((ny, nx))
+                if len(cells) < 150:
+                    for cy, cx in cells:
+                        land[cy * 8:cy * 8 + 8, cx * 8:cx * 8 + 8] = True
+    land |= erode(warp(mask(poly_mask([JAPAN, CEYLON, LEDYSHKA, SPAIN]))), 8)          # острова из docs/08 не исчезают при размытии
+    land &= ~lake
+    land &= ~warp(mask(draw_fjords))                                             # фьорды вырезаем после сглаживания
+
+    # --- рельеф
+    RL = ridges + SIBERIA_RIDGES + [BRITAIN_RIDGE, FIG_RIDGE]
+    valley = warp(mask(line_mask(rivers, 6))) & land
+    cliffs = warp(mask(lambda d: [d.line(px(q), fill=255, width=int(14 * SX), joint="curve") for q in FJORDS])) & land
+    low = warp(mask(line_mask(RL, 70))) & land
+    low |= warp(mask(line_mask([japan_axis()], 12))) & land                   # у Чёрной Республики полосы уже: остаются равнины
+    low |= warp(mask(poly_mask([aid]))) & land
+    hills = warp(mask(line_mask(RL, 44))) & land
+    hills |= warp(mask(line_mask([japan_axis()], 6))) & land
+    hills |= warp(mask(poly_mask([FIG_HILLS]))) & land
+    hills |= warp(mask(draw_kazual_hills)) & land
+    mount = (warp(mask(line_mask(RL, 15)))
+             | warp(mask(line_mask([japan_axis()], 3))) | warp(mask(draw_core)) | warp(mask(poly_mask([aid])))) & land
+    steep = warp(mask(draw_steep)) & land
+    def draw_aid_peaks(d):                                                       # Айдалия: несколько отдельных вершин вместо перекрещенных линий
+        for cx, cy in AID_PEAKS:
+            r = 6 * SX
+            d.ellipse([cx * SX + OX - r, cy * SY + OY - r, cx * SX + OX + r, cy * SY + OY + r], fill=255)
+    snow = (warp(mask(draw_peaks)) | warp(mask(draw_steep))) & land
+    peaks = (warp(mask(draw_peaks)) | warp(mask(draw_aid_peaks))) & land
+    plateau = warp(mask(poly_mask([SIBERIA_PLATEAU, chelyaba]))) & land         # плоскогорья: Сибирь и Челяба
+
+    small = Image.fromarray((land | lake).astype(np.uint8) * 255).resize((W // 8, H // 8), Image.BILINEAR)
+    near = np.asarray(small.filter(ImageFilter.MaxFilter(13)).resize((W, H), Image.NEAREST)) > 127
+
+    # цвета, которые программа понимает без ручной разметки (справка Land Input); ocean/deepOcean в программе перепутаны местами
+    COL = {
+        "deepOcean": (0, 0, 255), "ocean": (0, 0, 128), "lake": (0, 80, 140),
+        "plains": (128, 128, 128), "highlands": (200, 180, 180), "lowhills": (150, 180, 150), "hills": (140, 160, 150),
+        "mountains": (220, 220, 220), "peaks": (240, 240, 240),
+        "steeppeaks": (255, 255, 255), "cliffs": (220, 200, 200), "valley": (180, 250, 180),
+    }
+    img = np.zeros((H, W, 3), np.uint8)
+    img[:] = COL["deepOcean"]
+    img[near] = COL["ocean"]
+    img[lake] = COL["lake"]
+    img[land] = COL["plains"]
+    img[valley] = COL["valley"]
+    img[cliffs] = COL["cliffs"]
+    img[plateau] = COL["highlands"]
+    img[low] = COL["lowhills"]
+    img[hills] = COL["hills"]
+    img[mount] = COL["mountains"]
+    img[peaks] = COL["peaks"]
+    img[steep] = COL["steeppeaks"]
+    jg = warp(mask(poly_mask([FIG_JUNGLE]))) & land
+    Image.fromarray((jg * 255).astype(np.uint8)).save(os.path.join(OUT, "stage_01_jungle_mask.png"))
+    d = os.path.join(OUT, "stage_01")
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(img, "RGB").save(os.path.join(d, "land.png"))
+    Image.fromarray(img, "RGB").resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "land_preview.png"))
+    with open(os.path.join(d, "colors.txt"), "w", encoding="utf-8") as f:
+        f.write("Цвета land.png (RGB): программа понимает их сама (справка вкладки Land Input)" + chr(10))
+        for k, v in COL.items():
+            f.write(f"{v[0]:3d} {v[1]:3d} {v[2]:3d}  {k}" + chr(10))
+
+    # --- контроль площадей островов и материков (по маске, до размывки гор)
+    land_all = land | lake
+    sm2 = np.asarray(Image.fromarray(land_all.astype(np.uint8) * 255).resize((W // 4, H // 4), Image.NEAREST)) > 127
+    seen2 = np.zeros_like(sm2, bool)
+
+    def comp_area(x_u, y_u):
+        sx, sy = int((x_u * SX + OX) / 4), int((y_u * SY + OY) / 4)
+        if not sm2[sy, sx]:
+            return 0
+        seen2[:] = False
+        q = deque([(sy, sx)]); seen2[sy, sx] = True; n = 0
+        while q:
+            cy, cx = q.popleft(); n += 1
+            for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                ny, nx = cy + dy, cx + dx
+                if 0 <= ny < sm2.shape[0] and 0 <= nx < sm2.shape[1] and sm2[ny, nx] and not seen2[ny, nx]:
+                    seen2[ny, nx] = True; q.append((ny, nx))
+        return n * 16 / (SX * SY) * KM2_PER_U2                                    # км^2
+
+    checks = {"Чёрная Республика (Япония 378 тыс.)": centroid(japan_axis()), "Остров на юге Ирракии (Цейлон 65,6 тыс.)": centroid(CEYLON),
+              "Ледышка (Гренландия 2166 тыс.)": centroid(LEDYSHKA), "Южный материк (1/2 Африки ~15100 тыс.)": centroid(SOUTH)}
+    print("площади по маске, тыс. км^2 (мелкие острова считаются отдельно, материк с полуостровом Испании слит):")
+    for k, c in checks.items():
+        print(f"  {k}: {comp_area(*c) / 1000:.0f}")
+    print("stage_01:", {k: int((img == np.array(v)).all(-1).sum()) for k, v in COL.items()})
+    return {"land": land, "lake": lake, "peaks": peaks, "steep": steep, "snow": snow}
+
+
+# --- этап 2: климат (цвета из справки вкладки Climate Input; в PDF другие, сверять с экраном программы)
+CLIM = {
+    "ocean": (21, 39, 92), "tropicsrainforest": (64, 80, 41), "tropicsmonsoon": (69, 87, 61), "tropicssavanna": (92, 82, 54),
+    "desert": (200, 163, 128), "colddesert": (176, 158, 135), "hotsemiarid": (147, 134, 107), "coldsemiarid": (140, 126, 107),
+    "temperatehot": (74, 88, 66), "temperatewarm": (54, 78, 56), "temperatecold": (29, 68, 50),
+    "continentalwarm": (75, 86, 75), "continentalcold": (94, 95, 84), "polartundra": (133, 116, 96),
+    "polararctic": (158, 170, 187), "snow": (240, 240, 240),
+}
+CLIM_BY_NAME = {
+    "Тямовский рейх": "temperatewarm", "Айдалия": "temperatewarm", "Северная Ассамблея": "temperatecold",
+    "Федерация Депутатов": "temperatewarm", "Советский Союз": "continentalcold", "Дмитровское Княжество": "coldsemiarid",
+    "Казачья Земля": "coldsemiarid", "Казуалия": "temperatecold", "Челяба": "temperatewarm", "Иракиккистан": "tropicsmonsoon",
+    "Ирракия": "tropicsmonsoon", "Муси": "tropicsrainforest", "Травинная Федерация": "tropicssavanna", "Магнолия": "desert",
+    "Сарайкумское Ханство": "hotsemiarid", "Кытай": "temperatewarm", "Соевая Республика": "temperatehot",
+    "Зеленодольск": "temperatewarm", "Наши Болота": "temperatecold", "Заготовка": "temperatehot",
+}
+def cwarp(im):
+    return np.asarray(im)[CSYI, CSXI] > 127
+
+
+def stage2():
+    m1 = stage1()
+    global CSXI, CSYI
+    CLIM_DX = field((30, 20), 45) + field((90, 60), 18)                                # доп. смещение: границы зон неровные, переходы мягче
+    CLIM_DY = field((30, 20), 45) + field((90, 60), 18)
+    CSXI = np.clip((xx_ + DX + CLIM_DX).round().astype(np.int32), 0, W - 1)
+    CSYI = np.clip((yy_ + DY + CLIM_DY).round().astype(np.int32), 0, H - 1)
+    land = m1["land"] | m1["lake"]
+    codes = {k: i + 1 for i, k in enumerate(CLIM)}
+    lab = np.zeros((H, W), np.uint8)
+
+    def paint(polys, kind):
+        mk = cwarp(mask(poly_mask(polys)))
+        lab[mk] = codes[kind]
+
+    named = []
+    for m in re.finditer(r"<polygon([^>]*)points=\"([^\"]+)\"([^>]*)/>\s*<!--\s*([^>]*?)\s*-->", svg):
+        attrs = m.group(1) + m.group(3)
+        if 'class="c' not in attrs and "dedacb" not in attrs:
+            continue
+        key = next((v for k, v in CLIM_BY_NAME.items() if m.group(4).startswith(k)), None)
+        if key:
+            named.append((parse(m.group(2)), key))
+    for poly, key in named:
+        paint([poly], key)
+    inf = []
+    for g in re.findall(r"<g class=\"c inf\"[^>]*>(.*?)</g>", svg, re.S):
+        for k, s_ in enumerate(re.findall(r"points=\"([^\"]+)\"", g)):
+            inf.append([(x + (0, 20, 45)[min(k, 2)], y + 30) for x, y in parse(s_)])
+    paint(inf, "tropicssavanna")
+    paint([JAPAN], "temperatewarm"); paint([CEYLON], "tropicsrainforest"); paint([LEDYSHKA], "polararctic")
+    paint([SPAIN, SPAIN_BRIDGE], "temperatehot"); paint([DM_WIDER], "coldsemiarid")
+    paint([SOUTH], "tropicssavanna")
+    paint([KAMCHATKA] + SSSR_CAPES, "polartundra")
+    paint([SIBERIA_PLATEAU], "continentalcold")
+    paint([parse("700,60 1460,60 1460,200 1180,215 940,190 700,170")], "polartundra")          # север СССР: тундра
+    paint([parse("700,60 1460,60 1460,115 1180,125 940,110 700,105")], "polararctic")          # северный берег СССР: арктика
+    paint([parse("322,60 388,60 388,305 322,305")], "polartundra")                              # горы Северной Ассамблеи
+    paint([FIG_JUNGLE], "tropicsrainforest"); paint([FIG_HILLS], "tropicsmonsoon")
+    jb = cwarp(mask(lambda d: d.line(px(JUNGARIK), fill=255, width=int(120 * SX), joint="curve")))
+    lab[jb] = codes["temperatewarm"]                                                                     # восток Фигарии у реки: умеренный
+    lab[m1["snow"]] = codes["snow"]
+    # земля без метки (кайма из-за смещения границ) берёт ближайшую метку: растим метки на 1/4 разрешения
+    sm = lab[::4, ::4].copy()
+    for _ in range(40):
+        for sh, ax in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+            nb = np.roll(sm, sh, axis=ax)
+            sm = np.where((sm == 0) & (nb > 0), nb, sm)
+    grown = np.repeat(np.repeat(sm, 4, axis=0), 4, axis=1)[:H, :W]
+    lab = np.where(lab == 0, grown, lab)
+    lab[lab == 0] = codes["temperatewarm"]
+
+    img = np.zeros((H, W, 3), np.uint8)
+    img[:] = CLIM["ocean"]
+    for k, v in CLIM.items():
+        if k == "ocean":
+            continue
+        img[(lab == codes[k]) & land] = v
+    d = os.path.join(OUT, "stage_02")
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(img, "RGB").save(os.path.join(d, "climate.png"))
+    Image.fromarray(img, "RGB").resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "climate_preview.png"))
+    with open(os.path.join(d, "colors.txt"), "w", encoding="utf-8") as f:
+        f.write("Цвета climate.png (RGB), справка вкладки Climate Input" + chr(10))
+        for k, v in CLIM.items():
+            f.write(f"{v[0]:3d} {v[1]:3d} {v[2]:3d}  {k}" + chr(10))
+    print("stage_02:", {k: int((img == np.array(v)).all(-1).sum()) for k, v in CLIM.items()})
+
+
+# --- этап 3: реки (цвета из справки вкладки Rivers)
+RIV = {"background": (255, 255, 255), "river": (0, 0, 255), "start": (0, 255, 0), "end": (255, 100, 0)}
+
+
+def stage3():
+    m1 = stage1()
+    land = m1["land"]
+    img = np.zeros((H, W, 3), np.uint8)
+    img[:] = RIV["background"]
+    n_runs = 0
+    for r in rivers:
+        pts = []
+        P = px(r)
+        for (x1, y1), (x2, y2) in zip(P[:-1], P[1:]):
+            n = int(max(abs(x2 - x1), abs(y2 - y1))) + 1
+            for t in np.linspace(0, 1, n, endpoint=False):
+                pts.append((x1 + (x2 - x1) * t, y1 + (y2 - y1) * t))
+        pts.append(P[-1])
+        cells = []
+        for x, y in pts:
+            xi, yi = int(round(x)), int(round(y))
+            xi, yi = int(round(x - DX[min(max(yi, 0), H - 1), min(max(xi, 0), W - 1)])), int(round(y - DY[min(max(yi, 0), H - 1), min(max(xi, 0), W - 1)]))
+            if 0 <= xi < W and 0 <= yi < H and land[yi, xi]:
+                if not cells or cells[-1] != (xi, yi):
+                    cells.append((xi, yi))
+            else:
+                cells.append(None)
+        run = []
+        runs = []
+        for c in cells + [None]:
+            if c is None:
+                if len(run) > 12:
+                    runs.append(run)
+                run = []
+            else:
+                run.append(c)
+        for run in runs:                                        # 8-связная линия шириной 1 px
+            for (xa, ya), (xb, yb) in zip(run[:-1], run[1:]):          # смещение карты рвёт линию: соединяем соседние точки
+                n = max(abs(xb - xa), abs(yb - ya)) + 1
+                for t in np.linspace(0, 1, n):
+                    img[int(round(ya + (yb - ya) * t)), int(round(xa + (xb - xa) * t))] = RIV["river"]
+            img[run[0][1], run[0][0]] = RIV["start"]
+            img[run[-1][1], run[-1][0]] = RIV["end"]
+            n_runs += 1
+    d = os.path.join(OUT, "stage_03")
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(img, "RGB").save(os.path.join(d, "rivers.png"))
+    big = np.array(Image.fromarray(img, "RGB").filter(ImageFilter.MinFilter(3)))      # для превью реки жирнее
+    Image.fromarray(big).resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "rivers_preview.png"))
+    with open(os.path.join(d, "colors.txt"), "w", encoding="utf-8") as f:
+        f.write("Цвета rivers.png (RGB), справка вкладки Rivers" + chr(10))
+        for k, v in RIV.items():
+            f.write(f"{v[0]:3d} {v[1]:3d} {v[2]:3d}  {k}" + chr(10))
+    print("stage_03: рек (участков):", n_runs, "пикселей реки:", int((img == np.array(RIV["river"])).all(-1).sum()))
+
+
+# --- этап 4: страны (countries.png + countryMappings.txt по справке вкладки Countries: r;g;b;tag;name;adjective, без пробелов в именах)
+# (префикс комментария в SVG или ключ) -> tag, цвет, имя латиницей без пробелов, прилагательное, русское название, столица
+COUNTRIES = [
+    ("CSL", (195, 207, 132), "Kazualia", "Kazualian", "Казуалия", "Ставка Казуала"),
+    ("SVS", (224, 122, 116), "SovetskiySoyuz", "Sovetsky", "Советский Союз", "Ваньград-на-Окре"),
+    ("KZZ", (239, 159, 79), "KazachyaZemlya", "Kazachy", "Казачья Земля", "Станица Дарьевская"),
+    ("BRT", (183, 154, 208), "Brittan", "Brittish", "Бриттан", "Большой Джон"),
+    ("IRK", (155, 127, 196), "Irakikkistan", "Irakikkistani", "Иракиккистан", "Лахарабад"),
+    ("IRR", (198, 163, 224), "Irrakia", "Irrakian", "Ирракия", "Дехлагарх"),
+    ("MUS", (120, 199, 160), "Musi", "Musian", "Королевство Муси", "Мандалаят"),
+    ("TRV", (143, 209, 138), "Travinnaya", "Travinny", "Травинная Федерация", "Травопорт"),
+    ("TMR", (125, 125, 125), "Tyamovreich", "Tyamovian", "Тямовский рейх", "Барбинсберг"),
+    ("SOY", (127, 167, 224), "Soyevaya", "Soyevy", "Соевая Республика", "Поридж-Сити"),
+    ("ZLD", (95, 192, 200), "Zelenodolsk", "Zelenodolsky", "Демократический Зеленодольск", "Мирный"),
+    ("ADL", (240, 216, 106), "Aidalia", "Aidalian", "Айдалия", "Бернхорн"),
+    ("SVA", (142, 160, 232), "SevernayaAssambleya", "Assamblean", "Северная Ассамблея", "Ослорвик"),
+    ("FDP", (230, 184, 78), "FederatsiyaDeputatov", "Deputatsky", "Федерация Депутатов", "Депутатск"),
+    ("DMK", (217, 138, 163), "Dmitrovskoye", "Dmitrovsky", "Дмитровское Княжество", "Ордабад"),
+    ("CLB", (169, 184, 201), "Chelyaba", "Chelyabinsky", "Челяба", "Челябинск"),
+    ("MGN", (236, 217, 160), "Magnoliya", "Magnolian", "Магнолия", "Улан-Батыр"),
+    ("KTY", (201, 116, 74), "Kytay", "Kytayan", "Кытай", "Бэйчжао"),
+    ("BLK", (85, 90, 110), "ChernayaRespublika", "Chernorespublikansky", "Чёрная Республика", "Токомэ"),
+    ("SRK", (184, 167, 106), "Saraykum", "Saraykumsky", "Сарайкумское Ханство", "Кумыс-Орда"),
+    ("CEY", (170, 120, 200), "Tseylon", "Tseyami", "Цейлон", "-"),
+    ("Z01", (201, 201, 232), "Zagotovka1", "Zagotovkin1", "Заготовка страны 1", "-"),
+    ("Z02", (183, 211, 232), "Zagotovka2", "Zagotovkin2", "Заготовка страны 2", "-"),
+    ("Z03", (232, 201, 216), "Zagotovka3", "Zagotovkin3", "Заготовка страны 3", "-"),
+    ("Z04", (214, 232, 201), "Zagotovka4", "Zagotovkin4", "Заготовка страны 4", "-"),
+    ("Z05", (217, 201, 232), "Zagotovka5", "Zagotovkin5", "Заготовка страны 5", "-"),
+    ("UNL", (150, 150, 150), "NeopisannyeZemli", "Neopisanny", "Неописанные земли материка (заглушка)", "-"),
+    ("FIG", (120, 110, 90), "Figariya", "Figarsky", "Фигария (южный материк, заглушка)", "-"),
+    ("LED", (200, 215, 235), "Ledyshka", "Ledyshkin", "Ледышка (остров, заглушка)", "-"),
+]
+SVG_TO_TAG = [("острова Бриттана", "BRT"), ("Соевая Республика", "SOY"), ("Зеленодольск", "ZLD"), ("Айдалия", "ADL"),
+              ("Северная Ассамблея", "SVA"), ("Федерация Депутатов", "FDP"), ("Советский Союз", "SVS"), ("Дмитровское", "DMK"),
+              ("Казачья Земля", "KZZ"), ("Казуалия", "CSL"), ("Иракиккистан", "IRK"), ("Ирракия", "IRR"), ("Муси", "MUS"),
+              ("Травинная Федерация", "TRV"), ("Магнолия", "MGN"), ("Сарайкумское", "SRK"), ("Кытай", "KTY"), ("Тямовский рейх", "TMR"),
+              ("Челяба", "CLB"), ("заготовка страны 1", "Z01"), ("заготовка страны 2", "Z02"), ("заготовка страны 3", "Z03"),
+              ("заготовка страны 4", "Z04"), ("заготовка страны 5", "Z05")]
+
+
+def country_labels():
+    global CSXI, CSYI
+    CSXI, CSYI = SXI, SYI                                                    # границы стран по той же деформации, что и берег
+    codes = {c[0]: i + 1 for i, c in enumerate(COUNTRIES)}
+    lab = np.zeros((H, W), np.uint8)
+
+    def paint(polys, tag):
+        lab[cwarp(mask(poly_mask(polys)))] = codes[tag]
+
+    paint([q for q in land_polys], "UNL")                                    # неописанный материк (суша из схемы без владельца)
+    for m in re.finditer(r"<polygon([^>]*)points=\"([^\"]+)\"([^>]*)/>\s*<!--\s*([^>]*?)\s*-->", svg):
+        attrs = m.group(1) + m.group(3)
+        if 'url(#' in attrs or 'class="men"' in attrs:
+            continue
+        tag = next((t for k, t in SVG_TO_TAG if m.group(4).startswith(k)), None)
+        if tag:
+            paint([parse(m.group(2))], tag)
+    inf = []
+    for g in re.findall(r"<g class=\"c inf\"[^>]*>(.*?)</g>", svg, re.S):
+        for k, s_ in enumerate(re.findall(r"points=\"([^\"]+)\"", g)):
+            inf.append([(x + (0, 20, 45)[min(k, 2)], y + 30) for x, y in parse(s_)])
+    paint(inf, "TRV")
+    paint([britain], "BRT"); paint([JAPAN], "BLK"); paint([CEYLON], "CEY"); paint([LEDYSHKA], "LED"); paint([SPAIN], "Z05"); paint([SPAIN_BRIDGE], "SOY")
+    paint([DM_WIDER], "DMK"); paint([SOUTH], "FIG"); paint([KAMCHATKA] + SSSR_CAPES, "SVS")
+    sm = lab[::4, ::4].copy()
+    for _ in range(40):
+        for sh, ax in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
+            nb = np.roll(sm, sh, axis=ax)
+            sm = np.where((sm == 0) & (nb > 0), nb, sm)
+    lab = np.where(lab == 0, np.repeat(np.repeat(sm, 4, axis=0), 4, axis=1)[:H, :W], lab)
+    return lab, codes
+
+
+def stage4():
+    m1 = stage1()
+    land = m1["land"] | m1["lake"]
+    lab, codes = country_labels()
+    img = np.zeros((H, W, 3), np.uint8)                                      # вода чёрная [uncertain: программа сама знает, где суша]
+    for tag, i in codes.items():
+        img[(lab == i) & land] = COUNTRIES[i - 1][1]
+    d = os.path.join(OUT, "stage_04")
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(img, "RGB").save(os.path.join(d, "countries.png"))
+    Image.fromarray(img, "RGB").resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "countries_preview.png"))
+    with open(os.path.join(d, "countryMappings.txt"), "w", encoding="utf-8") as f:
+        f.write("#r;g;b;tag;name;adjective" + chr(10))
+        for tag, (r, g, b), nm, adj, ru, cap in COUNTRIES:
+            if (img == np.array((r, g, b))).all(-1).any():
+                f.write(f"{r};{g};{b};{tag};{nm};{adj}" + chr(10))
+    caps = {t.strip(): (float(cx), float(cy)) for cx, cy, t in
+            re.findall(r'<circle class="cap" cx="([\d.]+)" cy="([\d.]+)" r="[\d.]+"/><text[^>]*>([^<]+)</text>', svg)}
+    with open(os.path.join(d, "capitals.txt"), "w", encoding="utf-8") as f:
+        f.write("tag;страна;столица;x_px;y_px (по схеме, где искать столичный штат на карте программы)" + chr(10))
+        for tag, col, nm, adj, ru, cap in COUNTRIES:
+            c = caps.get(cap)
+            f.write(f"{tag};{ru};{cap};" + (f"{int(c[0] * SX + OX)};{int(c[1] * SY + OY)}" if c else "нет на схеме") + chr(10))
+    print("stage_04: стран на карте:", sum((img == np.array(c[1])).all(-1).any() for c in COUNTRIES))
+
+
+# --- этап 3.5: Civilisation (Topography, Development, Population) по справке вкладки Civilisation
+TOPO = {"marsh": (40, 255, 40), "wasteland": (255, 0, 0), "background": (0, 0, 0)}
+# уровень по странам, 0..255: (развитость, население)
+CIV_LEVEL = {
+    "CSL": (60, 90), "SVS": (120, 110), "KZZ": (70, 110), "BRT": (170, 150), "IRK": (90, 190), "IRR": (110, 235), "MUS": (100, 170),
+    "TRV": (110, 130), "TMR": (170, 160), "SOY": (190, 170), "ZLD": (150, 150), "ADL": (140, 100), "SVA": (140, 100), "FDP": (110, 120),
+    "DMK": (90, 110), "CLB": (235, 180), "MGN": (30, 25), "KTY": (150, 225), "BLK": (180, 220), "SRK": (80, 100), "CEY": (90, 160),
+    "Z01": (80, 90), "Z02": (80, 90), "Z03": (80, 90), "Z04": (80, 90), "Z05": (100, 110), "UNL": (60, 50), "FIG": (20, 20), "LED": (10, 8),
+}
+
+
+def stage3b():
+    m1 = stage1()
+    land = m1["land"] | m1["lake"]
+    lab, codes = country_labels()
+    global CSXI, CSYI
+    CSXI, CSYI = SXI, SYI
+    # --- Topography: болота Казуалии и Наших Болот, пустошь на Нагорье Шамбалы
+    swamps = [parse(m.group(1)) for m in re.finditer(r'<polygon[^>]*fill="url\(#swamp\)"[^>]*points="([^"]+)"', svg)]
+    sw = cwarp(mask(poly_mask(swamps))) & m1["land"]
+    soft = np.asarray(Image.fromarray(sw.astype(np.uint8) * 255).filter(ImageFilter.GaussianBlur(45)), dtype=np.float32) / 255.0
+    n_edge = field((40, 26), 1.0) + 0.5 * field((120, 78), 1.0)                  # рваные края
+    n_hole = field((70, 46), 1.0) + 0.5 * field((200, 130), 1.0)                  # просветы (суша среди болот)
+    marsh = (soft + 0.35 * n_edge > 0.5) & (n_hole < 0.12) & m1["land"]
+    waste = cwarp(mask(poly_mask(mount_polys))) & m1["land"]
+    topo = np.zeros((H, W, 3), np.uint8)
+    topo[marsh] = TOPO["marsh"]
+    topo[waste] = TOPO["wasteland"]
+    # --- Development / Population: уровень страны плюс пятна вокруг городов (столицы больше)
+    cities = [(float(cx), float(cy), float(r)) for cx, cy, r in re.findall(r'<circle class="cap" cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"', svg)]
+    yy0, xx0 = np.mgrid[0:H:4, 0:W:4]
+
+    def make(idx, boost):
+        base = np.zeros((H, W), np.float32)
+        for tag, i in codes.items():
+            base[(lab == i) & land] = CIV_LEVEL[tag][idx]
+        small = base[::4, ::4].copy()
+        for cx, cy, r in cities:
+            px_, py_ = cx * SX + OX, cy * SY + OY
+            rad = (30 + (r - 2.5) * 22) / 1.0
+            d2 = (xx0 - px_) ** 2 + (yy0 - py_) ** 2
+            small += boost * np.exp(-d2 / (2 * (rad ** 2)))
+        out = np.asarray(Image.fromarray(np.clip(small, 0, 255).astype(np.uint8)).resize((W, H), Image.BILINEAR), dtype=np.float32)
+        out = np.array(Image.fromarray(out.astype(np.uint8)).filter(ImageFilter.GaussianBlur(10)), dtype=np.uint8)
+        out[~land] = 0
+        return out
+
+    dev = make(0, 70)
+    pop = make(1, 50)
+    d = os.path.join(OUT, "stage_03b")
+    os.makedirs(d, exist_ok=True)
+    Image.fromarray(topo, "RGB").save(os.path.join(d, "topography.png"))
+    Image.fromarray(dev, "L").save(os.path.join(d, "development.png"))
+    Image.fromarray(pop, "L").save(os.path.join(d, "population.png"))
+    for nm, im in (("development", dev), ("population", pop)):
+        Image.fromarray(im, "L").resize((W // 4, H // 4), Image.BILINEAR).save(os.path.join(d, nm + "_preview.png"))
+    Image.fromarray(topo, "RGB").resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "topography_preview.png"))
+    print("stage_03b: болота px", int(marsh.sum()), "пустошь px", int(waste.sum()), "городов", len(cities))
+
+
+if __name__ == "__main__":
+    st = sys.argv[1] if len(sys.argv) > 1 else "1"
+    {"1": stage1, "2": stage2, "3": stage3, "4": stage4, "3b": stage3b}[st]()
