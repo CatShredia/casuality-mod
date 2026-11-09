@@ -1,4 +1,4 @@
-"""Картинки для загрузки в RandomParadox (Ktits-Mod 0.1.0), по этапам.
+"""Картинки для загрузки в RandomParadox (Ktits 0.1.0), по этапам.
 
 Запуск из корня репозитория: python tools/export_rp_inputs.py [этап]
 Выход: no_commit/temp/rp_input/stage_NN/*.png (4352x2816, RGB).
@@ -15,7 +15,7 @@ OUT = os.path.join(ROOT, "no_commit", "temp", "rp_input")
 W, H = 4608, 2816                                   # холст с полем океана вокруг суши
 LAND_K = 0.76                                        # суша занимает 76 % прежнего масштаба
 SX, SY = 4352 / 1600 * LAND_K, 2816 / 1040 * LAND_K
-OX, OY = (W - 1600 * SX) / 2, (H - 1040 * SY) / 2
+OX, OY = (W - 1600 * SX) / 2, (H - 1040 * SY) / 2 - 70   # сдвиг вверх: нижнее поле океана >= 130 px (вылет RandomParadox на Mapping Regions)
 KM2_PER_U2 = 97.0
 rng = np.random.default_rng(1936)
 svg = open(os.path.join(ROOT, "docs", "03-Map-Sketch.svg"), encoding="utf-8").read()
@@ -65,10 +65,12 @@ for m in re.finditer(r"<polygon([^>]*)points=\"([^\"]+)\"([^>]*)/>", svg):
         continue
     if 'class="c' in attrs or 'fill="#dedacb"' in attrs or 'stroke-dasharray="6 3"' in attrs:
         land_polys.append(parse(m.group(2)))
+TRV_ISL = []
 for g in re.findall(r"<g class=\"c inf\"[^>]*>(.*?)</g>", svg, re.S):          # острова Травинной Федерации
     for k, s in enumerate(re.findall(r"points=\"([^\"]+)\"", g)):
         dx = (0, 20, 45)[k] if k < 3 else 45
         land_polys.append([(x + dx, y + 30) for x, y in parse(s)])      # острова южнее и с большими промежутками
+        TRV_ISL.append([(x + dx, y + 30) for x, y in parse(s)])
 seas = [parse(s) for s in re.findall(r'<polygon class="sea" points="([^"]+)"', svg)]
 ell = re.search(r'<ellipse class="sea" cx="([\d.]+)" cy="([\d.]+)" rx="([\d.]+)" ry="([\d.]+)"', svg)
 mount_polys = [parse(re.search(r'<polygon fill="url\(#mount\)"[^>]*points="([^"]+)"', svg).group(1))]
@@ -236,6 +238,21 @@ def erode(m, r):
     return np.asarray(small.resize((W, H), Image.NEAREST)) > 127
 
 
+def dilate(m, r):
+    """Дилатация булевой маски на r пикселей (на 1/4 разрешения)."""
+    k = max(1, r // 4)
+    small = Image.fromarray(m.astype(np.uint8) * 255).resize((W // 4, H // 4), Image.NEAREST)
+    small = small.filter(ImageFilter.MaxFilter(2 * k + 1))
+    return np.asarray(small.resize((W, H), Image.NEAREST)) > 127
+
+
+def widen_gap(land, a, b, add):
+    """Раздвигает сушу a и b: у каждой срезается полоса add/2 вдоль другой (проливы не должны слипаться в программе)."""
+    h = add // 2
+    land &= ~((dilate(a, h) & b) | (dilate(b, h) & a))
+    return land
+
+
 def warp(im):
     return np.asarray(im)[SYI, SXI] > 127
 
@@ -280,6 +297,12 @@ def stage1():
                         land[cy * 8:cy * 8 + 8, cx * 8:cx * 8 + 8] = True
     land |= erode(warp(mask(poly_mask([JAPAN, CEYLON, LEDYSHKA, SPAIN]))), 8)          # острова из docs/08 не исчезают при размытии
     land &= ~lake
+    fig_m = warp(mask(poly_mask([SOUTH])))                                       # Фигария отделена от материка проливом >= ~60 px
+    land &= ~(dilate(fig_m, 56) & ~fig_m)                                        # у Фигарии вокруг контура полоса воды в 56 px
+    isl = [warp(mask(poly_mask([q]))) for q in TRV_ISL]                           # острова Травинной Федерации: промежутки >= ~100 px
+    for i in range(len(isl)):
+        for j in range(i + 1, len(isl)):
+            land = widen_gap(land, isl[i], isl[j], 56)
     land &= ~warp(mask(draw_fjords))                                             # фьорды вырезаем после сглаживания
 
     # --- рельеф
@@ -429,9 +452,8 @@ def stage2():
     lab[jb] = codes["temperatewarm"]                                                                     # восток Фигарии у реки: умеренный
     lab[m1["snow"]] = codes["snow"]
     # земля без метки (кайма из-за смещения границ) берёт ближайшую метку: растим метки на 1/4 разрешения
-    lab[lab == codes["UNL"]] = 0                                             # заглушка UNL не оставляется: остатки суши отходят ближайшей стране
     sm = lab[::4, ::4].copy()
-    for _ in range(300):
+    for _ in range(40):
         for sh, ax in ((1, 0), (-1, 0), (1, 1), (-1, 1)):
             nb = np.roll(sm, sh, axis=ax)
             sm = np.where((sm == 0) & (nb > 0), nb, sm)
@@ -466,6 +488,7 @@ def stage3():
     img = np.zeros((H, W, 3), np.uint8)
     img[:] = RIV["background"]
     n_runs = 0
+    marks = []
     for r in rivers:
         pts = []
         P = px(r)
@@ -497,9 +520,13 @@ def stage3():
                 n = max(abs(xb - xa), abs(yb - ya)) + 1
                 for t in np.linspace(0, 1, n):
                     img[int(round(ya + (yb - ya) * t)), int(round(xa + (xb - xa) * t))] = RIV["river"]
-            img[run[0][1], run[0][0]] = RIV["start"]
-            img[run[-1][1], run[-1][0]] = RIV["end"]
+            marks.append((run[0], run[-1]))
             n_runs += 1
+    blue = np.asarray(Image.fromarray(((img == np.array(RIV["river"])).all(-1)).astype(np.uint8) * 255).filter(ImageFilter.MaxFilter(3))) > 127   # русло 3 px: 1 px теряется при обработке в программе
+    img[blue] = RIV["river"]
+    for (xa, ya), (xb, yb) in marks:
+        img[ya, xa] = RIV["start"]
+        img[yb, xb] = RIV["end"]
     d = os.path.join(OUT, "stage_03")
     os.makedirs(d, exist_ok=True)
     Image.fromarray(img, "RGB").save(os.path.join(d, "rivers.png"))
