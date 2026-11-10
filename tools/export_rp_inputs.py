@@ -307,7 +307,7 @@ def stage1():
 
     # --- рельеф
     RL = ridges + SIBERIA_RIDGES + [BRITAIN_RIDGE, FIG_RIDGE]
-    valley = warp(mask(line_mask(rivers, 6))) & land
+    valley = warp(mask(line_mask(rivers, 20))) & land   # долины вдоль рек шире: программа прокладывает реки по низинам
     cliffs = warp(mask(lambda d: [d.line(px(q), fill=255, width=int(14 * SX), joint="curve") for q in FJORDS])) & land
     low = warp(mask(line_mask(RL, 70))) & land
     low |= warp(mask(line_mask([japan_axis()], 12))) & land                   # у Чёрной Республики полосы уже: остаются равнины
@@ -333,9 +333,9 @@ def stage1():
     # цвета, которые программа понимает без ручной разметки (справка Land Input); ocean/deepOcean в программе перепутаны местами
     COL = {
         "deepOcean": (0, 0, 255), "ocean": (0, 0, 128), "lake": (0, 80, 140),
-        "plains": (128, 128, 128), "highlands": (200, 180, 180), "lowhills": (150, 180, 150), "hills": (140, 160, 150),
+        "plains": (128, 128, 128), "highlands": (200, 100, 100), "lowhills": (150, 180, 150), "hills": (140, 160, 150),
         "mountains": (220, 220, 220), "peaks": (240, 240, 240),
-        "steeppeaks": (255, 255, 255), "cliffs": (220, 200, 200), "valley": (180, 250, 180),
+        "steeppeaks": (240, 240, 240), "cliffs": (220, 220, 220), "valley": (100, 250, 100),   # steeppeaks/cliffs в программе нет: цвета peaks/mountains; valley по справке (100,250,100)
     }
     img = np.zeros((H, W, 3), np.uint8)
     img[:] = COL["deepOcean"]
@@ -350,6 +350,18 @@ def stage1():
     img[mount] = COL["mountains"]
     img[peaks] = COL["peaks"]
     img[steep] = COL["steeppeaks"]
+    # сглаживание зубчатого берега около (1041,1268): там программа оставляла 1 пиксель без сегмента
+    y0, y1, x0, x1 = 1118, 1418, 891, 1191
+    sea = (img[..., 2] >= 128) & (img[..., 1] < 100) & (img[..., 0] == 0) & (img[..., 2] != 140)
+    sub = ~sea[y0:y1, x0:x1]
+    for _ in range(3):
+        p = np.pad(sub.astype(np.int32), 4)
+        cnt = sum(p[dy:dy + sub.shape[0], dx:dx + sub.shape[1]] for dy in range(9) for dx in range(9))
+        sub = cnt > 40
+    old = ~sea[y0:y1, x0:x1]
+    box = img[y0:y1, x0:x1]
+    box[sub & ~old] = COL["plains"]
+    box[~sub & old & (box == COL["plains"]).all(-1)] = COL["ocean"]
     jg = warp(mask(poly_mask([FIG_JUNGLE]))) & land
     Image.fromarray((jg * 255).astype(np.uint8)).save(os.path.join(OUT, "stage_01_jungle_mask.png"))
     d = os.path.join(OUT, "stage_01")

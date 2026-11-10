@@ -60,17 +60,7 @@
 
 1. Вкладка Land → «classify land input» → загрузить картинку.
 2. Назначить каждому цвету тип: океан, глубокий океан, озеро, равнина, низкие холмы, холмы, возвышенность, горы, крутые пики, долины, вершины. После каждого назначения нажимать Apply.
-**Цвета, которые надо разметить вручную (UNCLASSIFIED).** При загрузке `land.png` (13 цветов) программа сама распознаёт 10 (в том числе 200;180;180 как highlands), остальные 3 помечает UNCLASSIFIED. Для каждого: «Select type for …» → выбрать тип → «Apply type for …».
-
-В выпадающем списке только 10 типов: ocean, deepOcean, lake, plains, lowhills, hills, mountains, peaks, valley, highlands. Типов cliffs и steeppeaks в программе нет (скриншот `image copy 11.png`), поэтому эти цвета назначаются ближайшим типам:
-
-| Цвет (R;G;B) | Выбрать тип | Где на карте |
-|---|---|---|
-| 180;250;180 | valley | долины вдоль рек |
-| 220;200;200 | mountains (cliffs в программе нет) | обрывы у фьордов Северной Ассамблеи |
-| 255;255;255 | peaks (steeppeaks в программе нет) | ядро Нагорья Шамбалы |
-
-Распознаются сами: 128;128;128 plains, 200;180;180 highlands, 220;220;220 mountains, 240;240;240 peaks, 150;180;150 lowhills, 140;160;150 hills, 0;80;140 lake, 0;0;128 ocean, 0;0;255 deepOcean. После разметки нажать Analyse Input.
+**Цвета land.png.** Все 10 цветов программа распознаёт сама, ручная разметка не нужна: 128;128;128 plains, 200;100;100 highlands, 150;180;150 lowhills, 140;160;150 hills, 220;220;220 mountains (cliffs), 240;240;240 peaks (steeppeaks), 100;250;100 valley, 0;80;140 lake, 0;0;128 ocean, 0;0;255 deepOcean. Типов cliffs и steeppeaks в программе нет, поэтому им даны цвета mountains и peaks. После загрузки нажать Analyse Input.
 
 3. Analyze input → Generate height map (множитель высоты 1.0–1.25; в видео 1.25).
 
@@ -80,7 +70,7 @@
 2. **Rivers.** Generate. Оставить порядка 300 рек, тысячи нельзя (нагружают игру).
 3. **Forest density.** Обычная плотность. Слишком густой лес выглядит плохо и может ронять игру при приближении.
 4. **Segments.** Generate.
-5. **Provinces.** Generate; следить, чтобы провинций было не больше ~25 000.
+5. **Provinces.** Подобранные настройки: Sea Factor 0.65, Density Effects 0.55, Min Province Size 355, Max Province Count 20000 (Land Factor не влияет). Результат: 8 136 провинций, суша 6 176, море 1 960. Подробности и что на что влияет: `10-RP-Tabs-Quick.md`.
 6. **Continents.** Generate.
 7. **Civilization / scenario.** Население и число городов; множители 1.1 (в видео).
 8. **Strategic regions.** Generate.
