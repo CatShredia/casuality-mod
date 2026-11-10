@@ -114,7 +114,7 @@
 <text x="110" y="110" font-size="15" fill="#fff" text-anchor="middle" stroke="#000" stroke-width=".5" paint-order="stroke">Ледышка: арктика</text>
 <text x="1190" y="935" font-size="13" fill="#fff" text-anchor="middle" stroke="#000" stroke-width=".5" paint-order="stroke">Муси: тропики</text>
 <text x="1010" y="840" font-size="12" fill="#fff" text-anchor="middle" stroke="#000" stroke-width=".5" paint-order="stroke">Ирракия, Иракиккистан: муссон</text>
-<text x="30" y="1210" font-size="20" fill="#fff">Ktits-Mod: план климата (этап 2). Схема, не в масштабе. Белые линии: горы, голубые: реки</text>
+<text x="30" y="1210" font-size="20" fill="#fff">Ktits: план климата (этап 2). Схема, не в масштабе. Белые линии: горы, голубые: реки</text>
 <rect x="820" y="1040" width="16" height="16" fill="#40502a" stroke="#fff" stroke-width=".6"/><text x="842" y="1053" font-size="12" fill="#fff">tropicsrainforest: джунгли</text>
 <rect x="820" y="1066" width="16" height="16" fill="#45573d" stroke="#fff" stroke-width=".6"/><text x="842" y="1079" font-size="12" fill="#fff">tropicsmonsoon: муссонный</text>
 <rect x="820" y="1092" width="16" height="16" fill="#a8963f" stroke="#fff" stroke-width=".6"/><text x="842" y="1105" font-size="12" fill="#fff">tropicssavanna: саванна</text>
