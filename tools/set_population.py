@@ -7,6 +7,7 @@ Usage: python tools/set_population.py [--restore] [--mod PATH]
 """
 import argparse, glob, json, re
 from pathlib import Path
+import lore_data as L
 
 REPO = Path(__file__).resolve().parent.parent
 ap = argparse.ArgumentParser()
@@ -17,8 +18,7 @@ M = Path(a.mod)
 BACKUP = REPO / "no_commit/temp/backup_manpower.json"
 
 # docs/01-Contries-Description.md, "Население ..." lines, millions
-LORE_POP = {"CSL": 30, "SVS": 120, "KZZ": 10, "BRT": 70, "IRK": 125, "IRR": 350, "MUS": 70, "TRV": 100,
-            "TMR": 100, "SOY": 80, "BLK": 100, "SRK": 40}
+LORE_POP = L.LORE_POP
 TODO = ["ZLD", "ADL", "SVA", "FDP", "DMK", "CLB", "MGN", "KTY", "CEY"]   # lore says TODO
 NONE = ["FIG", "LED", "Z01", "Z02", "Z03", "Z04", "Z05"]                   # lore gives no number
 
@@ -28,7 +28,7 @@ if a.restore:
     for sid, mp in old.items():
         f = files[int(sid)]
         t = open(f, encoding="utf-8", errors="ignore").read()
-        open(f, "w", encoding="utf-8", newline="").write(re.sub(r"(manpower\s*=\s*)\d+", lambda m: m.group(1) + str(mp), t, 1))
+        open(f, "w", encoding="utf-8", newline="").write(re.sub(r"(manpower\s*=\s*)\d+", lambda m: m.group(1) + str(mp), t, count=1))
     print("restored", len(old), "states"); raise SystemExit
 
 lore = {}
@@ -62,7 +62,7 @@ for lt, mln in LORE_POP.items():
     for s in sids:
         f = files[s]
         t = open(f, encoding="utf-8", errors="ignore").read()
-        open(f, "w", encoding="utf-8", newline="").write(re.sub(r"(manpower\s*=\s*)\d+", lambda m: m.group(1) + str(new[s]), t, 1))
+        open(f, "w", encoding="utf-8", newline="").write(re.sub(r"(manpower\s*=\s*)\d+", lambda m: m.group(1) + str(new[s]), t, count=1))
     report.append((lt, mln, cur, f"{len(sids)} states -> {sum(new.values())}"))
 for r in report: print(r)
 print("lore says TODO (left untouched):", TODO)

@@ -27,9 +27,9 @@ LORE = {
     "KTY": ("Бэйчжао", []),
     "BLK": ("Токомэ", ["Саппорока", "Нагоясу", "Осакара", "Фукусава"]),
     "SRK": ("Кумыс-Орда", ["Ак-Сарай", "Тамгабад", "Караван-Кала"]),
-    "TMR": ("Барбинсберг", []),
-    "SOY": ("Поридж-Сити", []),
-    "BRT": ("Большой Джон", []),
+    "TMR": ("Барбинсберг", ["Кёльнбург", "Дрезденвальд", "Мюнхенштадт", "Гамбургсхафен"]),
+    "SOY": ("Поридж-Сити", ["Нью-Бостон", "Спрингфилд", "Вашингтаун", "Чикагтаун", "Сиэттлвилл"]),
+    "BRT": ("Большой Джон", ["Йорквик", "Ливерпорт", "Мэнчестон", "Кентбридж", "Бристау"]),
     "KZZ": ("Станица Дарьевская", []),
     "CSL": ("Ставка Казуала", []),
 }
@@ -190,3 +190,28 @@ def write_yml(path, lang, entries):
     lines = [f"l_{lang}:"] + [f' {k}:0 "{v}"' for k, v in entries]
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text(chr(10).join(lines) + chr(10), encoding="utf-8-sig")
+
+
+def province_adjacency(M):
+    """set of (a, b) province id pairs that touch (4-neighbourhood in provinces.bmp)"""
+    M = Path(M)
+    d = {}
+    for l in open(M / "map/definition.csv", encoding="latin1"):
+        p = l.strip().split(";")
+        if len(p) > 4 and p[0].isdigit():
+            d[(int(p[1]) << 16) | (int(p[2]) << 8) | int(p[3])] = int(p[0])
+    pv = np.array(Image.open(M / "map/provinces.bmp").convert("RGB")).astype(np.int64)
+    key = (pv[..., 0] << 16) | (pv[..., 1] << 8) | pv[..., 2]
+    keys = np.array(sorted(d)); ids = np.array([d[k] for k in sorted(d)])
+    idx = ids[np.searchsorted(keys, key)]
+    pairs = set()
+    for a_, b_ in ((idx[:, :-1], idx[:, 1:]), (idx[:-1], idx[1:])):
+        m = a_ != b_
+        x = np.stack([np.minimum(a_[m], b_[m]), np.maximum(a_[m], b_[m])], 1)
+        pairs |= set(map(tuple, np.unique(x, axis=0).tolist()))
+    return pairs
+
+
+# docs/01-Contries-Description.md, "Население ..." lines, millions (lore is the source; other countries are TODO in the lore)
+LORE_POP = {"CSL": 30, "SVS": 120, "KZZ": 10, "BRT": 70, "IRK": 125, "IRR": 350, "MUS": 70, "TRV": 100,
+            "TMR": 100, "SOY": 80, "BLK": 100, "SRK": 40}
