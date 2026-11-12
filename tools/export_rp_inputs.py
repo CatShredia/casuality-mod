@@ -5,7 +5,7 @@
 Источник: docs/03-Map-Sketch.svg плюс правки из docs/08-map-fix.md (описаны в разделе EXTRA ниже).
 Масштаб: 1 единица SVG ~ 9,85 км, 1 единица^2 ~ 97 км^2, 1 единица SVG = 2,72 px.
 """
-import os, re, sys
+import json, os, re, sys
 from collections import deque
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -501,6 +501,7 @@ def stage3():
     img[:] = RIV["background"]
     n_runs = 0
     marks = []
+    all_runs = []
     for r in rivers:
         pts = []
         P = px(r)
@@ -533,6 +534,7 @@ def stage3():
                 for t in np.linspace(0, 1, n):
                     img[int(round(ya + (yb - ya) * t)), int(round(xa + (xb - xa) * t))] = RIV["river"]
             marks.append((run[0], run[-1]))
+            all_runs.append([[int(a), int(b)] for a, b in run])
             n_runs += 1
     blue = np.asarray(Image.fromarray(((img == np.array(RIV["river"])).all(-1)).astype(np.uint8) * 255).filter(ImageFilter.MaxFilter(3))) > 127   # русло 3 px: 1 px теряется при обработке в программе
     img[blue] = RIV["river"]
@@ -542,6 +544,8 @@ def stage3():
     d = os.path.join(OUT, "stage_03")
     os.makedirs(d, exist_ok=True)
     Image.fromarray(img, "RGB").save(os.path.join(d, "rivers.png"))
+    with open(os.path.join(d, "river_runs.json"), "w", encoding="utf-8") as f:       # линии рек для tools/paint_rivers.py
+        json.dump(all_runs, f)
     big = np.array(Image.fromarray(img, "RGB").filter(ImageFilter.MinFilter(3)))      # для превью реки жирнее
     Image.fromarray(big).resize((W // 4, H // 4), Image.NEAREST).save(os.path.join(d, "rivers_preview.png"))
     with open(os.path.join(d, "colors.txt"), "w", encoding="utf-8") as f:
