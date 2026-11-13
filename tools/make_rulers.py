@@ -11,6 +11,7 @@ Backups: no_commit/temp/backup_rulers/. Usage: python tools/make_rulers.py [--mo
 import argparse, csv, glob, re, shutil
 from pathlib import Path
 import lore_data as L
+import invented_lore as INV
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--mod", default=L.DEFAULT_MOD)
@@ -41,6 +42,8 @@ RULERS = {
     "CLB": ("Иванов Константин Алексеевич", "neutrality", "Технократия", "centrism"),
     "SRK": ("Хан Тимур Алпамысович Сарайский", "neutrality", "Степной ханизм", "despotism"),
 }
+LORE_ONLY = set(RULERS)
+RULERS = {**INV.INVENTED_RULERS, **RULERS}      # lore wins; INVENTED_RULERS fill the TODO gaps (docs/12)
 PLACEHOLDER = {"TMR": False, "ZLD": False, "ADL": False, "SVA": True, "FDP": True, "DMK": True, "CLB": True, "SRK": True}
 
 BK = L.REPO / "no_commit/temp/backup_rulers"
@@ -106,7 +109,7 @@ for lt, (name, grp, lore_ideo, sub) in RULERS.items():
         ht = re.sub(r"set_popularities\s*=\s*\{[^}]*\}", newblk, ht, count=1)
         hf.write_text(ht, encoding="utf-8", newline="")
         ruling_note = f"ruling_party {rp} -> {grp}"
-    rows.append((tag, lt, name, target, lore_ideo, sub or "", "placeholder" if PLACEHOLDER.get(lt) else "", done, ruling_note))
+    rows.append((tag, lt, name, target, lore_ideo, sub or "", ("INVENTED " if lt in INV.INVENTED_RULERS and lt not in LORE_ONLY else "") + ("placeholder sub-ideology" if PLACEHOLDER.get(lt) else ""), done, ruling_note))
 
 rep = L.REPO / "no_commit/temp/rulers_report.csv"
 with open(rep, "w", newline="", encoding="utf-8-sig") as f:

@@ -6,6 +6,7 @@ import glob, re
 from pathlib import Path
 import numpy as np
 from PIL import Image
+import invented_lore as INV
 
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_MOD = "C:/Users/catsh/CatshrediasDocs/Paradox Interactive/Hearts of Iron IV/mod/Ktits"
@@ -71,6 +72,9 @@ COUNTRY_STYLE = {"SVS": "slav", "CLB": "slav", "FDP": "slav", "ZLD": "slav", "CS
                  "BRT": "english", "SOY": "english", "IRK": "islamic", "IRR": "indic", "CEY": "indic", "MUS": "seasia",
                  "TRV": "stoner", "TMR": "german", "ADL": "german", "SVA": "norse", "DMK": "steppe", "SRK": "steppe",
                  "MGN": "mongol", "KTY": "chinese", "BLK": "japanese", "LED": "ice"}
+STYLES.update(INV.INVENTED_STYLES)
+for _t, _c in INV.INVENTED_COUNTRIES.items():          # Z01..Z05: invented names (docs/12), lore cities of docs/01 untouched
+    COUNTRY_STYLE[_t] = _c["style"]; LORE[_t] = (_c["capital"], _c["cities"])
 STYLE_DEFAULT = "numbered"     # FIG, Z01..Z05 and other lore countries without data: "<country> <n>" (plan variant 1)
 LORE_RU = {"FIG": "Фигария", "LED": "Ледышка", "Z01": "Заготовка-1", "Z02": "Заготовка-2", "Z03": "Заготовка-3", "Z04": "Заготовка-4", "Z05": "Заготовка-5", "CEY": "Цейлон"}
 
@@ -146,6 +150,7 @@ def load_mod(M):
             sid = prov_state.get(pid)
             if sid and tag2lore.get(states[sid]["owner"]) == p[0]:
                 capital_state[p[0]] = sid
+    country_ru.update({t: c["name"] for t, c in INV.INVENTED_COUNTRIES.items()})
     return {"tag2lore": tag2lore, "states": states, "country_ru": country_ru, "capital_state": capital_state, "tags": tags}
 
 
@@ -215,3 +220,24 @@ def province_adjacency(M):
 # docs/01-Contries-Description.md, "Население ..." lines, millions (lore is the source; other countries are TODO in the lore)
 LORE_POP = {"CSL": 30, "SVS": 120, "KZZ": 10, "BRT": 70, "IRK": 125, "IRR": 350, "MUS": 70, "TRV": 100,
             "TMR": 100, "SOY": 80, "BLK": 100, "SRK": 40}
+
+
+def province_centroids(M):
+    """{province id: (x, y)} centroid in pixels of provinces.bmp"""
+    M = Path(M)
+    d = {}
+    for l in open(M / "map/definition.csv", encoding="latin1"):
+        p = l.strip().split(";")
+        if len(p) > 4 and p[0].isdigit():
+            d[(int(p[1]) << 16) | (int(p[2]) << 8) | int(p[3])] = int(p[0])
+    pv = np.array(Image.open(M / "map/provinces.bmp").convert("RGB")).astype(np.int64)
+    key = (pv[..., 0] << 16) | (pv[..., 1] << 8) | pv[..., 2]
+    keys = np.array(sorted(d)); ids = np.array([d[k] for k in sorted(d)])
+    idx = ids[np.searchsorted(keys, key)]
+    n = int(idx.max()) + 1
+    H, W = idx.shape
+    cnt = np.maximum(np.bincount(idx.ravel(), minlength=n), 1)
+    ys, xs = np.mgrid[0:H, 0:W]
+    cx = np.bincount(idx.ravel(), weights=xs.ravel(), minlength=n) / cnt
+    cy = np.bincount(idx.ravel(), weights=ys.ravel(), minlength=n) / cnt
+    return {i: (float(cx[i]), float(cy[i])) for i in range(n)}, idx

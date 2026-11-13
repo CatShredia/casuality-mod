@@ -18,9 +18,10 @@ M = Path(a.mod)
 BACKUP = REPO / "no_commit/temp/backup_manpower.json"
 
 # docs/01-Contries-Description.md, "Население ..." lines, millions
-LORE_POP = L.LORE_POP
-TODO = ["ZLD", "ADL", "SVA", "FDP", "DMK", "CLB", "MGN", "KTY", "CEY"]   # lore says TODO
-NONE = ["FIG", "LED", "Z01", "Z02", "Z03", "Z04", "Z05"]                   # lore gives no number
+import invented_lore as INV
+LORE_POP = {**INV.INVENTED_POP, **L.LORE_POP}   # lore wins; INVENTED_POP fills the TODO gaps (docs/12)
+TODO = sorted(INV.INVENTED_POP)   # lore says TODO or nothing: filled with INVENTED values
+NONE = []
 
 files = {int(re.search(r"(\d+)\.txt$", f).group(1)): f for f in glob.glob(str(M / "history/states/*.txt"))}
 if a.restore:
@@ -56,7 +57,7 @@ for lt, mln in LORE_POP.items():
     cur = sum(st[s][1] for s in sids)
     if not sids or cur == 0:
         report.append((lt, mln, cur, "no states")); continue
-    target = mln * 1_000_000
+    target = int(mln * 1_000_000)
     new = {s: int(st[s][1] * target / cur) for s in sids}
     new[max(sids, key=lambda s: st[s][1])] += target - sum(new.values())   # exact total
     for s in sids:
@@ -65,5 +66,4 @@ for lt, mln in LORE_POP.items():
         open(f, "w", encoding="utf-8", newline="").write(re.sub(r"(manpower\s*=\s*)\d+", lambda m: m.group(1) + str(new[s]), t, count=1))
     report.append((lt, mln, cur, f"{len(sids)} states -> {sum(new.values())}"))
 for r in report: print(r)
-print("lore says TODO (left untouched):", TODO)
-print("no number in lore (left untouched):", NONE)
+print("INVENTED population (not lore, docs/12):", TODO)

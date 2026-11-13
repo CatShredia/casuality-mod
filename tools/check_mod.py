@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 import lore_data as L
+import invented_lore as INV
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--mod", default=L.DEFAULT_MOD)
@@ -65,8 +66,8 @@ check(not vp_out, "victory points: all lie in their own state", f"victory points
 # population against the lore
 tot = collections.Counter()
 for s in states.values(): tot[tag2lore.get(s["owner"])] += s["manpower"]
-bad_pop = {lt: (round(tot[lt] / 1e6, 2), m) for lt, m in L.LORE_POP.items() if abs(tot[lt] - m * 1_000_000) > 12}
-check(not bad_pop, f"population: {len(L.LORE_POP)} countries match the lore totals", f"population differs from the lore (now, lore, millions): {bad_pop}")
+bad_pop = {lt: (round(tot[lt] / 1e6, 2), m) for lt, m in {**INV.INVENTED_POP, **L.LORE_POP}.items() if abs(tot[lt] - int(m * 1_000_000)) > 12}
+check(not bad_pop, f"population: {len(L.LORE_POP) + len(INV.INVENTED_POP)} countries match their totals ({len(L.LORE_POP)} lore, {len(INV.INVENTED_POP)} invented)", f"population differs from the lore (now, lore, millions): {bad_pop}")
 
 # ---- localisation ----
 def load_loc(path):
