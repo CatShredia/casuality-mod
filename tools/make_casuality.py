@@ -18,6 +18,11 @@ from make_splits import SPLITS  # parents of releasable countries K01-K35 = "big
 CAS_TT = set()  # scale deltas used in decisions/events -> tooltip loc keys ktits_cas_tt_p10 / ktits_cas_tt_m5
 def tt_key(d):
     return "ktits_cas_tt_" + ("p%d" % d if d > 0 else "m%d" % -d)
+REQ = set()  # readable scale conditions: ("ge"|"lt", N) -> loc key ktits_cas_req_ge50
+def req(op, n):
+    REQ.add((op, n))
+    cmp = "greater_than_or_equals" if op == "ge" else "less_than"
+    return ("custom_trigger_tooltip = { tooltip = ktits_cas_req_%s%d check_variable = { var = ktits_casuality value = %d compare = %s } }" % (op, n, n, cmp))
 def cas_tt(d, tabs="\t\t\t"):
     CAS_TT.add(d)
     return tabs + "custom_effect_tooltip = " + tt_key(d) + "\n"
@@ -60,13 +65,15 @@ DECISIONS = [
 BIG = sorted(SPLITS)  # tags of big countries
 # AI weights: fight decisions prefer the stronger effect at a high scale, support decisions follow docs/global_mechanics/Casuality-Mechanic.md priority
 AI_W = {'ktits_cas_fight_5': 60, 'ktits_cas_fight_4': 50, 'ktits_cas_fight_3': 40, 'ktits_cas_fight_0': 30, 'ktits_cas_fight_2': 20, 'ktits_cas_fight_1': 10,
-        'ktits_cas_support_5': 60, 'ktits_cas_support_6': 50, 'ktits_cas_support_3': 40, 'ktits_cas_support_4': 30, 'ktits_cas_support_2': 20, 'ktits_cas_support_1': 10}
+        'ktits_cas_support_5': 60, 'ktits_cas_support_6': 50, 'ktits_cas_support_6_free': 50, 'ktits_cas_support_3': 40, 'ktits_cas_support_4': 30, 'ktits_cas_support_2': 20, 'ktits_cas_support_1': 10}
 RAPP = "ktits_cas_ai_rapprochement"   # country flag: AI course "Сближение" (no flag = course "Борьба")
 # Game rule "Глобальная Казуальность" (custom game rules screen, group AI behavior): (option, ru name, en name, start chance % of the course "Сближение", multiplier of the 180-day chance)
 # Only without the historical AI focus. Default = author's 5 % rule; the other options and numbers are INVENTED (docs/lore/Invented-Lore.md, docs/global_mechanics/Casuality-Mechanic.md)
 CAS_RULE = "ktits_global_casuality"
 CAS_RULE_OPTS = [("DEFAULT", "Крайне низкая", "Extremely low", 5, 1), ("RAISED", "Повышенная", "Raised", 15, 2),
                  ("HIGH", "Высокая", "High", 35, 4), ("EXTREME", "Всемирное болото", "World swamp", 70, 8)]
+FOC = "ktits_cas_rest"          # focus "Право на отдых" (tools/make_focuses.py): support decisions need it (docs/global_mechanics/Casuality-Mechanic.md)
+FREE = "ktits_cas_support_6"     # "Дома Безделья": a no-cooldown twin <key>_free is shown while the timed flag ktits_cas_f_houses (focus) lives
 EDU_MULT = [1.5, 1.25, 1.0, 0.85, 0.7, 0.5]  # growth multiplier by ktits_edu_0..5 (docs/global_mechanics/Casuality-Mechanic.md)
 FIGHT_KEYS = [d[0] for d in DECISIONS if d[6] == 'fight']
 
@@ -189,7 +196,9 @@ COSTS = "".join(
     "\tif = {\n\t\tlimit = { OR = { has_idea = ktits_edu_4 has_idea = ktits_edu_5 } }\n" + "".join(
     f"\t\tmultiply_variable = {{ var = ktits_cas_cost_{k.rsplit('_', 1)[1]} value = 0.75 }}\n\t\tround_variable = ktits_cas_cost_{k.rsplit('_', 1)[1]}\n" for k in FIGHT_KEYS) + "\t}\n" + \
     "\tif = {\n\t\tlimit = { OR = { has_idea = ktits_edu_0 has_idea = ktits_edu_1 } }\n" + "".join(
-    f"\t\tmultiply_variable = {{ var = ktits_cas_cost_{k.rsplit('_', 1)[1]} value = 1.25 }}\n\t\tround_variable = ktits_cas_cost_{k.rsplit('_', 1)[1]}\n" for k in FIGHT_KEYS) + "\t}\n"
+    f"\t\tmultiply_variable = {{ var = ktits_cas_cost_{k.rsplit('_', 1)[1]} value = 1.25 }}\n\t\tround_variable = ktits_cas_cost_{k.rsplit('_', 1)[1]}\n" for k in FIGHT_KEYS) + "\t}\n" + \
+    "\t# focus \"Трудовая повинность\": fight decisions 10 % cheaper\n\tif = {\n\t\tlimit = { has_country_flag = ktits_cas_f_labour }\n" + "".join(
+    f"\t\tmultiply_variable = {{ var = ktits_cas_cost_{k.rsplit('_', 1)[1]} value = 0.9 }}\n\t\tround_variable = ktits_cas_cost_{k.rsplit('_', 1)[1]}\n" for k in FIGHT_KEYS) + "\t}\n"
 POP_STEPS = "".join(
     f"\tif = {{\n\t\tlimit = {{ casuality > {i / 10 - 0.001:.3f} }}\n\t\tadd_to_variable = {{ var = ktits_cas_g value = 1 }}\n\t}}\n" for i in range(1, 11))
 w("common/scripted_effects/ktits_casuality_monthly_effects.txt", f"""# edu cost of the fight decisions: -25 % PP at education 4-5, +25 % at 0-1 (the decisions read the variables ktits_cas_cost_N)
@@ -210,7 +219,18 @@ ktits_casuality_growth = {{
 	}}
 	clamp_variable = {{ var = ktits_cas_n min = 0 max = 3 }}
 	add_to_variable = {{ var = ktits_cas_g value = ktits_cas_n }}
-{POP_STEPS}{edu_chain(lambda i: f"		multiply_variable = {{ var = ktits_cas_g value = {EDU_MULT[i]} }}" + chr(10))}	# floor: -0.49 then round to the nearest integer (fractions here are at most .95)
+	# focus "Осушение низин": the neighbour component is 1 lower (not below 0)
+	if = {{
+		limit = {{ has_country_flag = ktits_cas_f_drain }}
+		add_to_variable = {{ var = ktits_cas_g value = -1 }}
+		clamp_variable = {{ var = ktits_cas_g min = 0 max = 100 }}
+	}}
+{POP_STEPS}{edu_chain(lambda i: f"		multiply_variable = {{ var = ktits_cas_g value = {EDU_MULT[i]} }}" + chr(10))}	# focus "Школы труда": growth x0.9
+	if = {{
+		limit = {{ has_country_flag = ktits_cas_f_schools }}
+		multiply_variable = {{ var = ktits_cas_g value = 0.9 }}
+	}}
+	# floor: -0.49 then round to the nearest integer (fractions here are at most .95)
 	add_to_variable = {{ var = ktits_cas_g value = -0.49 }}
 	round_variable = ktits_cas_g
 	clamp_variable = {{ var = ktits_cas_g min = 0 max = 100 }}
@@ -262,6 +282,7 @@ ktits_casuality_ai_start = {{
 			NOT = {{ ktits_is_kazualia = yes }}
 			is_historical_focus_on = no
 			NOT = {{ ktits_is_big_country = yes }}
+				NOT = {{ has_country_flag = ktits_cas_f_anticas }}
 		}}
 {RULE_START}
 		random = {{
@@ -277,6 +298,7 @@ ktits_casuality_ai_monthly = {{
 			is_ai = yes
 			has_country_flag = {RAPP}
 			OR = {{
+					has_country_flag = ktits_cas_f_anticas
 				is_historical_focus_on = yes
 				ktits_is_big_country = yes
 				has_war_with = {KAZ}
@@ -295,6 +317,7 @@ ktits_casuality_ai_monthly = {{
 			NOT = {{ ktits_is_big_country = yes }}
 			NOT = {{ has_country_flag = {RAPP} }}
 			NOT = {{ has_country_flag = ktits_cas_ai_cd }}
+				NOT = {{ has_country_flag = ktits_cas_f_anticas }}
 		}}
 		set_country_flag = {{ flag = ktits_cas_ai_cd days = 180 value = 1 }}
 		set_variable = {{ var = ktits_cas_ai_chance value = 2 }}
@@ -497,10 +520,9 @@ w("common/decisions/categories/ktits_casuality_categories.txt", """ktits_casuali
 dec = "ktits_casuality_category = {\n"
 for key, _, _, delta, cost, cd, side, lo, ex in DECISIONS:
     extra = "".join("\t\t\t" + e + "\n" for k_ in ex.split("+") for e in EXTRA.get(k_, []))
-    avail = ("check_variable = { var = ktits_casuality value = %d compare = greater_than_or_equals }" % max(lo, 1) if side == "fight"
-             else "check_variable = { var = ktits_casuality value = 100 compare = less_than }")
+    avail = req("ge", max(lo, 1)) if side == "fight" else req("lt", 100)
     if side != "fight" and lo:
-        avail += "\n\t\t\tcheck_variable = { var = ktits_casuality value = %d compare = greater_than_or_equals }" % lo
+        avail += "\n\t\t\t" + req("ge", lo)
     cost_var = "ktits_cas_cost_" + key.rsplit("_", 1)[1]
     if side == "fight":   # the cost depends on education (+-25 %): variable cost set by ktits_casuality_costs
         avail += "\n\t\t\tcheck_variable = { var = %s value = 1 compare = greater_than_or_equals }" % cost_var
@@ -510,22 +532,32 @@ for key, _, _, delta, cost, cd, side, lo, ex in DECISIONS:
         ai = f"base = {AI_W[key]}\n\t\t\tmodifier = {{ factor = 0 has_country_flag = {RAPP} }}"
     else:
         ai = f"base = {AI_W[key]}\n\t\t\tmodifier = {{ factor = 0 NOT = {{ has_country_flag = {RAPP} }} }}"
-    delta_eff = "" if delta == 0 else (cas_tt(delta) + "\t\t\tadd_to_variable = { var = ktits_casuality value = %d }\n\t\t\tclamp_variable = { var = ktits_casuality min = 0 max = 100 }\n\t\t\tktits_casuality_update = yes\n" % delta)
-    dec += f"""
-	{key} = {{
+    delta_eff = "" if delta == 0 else (cas_tt(delta) + "\t\t\tadd_to_variable = { var = ktits_casuality value = %d }\n\t\t\tclamp_variable = { var = ktits_casuality min = 0 max = 100 }\n\t\t\thidden_effect = { ktits_casuality_update = yes }\n" % delta)
+    # support decisions need the focus "Право на отдых" (author's rule); "Дома Безделья" has a no-cooldown twin while the focus flag lives
+    gate = ("\t\t\thas_completed_focus = " + FOC + "\n") if side == "support" else ""
+    variants = [(key, cd, "NOT = { has_country_flag = ktits_cas_f_houses }" if key == FREE else None)]
+    if key == FREE:
+        variants.append((key + "_free", None, "has_country_flag = ktits_cas_f_houses"))
+    for vkey, vcd, vvis in variants:
+        vis = "NOT = { ktits_is_kazualia = yes }" + (("\n\t\t\t" + vvis) if vvis else "")
+        re_en = f"\t\tdays_re_enable = {vcd}\n" if vcd is not None else ""
+        v_ai = ai if vkey == key else ai.replace(f"base = {AI_W[key]}", f"base = {AI_W[vkey]}", 1)
+        dec += f"""
+	{vkey} = {{
 		icon = ktits_casuality
-		visible = {{ NOT = {{ ktits_is_kazualia = yes }} }}
+		visible = {{
+			{vis}
+		}}
 		available = {{
 			{avail}
-			NOT = {{ has_country_flag = ktits_casuality_fallen }}
+{gate}			NOT = {{ has_country_flag = ktits_casuality_fallen }}
 		}}
 		cost = {cost_var if side == "fight" else cost}
-		days_re_enable = {cd}
-		fire_only_once = no
+{re_en}		fire_only_once = no
 		complete_effect = {{
 {extra}{delta_eff}		}}
 		ai_will_do = {{
-			{ai}
+			{v_ai}
 		}}
 	}}
 """
@@ -627,7 +659,11 @@ country_event = {{
 			ktits_return_lands = yes
 			set_politics = {{ ruling_party = casuality }}
 			add_popularity = {{ ideology = casuality popularity = 0.5 }}
-			ktits_split_on_fall = yes
+			# focus «Под крылом Казуалии»: the country keeps its lands (no break-up into Kxx parts)
+			if = {{
+				limit = {{ NOT = {{ has_country_flag = ktits_cas_f_wing }} }}
+				ktits_split_on_fall = yes
+			}}
 			if = {{
 				limit = {{ country_exists = {KAZ} }}
 				{KAZ} = {{ puppet = ROOT }}
@@ -724,7 +760,11 @@ for eid, kind, lo, needs_kaz, _t, _d, opts in RAND_EVENTS:
     best_f = min(range(len(opts)), key=lambda k: opts[k][1]); best_r = max(range(len(opts)), key=lambda k: opts[k][1])
     for i, (_n, delta, pp, stab, pop) in enumerate(opts):
         eff = "" if note else "\t\t\tset_country_flag = { flag = " + flag + " days = 180 value = 1 }\n"
-        if delta: eff += cas_tt(delta) + "\t\t\tadd_to_variable = { var = ktits_casuality value = " + str(delta) + " }\n\t\t\tclamp_variable = { var = ktits_casuality min = 0 max = 100 }\n\t\t\tktits_casuality_update = yes\n"
+        if delta > 1:   # focus «Министерство Бодрости»: increases from events are halved, rounded down (delta 1 would give 0: not used)
+            eff += (cas_tt(delta) + "\t\t\tif = {\n\t\t\t\tlimit = { has_country_flag = ktits_cas_f_ministry }\n\t\t\t\tadd_to_variable = { var = ktits_casuality value = " + str(delta // 2) + " }\n\t\t\t}\n"
+                    "\t\t\tif = {\n\t\t\t\tlimit = { NOT = { has_country_flag = ktits_cas_f_ministry } }\n\t\t\t\tadd_to_variable = { var = ktits_casuality value = " + str(delta) + " }\n\t\t\t}\n"
+                    "\t\t\tclamp_variable = { var = ktits_casuality min = 0 max = 100 }\n\t\t\thidden_effect = { ktits_casuality_update = yes }\n")
+        elif delta: eff += cas_tt(delta) + "\t\t\tadd_to_variable = { var = ktits_casuality value = " + str(delta) + " }\n\t\t\tclamp_variable = { var = ktits_casuality min = 0 max = 100 }\n\t\t\thidden_effect = { ktits_casuality_update = yes }\n"
         if pp: eff += "\t\t\tadd_political_power = " + str(pp) + "\n"
         if stab: eff += "\t\t\tadd_timed_idea = { idea = " + sidea[stab] + " days = " + str(stab[1]) + " }\n"
         if pop: eff += "\t\t\tadd_popularity = { ideology = casuality popularity = " + str(pop) + " }\n"
@@ -749,6 +789,7 @@ for k, n, d, *_ in TIERS:
     add(f"ktits_cas_{k}", f"Казуальность: {n}"); add(f"ktits_cas_{k}_desc", d)
 for key, n, d, *_ in DECISIONS:
     add(key, n); add(f"{key}_desc", d)
+    if key == FREE: add(key + "_free", n); add(key + "_free_desc", d + " (Без перезарядки: действует «Дома Безделья по всей стране».)")
 add("ktits_cas_call_1", "Зов болот")
 add("ktits_cas_call_1_desc", "Солдаты слышат, что за линией фронта не нужно ни стрелять, ни копать окопы. Целые роты уходят в болота «на минутку» и не возвращаются.")
 add("ktits_cas_call_2", "Зов болот: второй голос")
@@ -760,7 +801,10 @@ add("ktits_cas_call_swamp_desc", "Ставка Казуала через гро�
 add("ktits_casuality.1.t", "Страна погрузилась в Казуальность")
 add("ktits_casuality.1.d", "Никто уже не помнит, когда в последний раз кто-то спешил. [Root.GetName] окончательно приняла Казуальность: дела решаются сами собой, власть перешла к тем, кто умеет ничего не делать, а Ставка Казуала принимает присягу. Единое государство развалилось: каждая область выбрала собственное болото.")
 add("ktits_casuality.1.a", "Всё само получится...")
-for d in sorted(CAS_TT | {10}):
+for op, n in sorted(REQ):
+    add("ktits_cas_req_%s%d" % (op, n), ("Казуальность не меньше §Y%d§! (сейчас [?ktits_casuality|0])" if op == "ge" else "Казуальность меньше §Y%d§! (сейчас [?ktits_casuality|0])") % n,
+        ("Casuality at least §Y%d§! (now [?ktits_casuality|0])" if op == "ge" else "Casuality below §Y%d§! (now [?ktits_casuality|0])") % n)
+for d in sorted(CAS_TT | {10, -10, -20, -15, 5, 20}):   # the extra ones are used by the focuses (tools/make_focuses.py)
     add(tt_key(d), ("Казуальность: §R+%d§!" % d) if d > 0 else ("Казуальность: §G%d§!" % d), ("Casuality: §R+%d§!" % d) if d > 0 else ("Casuality: §G%d§!" % d))
 add("ktits_casuality_31_tt", "Решение «Последний рывок» доступно (шкала не ниже 95).")
 add("ktits_casuality_fall_tt", "Правящая партия станет Казуальностью, захваченные земли вернутся прежним владельцам, страна станет марионеткой Казуалии, а все части, которые можно освободить, станут отдельными марионетками Казуалии.")
