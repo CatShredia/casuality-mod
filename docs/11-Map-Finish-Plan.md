@@ -1,12 +1,12 @@
-# План доводки карты (ветка `sprint-03-map-sprints`)
+# План доводки карты (ветка `sprint-03-map-sprints`; продолжено в `sprint-04-global-mechanics`)
 
 Цель: закончить работу с RandomParadox и довести мод Ktits до играбельной карты скриптами. Ветка создана от `main` (d0cfa6f).
 
-## Исходное состояние (экспорт 10.11.2026, 18:10)
+## Исходное состояние (экспорт 10.11.2026, 18:10; историческая справка)
 
 - 8 200 провинций (`map/definition.csv`), суша 6 176, море 1 960 (по `provinces.png`).
 - 683 штата, 28 тегов стран, провинций на штат около 9,0.
-- Реки: в `rivers.bmp` около 3 000 пикселей против около 90 000 в ваниле (38 истоков против 317).
+- Реки: в `rivers.bmp` около 3 000 пикселей против около 90 000 в ваниле (38 истоков против 317). После `paint_rivers.py` по `check_mod.py`: 20 783 пикселя реки, 105 истоков.
 - Названия штатов и стран программа даёт по своему генератору, не по лору.
 
 ## Главное правило
@@ -25,7 +25,13 @@
 | 6 | `tools/set_terrain.py` | Тип местности провинций: болота, пустыня, джунгли и др. по лору (болот отдельным типом программа не даёт) | карты климата и лора | `map/definition.csv`, `map/terrain` |
 | 7 | `tools/name_regions.py` | Названия стратегических районов и континентов | лор | `localisation` |
 | 8 | `tools/check_mod.py` | Проверки: число провинций и штатов, провинции без штата, штаты без владельца, теги без localisation, пустые строки localisation, пикселей реки на воде | весь `Ktits` | ничего не пишет |
-| 9 | `tools/post_export.py` | Запускает 1–7 и 8, затем `zip_mod.py` | | |
+| 9 | `tools/post_export.py` | Запускает 1–7, затем 10–14 и 8, затем `zip_mod.py` | | |
+| 10 | `tools/make_ideologies.py` | 6 групп идеологий, подтипы, интерфейс партий (docs/13, раздел 3) | `tools/ideologies_data.py`, ванильные файлы игры | `common/ideologies`, `interface`, `localisation` |
+| 11 | `tools/make_education.py` | Образованность (6 уровней) как национальные духи | лор, `INVENTED_LEVEL` | `common/ideas`, `history/countries`, `localisation` |
+| 12 | `tools/make_casuality.py` | Глобальная механика «Казуальность»: шкала, ступени, решения, событие, графическая шкала (docs/14) | придуманные значения в самом скрипте | `common/*`, `events`, `interface`, `gfx/interface/ktits`, `localisation` |
+| 13 | `tools/make_splits.py` | Выделяемые государства `K01`–`K35` больших стран: теги, ядра на штатах, заблокированные эффекты выделения (docs/15) | `history/states`, карта провинций | `common/country_tags`, `common/countries`, `history/countries`, `history/states` (ядра), `localisation` |
+
+Порядок в `post_export.py`: rivers → population → states → cities → countries → ideologies → rulers → casuality → education → splits → terrain → regions → check → zip. Скрипт 5 (`make_rulers.py`) учитывает идеологии из `ideologies_data.py`, поэтому идёт после 10; `make_splits.py` идёт после всех, кто пишет в `history/states`.
 
 ## Порядок и зависимости
 

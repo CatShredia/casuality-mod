@@ -12,8 +12,8 @@ INVENTED_POP = {
 
 # rulers: lore tag -> (name, ideology group, text, vanilla sub-ideology). Names follow each country's naming style from docs/01.
 INVENTED_RULERS = {
-    "IRK": ("Низам Махмуд Хайрулла-хан Лахарский", "neutrality", "самодержавие, марионетка Бриттана (придумано)", "despotism"),
-    "IRR": ("Махараджа Радж Нараян Сингх", "neutrality", "княжеское самодержавие, марионетка Бриттана (придумано)", "despotism"),
+    "IRK": ("Низам Махмуд Хайрулла-хан Лахарский", "theology", "самодержавие, марионетка Бриттана (придумано)", "theology_ideology"),
+    "IRR": ("Махараджа Радж Нараян Сингх", "theology", "княжеское самодержавие, марионетка Бриттана (придумано)", "theology_ideology"),
     "MUS": ("Король Рама Чакрават Аюттарский", "neutrality", "монархия (docs/01: монархия и верховный правитель; имя придумано)", "despotism"),
     "TRV": ("Президент Чилл Расслабов", "democratic", "федеративная республика (придумано)", "liberalism"),
     "MGN": ("Каган Алтан-Бор Хэнтийский", "neutrality", "улусная монархия (придумано)", "despotism"),
