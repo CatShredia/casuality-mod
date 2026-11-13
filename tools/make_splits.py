@@ -2,8 +2,8 @@
 
 For each big country (SPLITS) its states are divided into contiguous parts (region growing over state adjacency, parent keeps the part with
 its capital). Each other part becomes a new country K01..K35 (tags file 03_ktits_splits.txt, country file, colour, flag copied from the parent,
-history without states, neutral ruler, localisation). Release is BLOCKED: effects ktits_release_Kxx exist but are guarded by the trigger
-ktits_splits_enabled = { always = no }; nothing calls them yet (the release mechanic is future work).
+history without states, neutral ruler, localisation). Manual release is BLOCKED: effects ktits_release_Kxx are guarded by ktits_splits_enabled (= the country fell into casuality), so only
+ktits_split_on_fall (called by the fall event of make_casuality.py) releases the parts, makes them casuality countries and puppets of Kazualia.
 Writes: common/country_tags/03_ktits_splits.txt, common/countries/Kxx.txt, history/countries/Kxx - *.txt, common/characters/Kxx.txt,
 common/scripted_triggers/ktits_splits_triggers.txt, common/scripted_effects/ktits_splits_effects.txt, gfx/flags copies, localisation,
 and no_commit/temp/splits_report.csv (+ docs table printed).
@@ -120,9 +120,9 @@ if __name__ == "__main__":
             f"capital = {cap}\n\nset_politics = {{\n\truling_party = neutrality\n\tlast_election = \"1936.1.1\"\n\telection_frequency = 48\n\telections_allowed = no\n}}\n"
             "set_popularities = {\n\tdemocratic = 0\n\tfascism = 0\n\tcommunism = 0\n\tneutrality = 100\n\tcasuality = 0\n\ttheology = 0\n}\n\n"
             f"recruit_character = {tag}_leader\n", encoding="utf-8", newline="\n")
-        (M / "common/characters" / f"{tag}.txt").write_text(
-            f"characters = {{\n\t{tag}_leader = {{\n\t\tname = \"Правитель {nm}\"\n\t\tcountry_leader = {{\n\t\t\tideology = oligarchism\n\t\t\ttraits = {{ }}\n\t\t\texpire = \"1965.1.1.1\"\n\t\t\tid = -1\n\t\t}}\n\t}}\n}}\n",
-            encoding="utf-8-sig")
+        leader = ("\t{t}_leader = {{\n\t\tname = \"Правитель {n}\"\n\t\tcountry_leader = {{\n\t\t\tideology = oligarchism\n\t\t\ttraits = {{ }}\n\t\t\texpire = \"1965.1.1.1\"\n\t\t\tid = -1\n\t\t}}\n\t}}\n"
+                  "\t{t}_casuality_leader = {{\n\t\tname = \"Казуал-Предводитель\"\n\t\tcountry_leader = {{\n\t\t\tideology = casuality_ideology\n\t\t\ttraits = {{ }}\n\t\t\texpire = \"1965.1.1.1\"\n\t\t\tid = -1\n\t\t}}\n\t}}\n").format(t=tag, n=nm)
+        (M / "common/characters" / f"{tag}.txt").write_text("characters = {\n" + leader + "}\n", encoding="utf-8-sig")
         for d in ("gfx/flags", "gfx/flags/medium", "gfx/flags/small"):
             for f in (M / d).glob(f"{parent}*.tga"):
                 shutil.copy2(f, M / d / f.name.replace(parent, tag, 1))
@@ -139,10 +139,19 @@ if __name__ == "__main__":
 
     (M / "common/country_tags/03_ktits_splits.txt").write_text("".join(f'{t} = "countries/{t}.txt"\n' for t, *_ in entries), encoding="utf-8")
     (M / "common/scripted_triggers/ktits_splits_triggers.txt").write_text(
-        "# the release of big countries' parts is blocked until the release mechanic exists\nktits_splits_enabled = {\n\talways = no\n}\n", encoding="utf-8")
-    eff = "".join(
-        f"ktits_release_{t} = {{\n\tif = {{\n\t\tlimit = {{ ktits_splits_enabled = yes }}\n\t\t{t} = {{\n" +
-        "".join(f"\t\t\ttransfer_state = {s}\n" for s in sts) + "\t\t}\n\t}\n}\n\n" for t, p, nm, sts, *_ in entries)
+        "# release of the parts of a big country is allowed only for a country that has fallen into casuality (the manual release mechanic is blocked)\nktits_splits_enabled = {\n\thas_country_flag = ktits_casuality_fallen\n}\n", encoding="utf-8")
+    KAZ = {v: k for k, v in info["tag2lore"].items()}["CSL"]
+    eff = ""
+    for t, p, nm, sts, *_ in entries:
+        moves = "".join("\t\tif = {\n\t\t\tlimit = { %d = { is_owned_by = ROOT } }\n\t\t\t%s = { transfer_state = %d }\n\t\t}\n" % (x, t, x) for x in sts)
+        eff += ("ktits_release_%s = {\n\tif = {\n\t\tlimit = { ktits_splits_enabled = yes }\n%s"
+                "\t\tif = {\n\t\t\tlimit = { country_exists = %s }\n\t\t\t%s = {\n\t\t\t\tset_country_flag = ktits_casuality_fallen\n\t\t\t\tset_variable = { var = ktits_casuality value = 100 }\n"
+                "\t\t\t\tset_politics = { ruling_party = casuality }\n\t\t\t\tadd_popularity = { ideology = casuality popularity = 0.5 }\n\t\t\t}\n"
+                "\t\t\tif = {\n\t\t\t\tlimit = { country_exists = %s }\n\t\t\t\t%s = { puppet = %s }\n\t\t\t}\n\t\t}\n\t}\n}\n\n") % (t, moves, t, t, KAZ, KAZ, t)
+    by_parent = {}
+    for t, p, *_ in entries: by_parent.setdefault(p, []).append(t)
+    eff += ("# called by the fall event ktits_casuality.1: every part of the fallen big country is released and becomes a puppet of Kazualia\nktits_split_on_fall = {\n" +
+            "".join("\tif = {\n\t\tlimit = { original_tag = %s }\n%s\t}\n" % (p, "".join("\t\tktits_release_%s = yes\n" % t for t in ts)) for p, ts in by_parent.items()) + "}\n")
     (M / "common/scripted_effects/ktits_splits_effects.txt").write_text(eff, encoding="utf-8")
 
     for lang, conv in (("russian", lambda s: s), ("english", L.translit)):

@@ -192,6 +192,7 @@ country_event = {{
 			}}
 			set_politics = {{ ruling_party = casuality }}
 			add_popularity = {{ ideology = casuality popularity = 0.5 }}
+			ktits_split_on_fall = yes
 			if = {{
 				limit = {{ country_exists = {KAZ} }}
 				{KAZ} = {{ puppet = ROOT }}
@@ -206,6 +207,60 @@ country_event = {{
 }}
 """)
 
+# ---- random events (docs/14, "Случайные события"; all INVENTED) ----
+# (id, kind, min scale, needs Kazualia, ru title, ru text, [(option ru, delta, pp, (stab_value, days) or None, popularity or 0)])
+RAND_EVENTS = [
+    (10, "up", 1, False, "Туман с болот", "Утром над городами лёг тёплый туман с запахом тины. Рабочие стоят у проходных и не решаются войти: «Чего спешить, всё равно ничего не видно».",
+     [("Переждём", 5, 0, None, 0), ("Объявить рабочий день", 2, -10, None, 0)]),
+    (11, "up", 10, False, "Бродячий проповедник", "По сёлам ходит человек в болотных сапогах и рассказывает, что Священный-Архо-Казуал не работал ни дня и ни в чём не знал нужды. Слушают его всё охотнее.",
+     [("Пусть говорит", 8, 0, None, 0), ("Арестовать", 3, 0, (-0.02, 30), 0)]),
+    (12, "up", 25, False, "Урожай сам собой", "Поля, которые никто не засевал, дали урожай. Агрономы разводят руками. Крестьяне делают вывод: трудиться было необязательно.",
+     [("Чудо!", 10, 0, (0.03, 60), 0), ("Засекретить", 4, -25, None, 0)]),
+    (13, "up", 50, False, "Опустевший цех", "Вечерняя смена целого завода разошлась по домам ещё до гудка. План при этом выполнен - никто не может понять как.",
+     [("Не трогать то, что работает", 12, 0, None, 0), ("Расследование", 5, -50, None, 0)]),
+    (14, "up", 75, True, "Письмо из Казуалии", "В почтовых ящиках по всей стране появились открытки с видами болот и подписью «Приезжайте. Здесь не надо стараться».",
+     [("Пусть читают", 15, 0, None, 0.03), ("Изъять почту", 6, -75, None, 0)]),
+    (20, "down", 1, False, "Стахановец", "Простой токарь за смену перевыполнил норму в десять раз. Газеты печатают его портрет, а в цехах спорят, правда ли так можно.",
+     [("Наградить орденом", -5, -10, None, 0), ("Скромно отметить", -2, 0, None, 0)]),
+    (21, "down", 10, False, "Засуха на болотах", "Жаркое лето высушило топи. Без привычной сырости и дурмана люди будто проснулись и с удивлением смотрят на брошенные дела.",
+     [("Воспользоваться моментом", -8, -25, None, 0), ("Само пройдёт", -3, 0, None, 0)]),
+    (22, "down", 25, False, "Обрушение моста", "Мост, который годами «чинился сам», рухнул вместе с поездом. Страна в трауре, но многие впервые задумались, к чему ведёт безделье.",
+     [("Показательный суд", -10, 0, (-0.03, 60), 0), ("Тихо отстроить", -5, -50, None, 0)]),
+    (23, "down", 50, False, "Голодная зима", "Склады пусты: урожай, «который соберётся сам», так и сгнил в полях. Люди берутся за лопаты, чтобы выжить.",
+     [("Трудовые отряды", -15, 0, (-0.05, 90), 0), ("Просить помощи", -8, -100, None, 0)]),
+    (24, "down", 75, False, "Пробуждение", "Учитель из глухой деревни поднял учеников, затем село, затем округ. Движение «Проснись!» расходится по стране быстрее любой агитации.",
+     [("Поддержать движение", -20, -75, None, 0), ("Опасно, распустить", -5, 0, (0.02, 60), 0)]),
+]
+stab_ideas = sorted({o[3] for e in RAND_EVENTS for o in e[6] if o[3]})
+sidea = {v: f"ktits_cas_ev_stab_{i}" for i, v in enumerate(stab_ideas)}
+w("common/ideas/ktits_casuality_event_ideas.txt", "ideas = {\n\tcountry = {\n" + "".join(
+    "\t\t" + sidea[v] + " = {\n\t\t\tpicture = ktits_casuality\n\t\t\tallowed = { always = no }\n\t\t\tallowed_civil_war = { always = yes }\n\t\t\tremoval_cost = -1\n"
+    "\t\t\tmodifier = {\n\t\t\t\tstability_factor = " + str(v[0]) + "\n\t\t\t}\n\t\t}\n" for v in stab_ideas) + "\t}\n}\n")
+rev = ""
+for eid, kind, lo, needs_kaz, _t, _d, opts in RAND_EVENTS:
+    # frequency: "up" events more often at a high scale, "down" events more often at a low scale
+    mods = ("\t\t\tmodifier = { factor = 0.6 check_variable = { var = ktits_casuality value = 50 compare = greater_than_or_equals } }\n"
+            "\t\t\tmodifier = { factor = 0.6 check_variable = { var = ktits_casuality value = 75 compare = greater_than_or_equals } }\n") if kind == "up" else \
+           ("\t\t\tmodifier = { factor = 0.6 check_variable = { var = ktits_casuality value = 25 compare = less_than } }\n"
+            "\t\t\tmodifier = { factor = 0.6 check_variable = { var = ktits_casuality value = 10 compare = less_than } }\n")
+    kaz = ("\t\tcountry_exists = " + KAZ + "\n") if needs_kaz else ""
+    flag = "ktits_cas_ev_" + str(eid)
+    rev += ("\ncountry_event = {\n\tid = ktits_casuality." + str(eid) + "\n\ttitle = ktits_casuality." + str(eid) + ".t\n\tdesc = ktits_casuality." + str(eid) + ".d\n"
+            "\tpicture = GFX_report_event_ktits_casuality\n\tfire_only_once = no\n\n\ttrigger = {\n\t\tNOT = { ktits_is_kazualia = yes }\n"
+            "\t\tNOT = { has_country_flag = ktits_casuality_fallen }\n\t\tNOT = { has_country_flag = " + flag + " }\n"
+            "\t\tcheck_variable = { var = ktits_casuality value = " + str(lo) + " compare = greater_than_or_equals }\n" + kaz + "\t}\n\n"
+            "\tmean_time_to_happen = {\n\t\tdays = 120\n" + mods + "\t}\n")
+    for i, (_n, delta, pp, stab, pop) in enumerate(opts):
+        eff = "\t\t\tset_country_flag = { flag = " + flag + " days = 180 value = 1 }\n"
+        eff += "\t\t\tadd_to_variable = { var = ktits_casuality value = " + str(delta) + " }\n\t\t\tclamp_variable = { var = ktits_casuality min = 0 max = 100 }\n\t\t\tktits_casuality_update = yes\n"
+        if pp: eff += "\t\t\tadd_political_power = " + str(pp) + "\n"
+        if stab: eff += "\t\t\tadd_timed_idea = { idea = " + sidea[stab] + " days = " + str(stab[1]) + " }\n"
+        if pop: eff += "\t\t\tadd_popularity = { ideology = casuality popularity = " + str(pop) + " }\n"
+        rev += ("\n\toption = {\n\t\tname = ktits_casuality." + str(eid) + "." + "ab"[i] + "\n\t\tai_chance = { base = " + str(2 - i) + " }\n" + eff + "\t}\n")
+    rev += "}\n"
+ev_path = M / "events/ktits_casuality_events.txt"
+ev_path.write_text(ev_path.read_text(encoding="utf-8").rstrip() + "\n" + rev, encoding="utf-8", newline="\n")
+
 # ---- localisation ----
 ru, en = [], []
 def add(k, ru_t, en_t=None):
@@ -217,9 +272,15 @@ for k, n, d, *_ in TIERS:
 for key, n, d, *_ in DECISIONS:
     add(key, n); add(f"{key}_desc", d)
 add("ktits_casuality.1.t", "Страна погрузилась в Казуальность")
-add("ktits_casuality.1.d", "Никто уже не помнит, когда в последний раз кто-то спешил. [Root.GetName] окончательно приняла Казуальность: дела решаются сами собой, власть перешла к тем, кто умеет ничего не делать, а Ставка Казуала принимает присягу.")
+add("ktits_casuality.1.d", "Никто уже не помнит, когда в последний раз кто-то спешил. [Root.GetName] окончательно приняла Казуальность: дела решаются сами собой, власть перешла к тем, кто умеет ничего не делать, а Ставка Казуала принимает присягу. Единое государство развалилось: каждая область выбрала собственное болото.")
 add("ktits_casuality.1.a", "Всё само получится...")
-add("ktits_casuality_fall_tt", "Правящая партия станет Казуальностью, страна станет марионеткой Казуалии.")
+add("ktits_casuality_fall_tt", "Правящая партия станет Казуальностью, страна станет марионеткой Казуалии, а все части, которые можно освободить, станут отдельными марионетками Казуалии.")
+for eid, _k, _lo, _nk, t_, d_, opts in RAND_EVENTS:
+    add(f"ktits_casuality.{eid}.t", t_); add(f"ktits_casuality.{eid}.d", d_)
+    for i, o in enumerate(opts):
+        add(f"ktits_casuality.{eid}.{'ab'[i]}", o[0])
+for (v, days), key in sidea.items():
+    add(key, "Казуальность: последствия события"); add(key + "_desc", "Временное изменение стабильности после случайного события Казуальности.")
 L.write_yml(str(M / "localisation/russian/ktits_casuality_l_russian.yml"), "russian", ru)
 L.write_yml(str(M / "localisation/english/ktits_casuality_l_english.yml"), "english", en)
 
