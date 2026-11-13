@@ -14,17 +14,37 @@ from pathlib import Path
 from PIL import Image
 import lore_data as L
 
-TIERS = [  # (key, ru name, ru desc, lower bound, industrial_capacity_factory, production_speed_buildings_factor, research_speed_factor, stability_factor) INVENTED
-    (1, "Ленца", "Люди стали медлительнее: «само устроится».", 1, -0.03, -0.05, 0.0, 0.0),
-    (2, "Расслабон", "Работа превращается в необязательное занятие.", 25, -0.06, -0.10, 0.0, 0.0),
-    (3, "Болотная лень", "Болотная тишина накрыла заводы и мастерские.", 50, -0.10, -0.15, -0.05, 0.0),
-    (4, "Дурманище", "Страна почти не работает, но всё как-то получается само собой.", 75, -0.15, -0.25, -0.10, -0.05),
+TIERS = [  # (key, ru name, ru desc, lower bound, industrial_capacity_factory, production_speed_buildings_factor, research_speed_factor, stability_factor) docs/14 (numbers by the author); texts of 4, 5 INVENTED
+    (1, "Ленца", "Граждане начинают опаздывать, недоделывать работу.", 1, -0.03, -0.05, 0.0, 0.0),
+    (2, "Расслабон", "Люди расслаблены, некоторые этим пользуются.", 25, -0.06, -0.10, 0.0, 0.0),
+    (3, "Болотная лень", "Переходный период: заводы встали, люди ничего не делают. Страна встала.", 50, -0.95, -0.95, -0.95, -0.50),
+    (4, "Дурманище", "Болотный дурман окутал страну: у станков почти никого, а те, кто есть, ждут, пока всё случится само. Заводы дымят вхолостую, наука дремлет, но государство каким-то чудом держится.", 75, -0.65, -0.65, -0.65, -0.65),
+    (5, "Казуальная идилия", "Общество достигло просветлённого безделья: заводы едва шевелятся, науке не до открытий, зато люди спокойны, довольны и ни о чём не тревожатся. Ещё шаг - и страна уйдёт в Казуальность.", 95, -0.10, -0.15, -0.50, 0.80),
 ]
-DECISIONS = [  # (key, ru name, ru desc, delta, cost PP, cooldown days, side)  INVENTED
-    ("ktits_cas_fight_1", "Кампания «Подъём!»", "Агитация за труд и дисциплину: Казуальность в стране падает на 10.", -10, 50, 30, "fight"),
-    ("ktits_cas_fight_2", "Трудовая реформа", "Жёсткий рабочий график и учёт выработки: Казуальность в стране падает на 20.", -20, 100, 90, "fight"),
-    ("ktits_cas_support_1", "Праздник безделья", "Всенародный выходной: Казуальность растёт на 10, власти достаётся немного политического веса.", 10, 0, 30, "support"),
-    ("ktits_cas_support_2", "Культ болота", "Официально поощрять Казуальность и болотный образ жизни: Казуальность растёт на 20.", 20, 0, 90, "support"),
+# decisions: key, ru name, ru desc, delta, cost PP, cooldown days, side, min scale value (0 = none), extra effect lines  (docs/14 table by the author; the new ones INVENTED)
+# key, ru name, ru desc, delta, cost PP, cooldown days, side, min scale value (0 = none), extra effect token (EXTRA)  docs/14: the six first rows are the author's table, the rest INVENTED
+EXTRA = {
+    'campaign': ['set_country_flag = { flag = ktits_cas_campaign days = 180 value = 1 }', 'set_variable = { var = ktits_cas_tick value = 0 }'],
+    'st5': ['add_stability = -0.05'],
+    'st10': ['add_stability = -0.10'],
+    'last': ['add_war_support = -0.10', 'add_stability = -0.10'],
+    'pp': ['add_political_power = 25'],
+    'siesta': ['add_stability = 0.03'],
+    'pop': ['add_popularity = { ideology = casuality popularity = 0.05 }'],
+}
+DECISIONS = [
+    ('ktits_cas_fight_1', 'Кампания «Подъём на труд!»', 'Агитация за труд и дисциплину: плакаты, собрания, ударные бригады. Казуальность в стране падает на 10.', -10, 50, 30, 'fight', 0, ''),
+    ('ktits_cas_fight_2', 'Провести переговоры с профсоюзами', 'Договориться с профсоюзами о нормах выработки и графиках. Казуальность в стране падает на 20.', -20, 100, 90, 'fight', 0, ''),
+    ('ktits_cas_fight_0', 'Противодействие, труд и власть!', 'Государство берёт Казуальность под постоянный надзор: следующие полгода каждые 15 дней шкала падает на 10.', 0, 150, 180, 'fight', 0, 'campaign'),
+    ('ktits_cas_fight_3', 'Чрезвычайный трудовой режим', 'Заводы переходят на казарменный график, прогульщиков наказывают. Казуальность падает на 30, но стабильность падает. Доступно, когда шкала не ниже 50.', -30, 200, 120, 'fight', 50, 'st5'),
+    ('ktits_cas_fight_4', 'Осушение болот', 'Масштабная программа осушения: вода уходит, а вместе с ней и дурман. Казуальность падает на 40, стабильность страдает от переселений. Доступно, когда шкала не ниже 75.', -40, 300, 180, 'fight', 75, 'st10'),
+    ('ktits_cas_fight_5', 'Последний рывок', 'Отчаянная мобилизация всех сил накануне падения. Казуальность падает на 50, но армия и народ изматываются. Доступно, когда шкала не ниже 95.', -50, 400, 365, 'fight', 95, 'last'),
+    ('ktits_cas_support_1', 'Праздник безделья', 'Всенародный выходной: Казуальность растёт на 10, власти достаётся немного политического веса.', 10, 0, 30, 'support', 0, 'pp'),
+    ('ktits_cas_support_2', 'Культ болота', 'Официально поощрять болотный образ жизни: ритуальные посиделки у воды. Казуальность растёт на 10.', 10, 0, 90, 'support', 0, ''),
+    ('ktits_cas_support_3', 'Культ Священного-Архо-Казуала', 'Культ создателя Казуальности даёт людям смысл ничего не делать. Казуальность растёт на 20. Доступно, когда шкала выше 25.', 20, 0, 90, 'support', 26, ''),
+    ('ktits_cas_support_4', 'Всеобщая сиеста', 'Дневной сон по распоряжению властей: работа встаёт, люди довольны. Казуальность растёт на 15, стабильность немного растёт. Доступно, когда шкала не ниже 50.', 15, 0, 60, 'support', 50, 'siesta'),
+    ('ktits_cas_support_5', 'Присяга Ставке Казуала', 'Страна присягает Ставке Казуала. Казуальность растёт на 20, партия Казуальности набирает популярность. Доступно, когда шкала не ниже 75.', 20, 0, 120, 'support', 75, 'pop'),
+    ('ktits_cas_support_6', 'Сдаться Казуальности', 'Прекратить борьбу и отдаться течению. Казуальность сразу достигает 100: страна переходит в Казуальность и становится марионеткой Казуалии. Доступно, когда шкала не ниже 75.', 100, 0, 9999, 'surrender', 75, ''),
 ]
 
 ap = argparse.ArgumentParser()
@@ -76,6 +96,33 @@ ktits_casuality_change = {{
 }}
 """)
 
+# campaign "Противодействие, труд и власть!": while the flag lives (180 days) the scale falls by 10 every 15 days (on_daily of the country)
+w("common/scripted_effects/ktits_casuality_daily_effects.txt", """ktits_casuality_daily = {
+	if = {
+		limit = { has_country_flag = ktits_cas_campaign }
+		add_to_variable = { var = ktits_cas_tick value = 1 }
+		if = {
+			limit = { check_variable = { var = ktits_cas_tick value = 15 compare = greater_than_or_equals } }
+			set_variable = { var = ktits_cas_tick value = 0 }
+			add_to_variable = { var = ktits_casuality value = -10 }
+			clamp_variable = { var = ktits_casuality min = 0 max = 100 }
+			ktits_casuality_update = yes
+		}
+	}
+}
+""")
+w("common/on_actions/ktits_casuality_on_actions.txt", """on_actions = {
+	on_daily = {
+		effect = {
+			if = {
+				limit = { has_country_flag = ktits_cas_campaign }
+				ktits_casuality_daily = yes
+			}
+		}
+	}
+}
+""")
+
 # ---- ideas ----
 w("common/ideas/ktits_casuality.txt", "ideas = {\n\tcountry = {\n" + "".join(f"""		ktits_cas_{k} = {{
 			picture = ktits_casuality
@@ -102,10 +149,13 @@ w("common/decisions/categories/ktits_casuality_categories.txt", """ktits_casuali
 }
 """)
 dec = "ktits_casuality_category = {\n"
-for key, _, _, delta, cost, cd, side in DECISIONS:
-    avail = ("check_variable = { var = ktits_casuality value = 1 compare = greater_than_or_equals }" if side == "fight"
+for key, _, _, delta, cost, cd, side, lo, ex in DECISIONS:
+    extra = "".join("\t\t\t" + e + "\n" for e in EXTRA.get(ex, []))
+    avail = ("check_variable = { var = ktits_casuality value = %d compare = greater_than_or_equals }" % max(lo, 1) if side == "fight"
              else "check_variable = { var = ktits_casuality value = 100 compare = less_than }")
-    extra = "\t\t\tadd_political_power = 25\n" if key == "ktits_cas_support_1" else ""
+    if side != "fight" and lo:
+        avail += "\n\t\t\tcheck_variable = { var = ktits_casuality value = %d compare = greater_than_or_equals }" % lo
+    delta_eff = "" if delta == 0 else ("\t\t\tadd_to_variable = { var = ktits_casuality value = %d }\n\t\t\tclamp_variable = { var = ktits_casuality min = 0 max = 100 }\n\t\t\tktits_casuality_update = yes\n" % delta)
     dec += f"""
 	{key} = {{
 		icon = ktits_casuality
@@ -118,11 +168,8 @@ for key, _, _, delta, cost, cd, side in DECISIONS:
 		days_re_enable = {cd}
 		fire_only_once = no
 		complete_effect = {{
-{extra}			add_to_variable = {{ var = ktits_casuality value = {delta} }}
-			clamp_variable = {{ var = ktits_casuality min = 0 max = 100 }}
-			ktits_casuality_update = yes
-		}}
-		ai_will_do = {{ factor = {5 if side == "fight" else 0} }}
+{extra}{delta_eff}		}}
+		ai_will_do = {{ factor = {5 if side == "fight" and lo == 0 else 0} }}
 	}}
 """
 w("common/decisions/ktits_casuality.txt", dec + "}\n")
