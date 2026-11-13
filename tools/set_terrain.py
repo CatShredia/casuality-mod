@@ -1,4 +1,4 @@
-"""Bring province terrain (map/definition.csv, column 7) in line with explicit terrain statements in docs/01.
+"""Bring province terrain (map/definition.csv, column 7) in line with explicit terrain statements in docs/lore/Contries-Description.md.
 
 Only rules that need no map position are applied (lore is the single source, nothing else is invented):
   CSL Казуалия       "Большая часть клеток - болота, немного гор, равнины на краях"     : hills -> marsh
@@ -8,7 +8,7 @@ Only rules that need no map position are applied (lore is the single source, not
 plus a technical fix: provinces with terrain "unknown" take the most common terrain of their state.
 Urban provinces are never changed. Only the gameplay type in definition.csv changes; map/terrain.bmp (the look) is not touched [uncertain: HOI4 may
 show the old texture].
-INVENTED position rules (invented_lore.py, docs/12; lore names the places but gives no coordinates): Наши Болота (SVS provinces in a box -> marsh),
+INVENTED position rules (invented_lore.py, docs/lore/Invented-Lore.md; lore names the places but gives no coordinates): Наши Болота (SVS provinces in a box -> marsh),
 Фигарийский хребет (east-west band -> mountain), джунгли южнее хребта, холмы на западе, саванна (plains) на севере Фигарии,
 кольцо гор (3 neighbours N, E, W) вокруг столичной провинции Казуалии.
 Backup: no_commit/temp/backup_terrain/definition.csv. Usage: python tools/set_terrain.py [--mod PATH] [--restore]
@@ -51,7 +51,7 @@ state_terr = collections.defaultdict(collections.Counter)
 for p, t in terr.items():
     if p in prov_state and t not in ("unknown", "urban"): state_terr[prov_state[p]][t] += 1
 
-# ---- INVENTED positions (docs/12): lore names the places but gives no coordinates ----
+# ---- INVENTED positions (docs/lore/Invented-Lore.md): lore names the places but gives no coordinates ----
 cent, idxmap = L.province_centroids(M)
 extra = {}                                           # province id -> (terrain, rule)
 nb = collections.defaultdict(set)

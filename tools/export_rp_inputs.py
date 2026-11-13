@@ -2,7 +2,7 @@
 
 Запуск из корня репозитория: python tools/export_rp_inputs.py [этап]
 Выход: no_commit/temp/rp_input/stage_NN/*.png (4352x2816, RGB).
-Источник: docs/03-Map-Sketch.svg плюс правки из docs/08-map-fix.md (описаны в разделе EXTRA ниже).
+Источник: docs/map/Map-Sketch.svg плюс правки из docs/map/build/map-fix.md (описаны в разделе EXTRA ниже).
 Масштаб: 1 единица SVG ~ 9,85 км, 1 единица^2 ~ 97 км^2, 1 единица SVG = 2,72 px.
 """
 import json, os, re, sys
@@ -18,7 +18,7 @@ SX, SY = 4352 / 1600 * LAND_K, 2816 / 1040 * LAND_K
 OX, OY = (W - 1600 * SX) / 2, (H - 1040 * SY) / 2 - 70   # сдвиг вверх: нижнее поле океана >= 130 px (вылет RandomParadox на Mapping Regions)
 KM2_PER_U2 = 97.0
 rng = np.random.default_rng(1936)
-svg = open(os.path.join(ROOT, "docs", "03-Map-Sketch.svg"), encoding="utf-8").read()
+svg = open(os.path.join(ROOT, "docs", "map", "Map-Sketch.svg"), encoding="utf-8").read()
 
 
 def parse(s):
@@ -57,7 +57,7 @@ def mask(draw_fn):
     return im
 
 
-# --- схема (docs/03-Map-Sketch.svg)
+# --- схема (docs/map/Map-Sketch.svg)
 land_polys = []
 for m in re.finditer(r"<polygon([^>]*)points=\"([^\"]+)\"([^>]*)/>", svg):
     attrs = m.group(1) + m.group(3)
@@ -89,7 +89,7 @@ rivers.append(JUNGARIK)
 seas[0] = parse("290,255 470,262 560,272 600,270 600,342 560,342 460,335 290,340")
 seas[1] = parse("700,495 735,490 775,495 780,500 755,535 715,530 700,500")                          # исходный остров заменяется на JAPAN ниже
 
-# --- EXTRA: правки из docs/08-map-fix.md (в схему SVG и в лор пока не внесены), единицы SVG
+# --- EXTRA: правки из docs/map/build/map-fix.md (в схему SVG и в лор пока не внесены), единицы SVG
 JAPAN = fit(japan0, 378_000 * 0.86)                                                     # площадь как у Японии
 CEYLON = fit(parse("1040,950 1066,944 1078,970 1062,994 1038,986 1030,966"), 65_600 * 1.2)
 LEDYSHKA = fit(parse("30,30 100,12 175,32 200,95 165,150 95,168 38,130"), 2_166_000 * 1.2)   # как Гренландия
@@ -295,7 +295,7 @@ def stage1():
                 if len(cells) < 150:
                     for cy, cx in cells:
                         land[cy * 8:cy * 8 + 8, cx * 8:cx * 8 + 8] = True
-    land |= erode(warp(mask(poly_mask([JAPAN, CEYLON, LEDYSHKA, SPAIN]))), 8)          # острова из docs/08 не исчезают при размытии
+    land |= erode(warp(mask(poly_mask([JAPAN, CEYLON, LEDYSHKA, SPAIN]))), 8)          # острова из docs/map/build/map-fix.md не исчезают при размытии
     land &= ~lake
     fig_m = warp(mask(poly_mask([SOUTH])))                                       # Фигария отделена от материка проливом >= ~60 px
     land &= ~(dilate(fig_m, 56) & ~fig_m)                                        # у Фигарии вокруг контура полоса воды в 56 px

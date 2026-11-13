@@ -1,4 +1,4 @@
-"""Add the custom ideologies of docs/13 to the mod (data: ideologies_data.py, mostly INVENTED, see docs/12).
+"""Add the custom ideologies of docs/lore/Lore-Overview.md to the mod (data: ideologies_data.py, mostly INVENTED, see docs/lore/Invented-Lore.md).
 
  * common/ideologies/00_ideologies.txt: the vanilla file of the installed game plus extra sub-ideologies in the vanilla groups
    and two new groups (casuality, theology). The file has the vanilla name, so it replaces the vanilla one.

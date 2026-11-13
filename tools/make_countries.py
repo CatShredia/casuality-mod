@@ -3,7 +3,7 @@
 RandomParadox's tags (CHE, MAK, ...) stay, but each tag is matched to its lore country by color (lore_data.load_mod),
 then:
  * localisation: <TAG>_<ideology>, _DEF, _ADJ for fascism / communism / neutrality / democratic = lore country name
-   (docs/01 gives no per-ideology names or adjectives, so none are invented; the adjective equals the name);
+   (docs/lore/Contries-Description.md gives no per-ideology names or adjectives, so none are invented; the adjective equals the name);
  * history/countries/<TAG> - *.txt: capital = state that contains the lore capital (capitals.txt pixel), if known;
  * report no_commit/temp/countries_report.csv (tag, lore tag, lore name, capital state).
 Countries with no lore name or capital in capitals.txt keep what RandomParadox made and are listed.

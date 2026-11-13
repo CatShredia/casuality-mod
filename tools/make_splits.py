@@ -1,4 +1,4 @@
-"""Splittable states for big countries (> 15 states): INVENTED names, see docs/15-Splits.md.
+"""Splittable states for big countries (> 15 states): INVENTED names, see docs/countries/Splits.md.
 
 For each big country (SPLITS) its states are divided into contiguous parts (region growing over state adjacency, parent keeps the part with
 its capital). Each other part becomes a new country K01..K35 (tags file 03_ktits_splits.txt, country file, colour, flag copied from the parent,
@@ -144,7 +144,8 @@ if __name__ == "__main__":
     eff = ""
     for t, p, nm, sts, *_ in entries:
         moves = "".join("\t\tif = {\n\t\t\tlimit = { %d = { is_owned_by = ROOT } }\n\t\t\t%s = { transfer_state = %d }\n\t\t}\n" % (x, t, x) for x in sts)
-        eff += ("ktits_release_%s = {\n\tif = {\n\t\tlimit = { ktits_splits_enabled = yes }\n%s"
+        # a part that already exists (released earlier, e.g. through the occupation menu) is left alone: it does not become a puppet of Kazualia
+        eff += ("ktits_release_%s = {\n\tif = {\n\t\tlimit = { ktits_splits_enabled = yes NOT = { country_exists = " + t + " } }\n%s"
                 "\t\tif = {\n\t\t\tlimit = { country_exists = %s }\n\t\t\t%s = {\n\t\t\t\tset_country_flag = ktits_casuality_fallen\n\t\t\t\tset_variable = { var = ktits_casuality value = 100 }\n"
                 "\t\t\t\tset_politics = { ruling_party = casuality }\n\t\t\t\tadd_popularity = { ideology = casuality popularity = 0.5 }\n\t\t\t}\n"
                 "\t\t\tif = {\n\t\t\t\tlimit = { country_exists = %s }\n\t\t\t\t%s = { puppet = %s }\n\t\t\t}\n\t\t}\n\t}\n}\n\n") % (t, moves, t, t, KAZ, KAZ, t)

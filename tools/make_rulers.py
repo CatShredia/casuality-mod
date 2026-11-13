@@ -1,11 +1,11 @@
-"""Put the lore rulers (docs/01 "Изначальный правитель") into the mod.
+"""Put the lore rulers (docs/lore/Contries-Description.md "Изначальный правитель") into the mod.
 
 Per lore country with a named ruler: in common/characters/<TAG>.txt the leader of the ruling ideology group gets the
 lore name; if the lore names an ideology group, that group becomes ruling_party in history/countries and its popularity
 is swapped with the previous ruling group's (so the lore ruler really rules). Lore sub-ideologies that do not exist in
 vanilla (Технодемократия, Меритократия, Интегрализм, Технократия, Степной ханизм, Казуальность) are mapped to a vanilla
 sub-ideology of the same group as a PLACEHOLDER (listed in the report) until custom ideologies are made.
-Countries whose ruler is TODO / absent in docs/01 keep the leaders RandomParadox made and are listed.
+Countries whose ruler is TODO / absent in docs/lore/Contries-Description.md keep the leaders RandomParadox made and are listed.
 Backups: no_commit/temp/backup_rulers/. Usage: python tools/make_rulers.py [--mod PATH]
 """
 import argparse, csv, glob, re, shutil
@@ -29,14 +29,14 @@ for _g, _v in IDEO.CUSTOM_SUBTYPES.items():
     GROUP[_g] = GROUP.get(_g, []) + [t for t in _v if t not in GROUP.get(_g, [])]
 SUB2GROUP = {s: g for g, v in GROUP.items() for s in v}
 
-# docs/01: lore tag -> (name exactly as written, ideology group or None, lore ideology text, vanilla placeholder sub or None)
+# docs/lore/Contries-Description.md: lore tag -> (name exactly as written, ideology group or None, lore ideology text, vanilla placeholder sub or None)
 RULERS = {
-    "CSL": ("Священный-Архо-Казуал", "casuality", "Казуальность (привязка придумана, docs/13)", "casuality_ideology"),
-    "SVS": ("Генсек Ваня Пименов", "communism", "Коммунизм (вывод из docs/01: Советский Союз)", "leninism"),
-    "KZZ": ("Атаман Даша Юзеева", "neutrality", "атаманская власть (придумано: в docs/01 идеология не названа)", "oligarchism"),
+    "CSL": ("Священный-Архо-Казуал", "casuality", "Казуальность (привязка придумана, docs/lore/Lore-Overview.md)", "casuality_ideology"),
+    "SVS": ("Генсек Ваня Пименов", "communism", "Коммунизм (вывод из docs/lore/Contries-Description.md: Советский Союз)", "leninism"),
+    "KZZ": ("Атаман Даша Юзеева", "neutrality", "атаманская власть (придумано: в docs/lore/Contries-Description.md идеология не названа)", "oligarchism"),
     "BRT": ("Джон Бульдог", None, "", None),
-    "TMR": ("Ахтямов Камиль", "fascism", "фашизм (docs/01: «распространяет влияние фашизма»)", "fascism_ideology"),
-    "SOY": ("Ефимов Александр", "democratic", "Соевая Демократия (вывод из docs/01: соевые либералы)", "liberalism"),
+    "TMR": ("Ахтямов Камиль", "fascism", "фашизм (docs/lore/Contries-Description.md: «распространяет влияние фашизма»)", "fascism_ideology"),
+    "SOY": ("Ефимов Александр", "democratic", "Соевая Демократия (вывод из docs/lore/Contries-Description.md: соевые либералы)", "liberalism"),
     "ZLD": ("Сабирова Альфия Расилевна", "democratic", "Социал-демократия", "socialism"),
     "ADL": ("Айдов Матвей", "democratic", "Центристский консерватизм", "conservatism"),
     "SVA": ("Арифуллин Саид Аскарович", "democratic", "Технодемократия", "technodemocracy"),
@@ -46,7 +46,7 @@ RULERS = {
     "SRK": ("Хан Тимур Алпамысович Сарайский", "neutrality", "Степной ханизм", "steppe_khanate"),
 }
 LORE_ONLY = set(RULERS)
-RULERS = {**INV.INVENTED_RULERS, **RULERS}      # lore wins; INVENTED_RULERS fill the TODO gaps (docs/12)
+RULERS = {**INV.INVENTED_RULERS, **RULERS}      # lore wins; INVENTED_RULERS fill the TODO gaps (docs/lore/Invented-Lore.md)
 PLACEHOLDER = {"TMR": False, "ZLD": False, "ADL": False}
 
 BK = L.REPO / "no_commit/temp/backup_rulers"
@@ -131,5 +131,5 @@ with open(rep, "w", newline="", encoding="utf-8-sig") as f:
     w.writerows(rows)
 have = {r[1] for r in rows}
 print(f"rulers set: {len(rows)}; character not found for: {[r[1] for r in rows if not r[7]]}; tags missing: {missing}")
-print("no ruler in docs/01 (kept as exported):", sorted(set(info['tag2lore'].values()) - have))
+print("no ruler in docs/lore/Contries-Description.md (kept as exported):", sorted(set(info['tag2lore'].values()) - have))
 print("report:", rep)

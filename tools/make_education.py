@@ -1,9 +1,9 @@
-"""Education of the population (docs/01 "Образованность населения", 6 levels) as national spirits.
+"""Education of the population (docs/lore/Contries-Description.md "Образованность населения", 6 levels) as national spirits.
 
 Each country gets one spirit ktits_edu_<0..5> at the start (history/countries/<TAG> - *.txt: add_ideas = ktits_edu_N).
-Levels (lore scale, docs/01): 0 Необразованное стадо, 1 Крестьянское образование, 2 Образованная элита, 3 Развивающееся общество,
+Levels (lore scale, docs/lore/Contries-Description.md): 0 Необразованное стадо, 1 Крестьянское образование, 2 Образованная элита, 3 Развивающееся общество,
 4 Образованное общество, 5 Общество Будущего.
-Lore gives levels for some countries only (LORE_LEVEL); the rest are INVENTED (INVENTED_LEVEL, docs/12), as are the modifiers (docs/01 gives none):
+Lore gives levels for some countries only (LORE_LEVEL); the rest are INVENTED (INVENTED_LEVEL, docs/lore/Invented-Lore.md), as are the modifiers (docs/lore/Contries-Description.md gives none):
 research speed, building speed and recruitable population trade off against each other.
 Writes: common/ideas/ktits_education.txt, localisation ru/en, history add_ideas (the idea icon is the vanilla GFX_idea_generic_research_bonus).
 Usage: python tools/make_education.py [--mod PATH]
@@ -20,9 +20,9 @@ LEVELS = [  # (russian, english, research_speed_factor, production_speed_buildin
     ("Образованное общество", "Educated Society", 0.15, 0.10, -0.06),
     ("Общество Будущего", "Society of the Future", 0.25, 0.15, -0.10),
 ]
-# lore (docs/01): lore tag -> level
+# lore (docs/lore/Contries-Description.md): lore tag -> level
 LORE_LEVEL = {"CSL": 0, "SVS": 1, "KZZ": 2, "BRT": 4, "IRK": 2, "IRR": 1, "MUS": 0, "TRV": 0, "TMR": 4, "SOY": 4, "SRK": 0}
-# INVENTED (docs/01 says TODO): from analogs and hints ("Челяба - промышленный гигант", Технодемократия -> науч. советы, ...)
+# INVENTED (docs/lore/Contries-Description.md says TODO): from analogs and hints ("Челяба - промышленный гигант", Технодемократия -> науч. советы, ...)
 INVENTED_LEVEL = {"ZLD": 4, "ADL": 4, "SVA": 5, "FDP": 3, "DMK": 2, "CLB": 3, "MGN": 0, "KTY": 2, "BLK": 4, "CEY": 1,
                   "Z01": 3, "Z02": 2, "Z03": 3, "Z04": 3, "Z05": 3}
 LEVEL_OF = {**INVENTED_LEVEL, **LORE_LEVEL}
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     out.write_text("".join(ideas), encoding="utf-8")
 
     ru = [(f"ktits_edu_{i}", f"Образованность: {n_ru}") for i, (n_ru, *_) in enumerate(LEVELS)] + \
-         [(f"ktits_edu_{i}_desc", f"Уровень образованности населения (шкала из 6 уровней, docs/01): {n_ru}.") for i, (n_ru, *_) in enumerate(LEVELS)]
+         [(f"ktits_edu_{i}_desc", f"Уровень образованности населения (шкала из 6 уровней, docs/lore/Contries-Description.md): {n_ru}.") for i, (n_ru, *_) in enumerate(LEVELS)]
     en = [(f"ktits_edu_{i}", f"Education: {n_en}") for i, (_, n_en, *_) in enumerate(LEVELS)] + \
          [(f"ktits_edu_{i}_desc", f"Education level of the population (6-level scale): {n_en}.") for i, (_, n_en, *_) in enumerate(LEVELS)]
     L.write_yml(str(M / "localisation/russian/ktits_education_l_russian.yml"), "russian", ru)
