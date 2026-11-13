@@ -90,8 +90,8 @@ for lang in ("russian", "english"):
     missv = [p for p in vps if f"VICTORY_POINTS_{p}" not in vn or not vn[f"VICTORY_POINTS_{p}"].strip()]
     check(not missv, f"{lang}: all {len(vps)} victory points named", f"{lang}: {len(missv)} victory points without a name (e.g. {missv[:5]})")
     cn = load_loc(base / f"countries_l_{lang}.yml")
-    missc = [f"{t}_{i}" for t in info["tags"] for i in ("fascism", "communism", "neutrality", "democratic") if not cn.get(f"{t}_{i}", "").strip()]
-    check(not missc, f"{lang}: all tags have names for the 4 ideologies", f"{lang}: country names missing: {missc[:5]}")
+    missc = [f"{t}_{i}" for t in info["tags"] for i in ("fascism", "communism", "neutrality", "democratic", "casuality", "theology") if not cn.get(f"{t}_{i}", "").strip()]
+    check(not missc, f"{lang}: all tags have names for the 6 ideology groups", f"{lang}: country names missing: {missc[:5]}")
     sr = load_loc(base / f"strategic_region_names_l_{lang}.yml")
     emp = [k for k, v in sr.items() if not v.strip()]
     check(sr and not emp, f"{lang}: {len(sr)} strategic region names set", f"{lang}: strategic region names missing or empty")
@@ -111,6 +111,32 @@ no_chars = [t for t in info["tags"] if not (M / "common/characters" / f"{t}.txt"
 check(not no_chars, "countries: every tag has a character file", f"countries: no character file for {no_chars}")
 no_state_tag = [t for t in info["tags"] if t not in {s["owner"] for s in states.values()}]
 check(not no_state_tag, "countries: every tag owns a state", f"countries: tags without states: {no_state_tag}", warn)
+
+# ---- ideologies ----
+itext = (M / "common/ideologies/00_ideologies.txt").read_text(encoding="utf-8", errors="ignore") if (M / "common/ideologies/00_ideologies.txt").exists() else ""
+sub2grp = {}
+for gm in re.finditer(r"\n\t(\w+) = \{\s*\n\s*types = \{", itext):
+    start = gm.end(); depth = 1; i = start
+    while depth and i < len(itext):
+        depth += (itext[i] == "{") - (itext[i] == "}"); i += 1
+    for t in re.findall(r"\n\t\t\t(\w+)\s*=\s*\{", itext[start:i]): sub2grp[t] = gm.group(1)
+check(bool(sub2grp) and {"casuality_ideology", "theology_ideology", "technocracy"} <= set(sub2grp), f"ideologies: {len(sub2grp)} sub-ideologies in {len(set(sub2grp.values()))} groups, custom ones present", "ideologies: common/ideologies/00_ideologies.txt missing or without the custom ideologies")
+bad_rule = []
+for tag in info["tags"]:
+    h = glob.glob(str(M / "history/countries" / f"{tag} - *.txt"))
+    cf = M / "common/characters" / f"{tag}.txt"
+    if not h or not cf.exists(): continue
+    rp = re.search(r"ruling_party\s*=\s*(\w+)", open(h[0], encoding="utf-8", errors="ignore").read())
+    leaders = [sub2grp.get(x) for x in re.findall(r"country_leader\s*=\s*\{[^}]*?ideology\s*=\s*(\w+)", open(cf, encoding="utf-8", errors="ignore").read(), re.S)]
+    if not rp or rp.group(1) not in leaders: bad_rule.append((tag, rp.group(1) if rp else None))
+check(not bad_rule, "ideologies: every country has a leader of its ruling group", f"ideologies: ruling group without a leader: {bad_rule[:6]}")
+
+# education spirits
+no_edu = []
+for tag, lt in info["tag2lore"].items():
+    h = glob.glob(str(M / "history/countries" / f"{tag} - *.txt"))
+    if lt not in ("FIG", "LED") and h and not re.search(r"(?m)^add_ideas\s*=\s*ktits_edu_[0-5]\s*$", open(h[0], encoding="utf-8", errors="ignore").read()): no_edu.append(tag)
+check(not no_edu, "education: every country has an education level spirit", f"education: no level for {no_edu}")
 
 # ---- strategic regions ----
 reg = collections.defaultdict(list)

@@ -14,6 +14,7 @@ import argparse, csv, glob, re, shutil
 from pathlib import Path
 import random
 import lore_data as L
+import ideologies_data as D
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--mod", default=L.DEFAULT_MOD)
@@ -47,6 +48,15 @@ for lang, conv in (("russian", lambda s: s), ("english", L.translit)):
             changed[m.group(1)] = True
         else:
             out.append(l)
+    # country names under the custom ideology groups (the game shows the key itself when <TAG>_<ruling group> is missing)
+    have = {m_.group(1) for l in out for m_ in [re.match(r"\s*([A-Z0-9]{3}_\w+):", l)] if m_}
+    for tag in sorted(info["tags"]):
+        nm = loc_name(tag2lore[tag]) if tag2lore.get(tag) else None
+        if not nm: continue
+        for g in D.NEW_GROUPS:
+            for suf in ("", "_DEF", "_ADJ"):
+                if f"{tag}_{g}{suf}" not in have:
+                    out.append(f' {tag}_{g}{suf}:0 "{conv(nm)}"')
     path.write_text("\n".join(out), encoding="utf-8-sig")
 
 rows, nocap = [], []
