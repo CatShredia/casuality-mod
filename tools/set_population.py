@@ -1,6 +1,6 @@
-"""Set state population (manpower) so that each country's total equals the number given in docs/01.
+"""Set state population (manpower) so that each country's total equals the number given in docs/lore/Contries-Description.md.
 
-Lore is the only source: countries whose population is TODO in docs/01 are left untouched and listed.
+Lore is the only source: countries whose population is TODO in docs/lore/Contries-Description.md are left untouched and listed.
 The lore total is spread over the country's states in proportion to their current manpower.
 Backup of the old values: no_commit/temp/backup_manpower.json (restore with --restore).
 Usage: python tools/set_population.py [--restore] [--mod PATH]
@@ -17,9 +17,9 @@ a = ap.parse_args()
 M = Path(a.mod)
 BACKUP = REPO / "no_commit/temp/backup_manpower.json"
 
-# docs/01-Contries-Description.md, "Население ..." lines, millions
+# docs/lore/Contries-Description.md, "Население ..." lines, millions
 import invented_lore as INV
-LORE_POP = {**INV.INVENTED_POP, **L.LORE_POP}   # lore wins; INVENTED_POP fills the TODO gaps (docs/12)
+LORE_POP = {**INV.INVENTED_POP, **L.LORE_POP}   # lore wins; INVENTED_POP fills the TODO gaps (docs/lore/Invented-Lore.md)
 TODO = sorted(INV.INVENTED_POP)   # lore says TODO or nothing: filled with INVENTED values
 NONE = []
 
@@ -66,4 +66,4 @@ for lt, mln in LORE_POP.items():
         open(f, "w", encoding="utf-8", newline="").write(re.sub(r"(manpower\s*=\s*)\d+", lambda m: m.group(1) + str(new[s]), t, count=1))
     report.append((lt, mln, cur, f"{len(sids)} states -> {sum(new.values())}"))
 for r in report: print(r)
-print("INVENTED population (not lore, docs/12):", TODO)
+print("INVENTED population (not lore, docs/lore/Invented-Lore.md):", TODO)

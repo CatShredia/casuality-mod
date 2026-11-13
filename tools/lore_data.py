@@ -1,6 +1,6 @@
 """Shared lore data and helpers for make_state_names.py, make_city_names.py and make_countries.py.
 
-Lore (names of capitals/cities, population) comes from docs/01. Cultural styles for generated names are NOT lore.
+Lore (names of capitals/cities, population) comes from docs/lore/Contries-Description.md. Cultural styles for generated names are NOT lore.
 """
 import glob, re
 from pathlib import Path
@@ -11,7 +11,7 @@ import invented_lore as INV
 REPO = Path(__file__).resolve().parent.parent
 DEFAULT_MOD = "C:/Users/catsh/CatshrediasDocs/Paradox Interactive/Hearts of Iron IV/mod/Ktits"
 
-# ---- lore: capitals and named cities (docs/01, docs/04 section 6) ----
+# ---- lore: capitals and named cities (docs/lore/Contries-Description.md, docs/map/build/Map-Build-Plan.md section 6) ----
 LORE = {
     "SVS": ("Ваньград-на-Окре", ["Ваньград-на-Димитрове", "Ваньград-на-Желтой-Реке", "Ваньград-на-Устое", "Идель-Кала", "Ак-Тау", "Ладожь", "Велеград", "Радогощь"]),
     "IRK": ("Лахарабад", ["Мултанпур", "Пешаркот"]),
@@ -35,7 +35,7 @@ LORE = {
     "CSL": ("Ставка Казуала", []),
 }
 
-# ---- cultural styles for generated names (invented; chosen from the naming hints in docs/01) ----
+# ---- cultural styles for generated names (invented; chosen from the naming hints in docs/lore/Contries-Description.md) ----
 STYLES = {
     "slav": (["Бело", "Черно", "Красно", "Зелено", "Гор", "Луго", "Звено", "Волко", "Медведе", "Сосно", "Дубо", "Камено", "Ржано", "Сухо", "Крива", "Ново", "Старо", "Верхо", "Ниже", "Рыбо", "Солнце", "Лесо", "Болото"],
              ["град", "гор", "ск", "ово", "ино", "ица", "поль", "зерск", "борск", "полье", "вод", "горск"]),
@@ -73,7 +73,7 @@ COUNTRY_STYLE = {"SVS": "slav", "CLB": "slav", "FDP": "slav", "ZLD": "slav", "CS
                  "TRV": "stoner", "TMR": "german", "ADL": "german", "SVA": "norse", "DMK": "steppe", "SRK": "steppe",
                  "MGN": "mongol", "KTY": "chinese", "BLK": "japanese", "LED": "ice"}
 STYLES.update(INV.INVENTED_STYLES)
-for _t, _c in INV.INVENTED_COUNTRIES.items():          # Z01..Z05: invented names (docs/12), lore cities of docs/01 untouched
+for _t, _c in INV.INVENTED_COUNTRIES.items():          # Z01..Z05: invented names (docs/lore/Invented-Lore.md), lore cities of docs/lore/Contries-Description.md untouched
     COUNTRY_STYLE[_t] = _c["style"]; LORE[_t] = (_c["capital"], _c["cities"])
 STYLE_DEFAULT = "numbered"     # FIG, Z01..Z05 and other lore countries without data: "<country> <n>" (plan variant 1)
 LORE_RU = {"FIG": "Фигария", "LED": "Ледышка", "Z01": "Заготовка-1", "Z02": "Заготовка-2", "Z03": "Заготовка-3", "Z04": "Заготовка-4", "Z05": "Заготовка-5", "CEY": "Цейлон"}
@@ -217,7 +217,7 @@ def province_adjacency(M):
     return pairs
 
 
-# docs/01-Contries-Description.md, "Население ..." lines, millions (lore is the source; other countries are TODO in the lore)
+# docs/lore/Contries-Description.md, "Население ..." lines, millions (lore is the source; other countries are TODO in the lore)
 LORE_POP = {"CSL": 30, "SVS": 120, "KZZ": 10, "BRT": 70, "IRK": 125, "IRR": 350, "MUS": 70, "TRV": 100,
             "TMR": 100, "SOY": 80, "BLK": 100, "SRK": 40}
 

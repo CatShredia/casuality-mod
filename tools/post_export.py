@@ -1,6 +1,6 @@
 """Run every post-export step on the freshly exported mod, check it, and zip it. Run this after each RandomParadox export.
 
-Order: rivers -> population -> state names -> city names -> countries -> ideologies -> rulers -> casuality -> education -> splits -> terrain -> strategic regions -> check -> zip.
+Order: rivers -> population -> state names -> city names -> countries -> ideologies -> rulers -> casuality -> game rules -> education -> splits -> terrain -> strategic regions -> check -> zip.
 Each step is its own script and can still be run alone. The steps are idempotent, so running the whole chain twice is safe.
 
 Rivers: RandomParadox's own rivers.bmp is saved as no_commit/temp/rivers.bmp.orig whenever the mod's file is not the one this chain built
@@ -9,7 +9,7 @@ Rivers: RandomParadox's own rivers.bmp is saved as no_commit/temp/rivers.bmp.ori
 Usage: python tools/post_export.py [--names-mode style|lore] [--max-idx N] [--no-zip] [--skip a,b] [--mod PATH]
   --names-mode  how states/cities without lore names are named (default: style = generated names in the country's style; lore = "<country> N")
   --max-idx     widest river palette index (default 3: width by index is not confirmed in the game yet)
-  --skip        comma separated steps to skip: rivers,population,states,cities,countries,ideologies,rulers,casuality,education,splits,terrain,regions,check,zip
+  --skip        comma separated steps to skip: rivers,population,states,cities,countries,ideologies,rulers,casuality,gamerules,education,splits,terrain,regions,check,zip
 """
 import argparse, hashlib, shutil, subprocess, sys, time
 from pathlib import Path
@@ -56,6 +56,7 @@ steps = [("population", ["set_population.py", *m]),
          ("ideologies", ["make_ideologies.py", *m]),
          ("rulers", ["make_rulers.py", *m]),
          ("casuality", ["make_casuality.py", *m]),
+         ("gamerules", ["make_game_rules.py", *m]),
          ("education", ["make_education.py", *m]),
          ("splits", ["make_splits.py", *m]),
          ("terrain", ["set_terrain.py", *m]),

@@ -138,6 +138,67 @@ for tag, lt in info["tag2lore"].items():
     if lt not in ("FIG", "LED") and h and not re.search(r"(?m)^add_ideas\s*=\s*ktits_edu_[0-5]\s*$", open(h[0], encoding="utf-8", errors="ignore").read()): no_edu.append(tag)
 check(not no_edu, "education: every country has an education level spirit", f"education: no level for {no_edu}")
 
+# ---- Casuality mechanic (make_casuality.py) ----
+cas_files = [f for pat in ("common/scripted_effects/ktits_casuality*.txt", "common/scripted_triggers/ktits_casuality*.txt", "common/ideas/ktits_casuality*.txt",
+                           "common/decisions/ktits_casuality*.txt", "common/decisions/categories/ktits_casuality*.txt", "common/on_actions/ktits_casuality*.txt",
+                           "events/ktits_casuality*.txt") for f in sorted(M.glob(pat))]
+cas_txt = {f: f.read_text(encoding="utf-8") for f in cas_files}
+unbal = [f.name for f, s in cas_txt.items() if s.count("{") != s.count("}")]
+check(bool(cas_txt) and not unbal, f"casuality: {len(cas_txt)} script files, braces balanced", f"casuality: unbalanced braces in {unbal}")
+loc_ru = load_loc(M / "localisation/russian/ktits_casuality_l_russian.yml")
+all_cas = "\n".join(cas_txt.values())
+dec_keys = [k for f, s in cas_txt.items() if "decisions" in str(f) and "categories" not in str(f) for k in re.findall(r"(?m)^\t(ktits_\w+) = \{", s)]
+idea_keys = [k for f, s in cas_txt.items() if "ideas" in str(f) for k in re.findall(r"(?m)^\t\t(ktits_\w+) = \{", s)]
+miss = [k for k in dec_keys + idea_keys if not loc_ru.get(k, "").strip() or not loc_ru.get(k + "_desc", "").strip()]
+check(len(dec_keys) >= 13 and not miss, f"casuality: {len(dec_keys)} decisions and {len(idea_keys)} spirits have name and description in loc", f"casuality: decisions/spirits without loc: {miss[:5]}")
+ev_def = set(re.findall(r"id = (ktits_casuality\.\d+)\n\ttitle", all_cas))
+ev_call = set(re.findall(r"country_event = \{ id = (ktits_casuality\.\d+)", all_cas))
+miss_ev = sorted(e for e in ev_call if e not in ev_def)
+check(not miss_ev and all(f"ktits_casuality.{i}" in ev_def for i in range(30, 36)), f"casuality: all fired events are defined ({len(ev_def)} events incl. notifications 30-35)", f"casuality: events fired but not defined or 30-35 missing: {miss_ev}")
+miss_evloc = sorted(e for e in ev_def if not loc_ru.get(e + ".t") or not loc_ru.get(e + ".d") or not loc_ru.get(e + ".a"))
+check(not miss_evloc, "casuality: every event has title, text and option loc", f"casuality: events without loc: {miss_evloc}")
+set_costs = set(re.findall(r"set_variable = \{ var = (ktits_cas_cost_\d) ", all_cas))
+used_costs = set(re.findall(r"cost = (ktits_cas_cost_\d)", all_cas))
+check(bool(used_costs) and used_costs <= set_costs, f"casuality: {len(used_costs)} variable costs of the fight decisions are set by ktits_casuality_costs", f"casuality: cost variables not set: {sorted(used_costs - set_costs)}")
+ret_txt = (M / "common/scripted_effects/ktits_casuality_return_effects.txt").read_text(encoding="utf-8") if (M / "common/scripted_effects/ktits_casuality_return_effects.txt").exists() else ""
+ev1 = (M / "events/ktits_casuality_events.txt").read_text(encoding="utf-8")
+check("ktits_return_lands = {" in ret_txt and "transfer_state_to" in ret_txt and 0 <= ev1.find("ktits_return_lands = yes") < ev1.find("ktits_split_on_fall = yes") and not re.search(r"is_core_of = (K\d\d|"+{v: k for k, v in tag2lore.items()}["CSL"]+")\b", ret_txt), "casuality: return of conquered lands is called before the split and skips Kxx/Kazualia", "casuality: ktits_return_lands missing, wrongly ordered or touches Kxx/Kazualia")
+oa = cas_txt.get(M / "common/on_actions/ktits_casuality_on_actions.txt", "")
+check(all(x in oa for x in ("on_startup", "on_monthly", "on_daily")) and "ktits_casuality_monthly = {" in all_cas, "casuality: on_actions has on_startup, on_monthly, on_daily; the monthly effect is defined", "casuality: on_actions or ktits_casuality_monthly missing")
+bad_edu = [i for i in range(6) if f"ktits_edu_{i}" not in all_cas]
+check(not bad_edu, "casuality: monthly growth and costs use all 6 education levels", f"casuality: education levels not used: {bad_edu}")
+ke = re.search(r"ktits_kaz_puppet_education = [{][\s\S]*?\r?\n[}]", all_cas)
+ke = ke.group(0) if ke else ""
+ev_imm = ev1.split("option = {")[0]
+oa_m = oa.split("on_weekly")[0]
+check(all(f"remove_ideas = ktits_edu_{i}" in ke for i in range(1, 6)) and "add_ideas = ktits_edu_0" in ke and "is_puppet_of" in ke and "ktits_kaz_puppet_education = yes" in ev_imm and "ktits_kaz_puppet_education = yes" in oa_m, "casuality: puppets of Kazualia get education 0 (effect, fall event, monthly net)", "casuality: ktits_kaz_puppet_education missing or not called from the fall event / on_monthly")
+
+# ---- game rules (make_casuality.py, make_game_rules.py) ----
+gr_dir = M / "common/game_rules"
+kr = (gr_dir / "ktits_casuality_rules.txt").read_text(encoding="utf-8") if (gr_dir / "ktits_casuality_rules.txt").exists() else ""
+kr_opts = re.findall(r"\n\t(?:default|option) = \{\n\t\tname = (\w+)", kr)
+kr_used = set(re.findall(r"rule = ktits_global_casuality option = (\w+)", all_cas))
+kloc = {l: load_loc(M / f"localisation/{l}/ktits_game_rules_l_{l}.yml") for l in ("russian", "english")}
+kr_keys = re.findall(r'(?:name|text|desc) = "(\w+)"', kr)
+kr_miss = [k for l in kloc for k in kr_keys if not kloc[l].get(k)]
+check(kr.startswith("ktits_global_casuality = {") and len(kr_opts) == 4 and kr.count("\tdefault = {") == 1 and set(kr_opts) == kr_used and kr.count("{") == kr.count("}"),
+      "game rules: ktits_global_casuality has 4 options (1 default), all used by the AI effects", f"game rules: ktits_casuality_rules.txt wrong (options {kr_opts}, used {sorted(kr_used)})")
+check(not kr_miss, "game rules: rule, options and descriptions have ru/en loc", f"game rules: loc missing: {sorted(set(kr_miss))[:6]}")
+vg = gr_dir / "00_game_rules.txt"
+vgt = vg.read_text(encoding="utf-8") if vg.exists() else ""
+defined = set(re.findall(r"(?m)^(\w+)\s*=\s*\{", vgt)) | {"ktits_global_casuality"}
+check(bool(vgt) and not re.search(r"(?mi)^\w+_(?:ai_behavior|fragmentation_status)\s*=", vgt) and vgt.count("{") == vgt.count("}") and "allow_wargoals" in defined,
+      f"game rules: vanilla file overridden, {len(defined) - 1} generic rules, no country-specific ones", "game rules: 00_game_rules.txt missing or still has country-specific rules")
+refs = collections.defaultdict(set)
+for f in M.rglob("*.txt"):
+    if "game_rules" in f.parts: continue
+    for r in re.findall(r"has_game_rule\s*=\s*\{\s*rule\s*=\s*(\w+)", f.read_text(encoding="utf-8", errors="ignore")):
+        if r not in defined: refs[f.relative_to(M).parts[1]].add((r, f.name))
+bad_non_focus = sorted(x for k, v in refs.items() if k != "national_focus" for x in v)
+check(not bad_non_focus, "game rules: no script outside national_focus uses a removed rule", f"game rules: removed rules used in {bad_non_focus[:6]}")
+nf = refs.get("national_focus", set())
+if nf: warn(f"game rules: {len(nf)} (rule, file) pairs in compat national_focus files reference removed rules ({len({r for r, _ in nf})} rules); watch error.log")
+
 # ---- strategic regions ----
 reg = collections.defaultdict(list)
 for f in glob.glob(str(M / "map/strategicregions/*.txt")):

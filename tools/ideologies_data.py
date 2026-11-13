@@ -1,5 +1,5 @@
-"""Custom ideologies of the mod (docs/13 section 3). Lore (docs/01) names the 7 ideologies and 5 special sub-ideologies;
-everything else here (groups, keys, colors, texts, effects) is INVENTED and must be reviewed (docs/12).
+"""Custom ideologies of the mod (docs/lore/Lore-Overview.md section 3). Lore (docs/lore/Contries-Description.md) names the 7 ideologies and 5 special sub-ideologies;
+everything else here (groups, keys, colors, texts, effects) is INVENTED and must be reviewed (docs/lore/Invented-Lore.md).
 
 Structure: the 4 vanilla groups stay, with extra sub-ideologies; 2 own groups (casuality, theology) are added.
 Shared by make_ideologies.py and make_rulers.py.

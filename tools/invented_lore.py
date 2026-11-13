@@ -1,20 +1,20 @@
-"""INVENTED data: everything here is NOT in docs/01. It was made up to fill TODO gaps and must be reviewed by the author.
-A value present in docs/01 always wins over this file (see lore_data.LORE_POP, make_rulers.RULERS).
-Review list with reasons: docs/12-Invented-Lore.md.
+"""INVENTED data: everything here is NOT in docs/lore/Contries-Description.md. It was made up to fill TODO gaps and must be reviewed by the author.
+A value present in docs/lore/Contries-Description.md always wins over this file (see lore_data.LORE_POP, make_rulers.RULERS).
+Review list with reasons: docs/lore/Invented-Lore.md.
 """
 
-# population in millions (docs/01 says TODO / nothing). Hints used: analog countries, "Магнолия и Фигария почти безлюдны",
+# population in millions (docs/lore/Contries-Description.md says TODO / nothing). Hints used: analog countries, "Магнолия и Фигария почти безлюдны",
 # "самое плотное население у Ирракии, Кытая и Чёрной Республики", "Челяба - промышленный гигант", "Ледышка: населения почти нет"
 INVENTED_POP = {
     "ZLD": 18, "ADL": 5, "SVA": 20, "FDP": 35, "DMK": 25, "CLB": 55, "MGN": 3, "KTY": 450, "CEY": 8,
     "FIG": 2, "LED": 0.05, "Z01": 12, "Z02": 10, "Z03": 8, "Z04": 14, "Z05": 9,
 }
 
-# rulers: lore tag -> (name, ideology group, text, vanilla sub-ideology). Names follow each country's naming style from docs/01.
+# rulers: lore tag -> (name, ideology group, text, vanilla sub-ideology). Names follow each country's naming style from docs/lore/Contries-Description.md.
 INVENTED_RULERS = {
     "IRK": ("Низам Махмуд Хайрулла-хан Лахарский", "theology", "самодержавие, марионетка Бриттана (придумано)", "theology_ideology"),
     "IRR": ("Махараджа Радж Нараян Сингх", "theology", "княжеское самодержавие, марионетка Бриттана (придумано)", "theology_ideology"),
-    "MUS": ("Король Рама Чакрават Аюттарский", "neutrality", "монархия (docs/01: монархия и верховный правитель; имя придумано)", "despotism"),
+    "MUS": ("Король Рама Чакрават Аюттарский", "neutrality", "монархия (docs/lore/Contries-Description.md: монархия и верховный правитель; имя придумано)", "despotism"),
     "TRV": ("Президент Чилл Расслабов", "democratic", "федеративная республика (придумано)", "liberalism"),
     "MGN": ("Каган Алтан-Бор Хэнтийский", "neutrality", "улусная монархия (придумано)", "despotism"),
     "KTY": ("Маршал Чжао Лун-Тай", "neutrality", "военная диктатура (придумано)", "despotism"),
@@ -29,7 +29,7 @@ FIG_JUNGLE_SOUTH_OF_Y = 2370      # "южнее хребта большие дж
 FIG_WEST_HILLS_X = 1100           # "на западе холмы" (north of the ridge)
 CSL_CAPITAL_PIXEL = (2948, 1292)  # capitals.txt; the capital province is ringed by mountains on N, E, W (not S)
 
-# ---- Z01..Z05 "заготовки" (docs/01 gives only the placeholder; the Balkan-like belt of 5 small countries) ----
+# ---- Z01..Z05 "заготовки" (docs/lore/Contries-Description.md gives only the placeholder; the Balkan-like belt of 5 small countries) ----
 # Names, capitals, cities and naming styles are INVENTED: each country is a blend of several real-world cultures.
 INVENTED_COUNTRIES = {
     "Z01": {"name": "Дальмирия", "style": "z01_adria", "capital": "Вельград-Маре",

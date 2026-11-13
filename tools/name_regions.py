@@ -1,6 +1,6 @@
 """Name the strategic regions (localisation/*/strategic_region_names_l_*.yml).
 
-Lore (docs/01, docs/02) names only four seas: Синее море, Кряхтское море, Среднее море, Океан. Land regions have no names in the lore.
+Lore (docs/lore/Contries-Description.md, docs/map/Geography.md) names only four seas: Синее море, Кряхтское море, Среднее море, Океан. Land regions have no names in the lore.
  * land region -> "<lore country>, район N" (the country that owns most of its provinces);
  * sea region  -> the lore sea chosen by which countries touch it (this is an inference from the lore geography, listed in the report):
      Синее море   : touches Северная Ассамблея (SVA) and one of Федерация Депутатов / Советский Союз / Тямовский рейх;
