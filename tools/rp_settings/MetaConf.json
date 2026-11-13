@@ -1,0 +1,8 @@
+{
+	"config": 
+	{
+		"username": "username",
+		"workingDirectory": "./",
+		"configSubFolder": "configs/default/"
+	}
+}
