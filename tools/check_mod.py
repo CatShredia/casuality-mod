@@ -288,6 +288,15 @@ ch = pb.get("ktits_pol_change", "")
 check("uncomplete_national_focus" in ch and "focus = ktits_pol_root" in ch and "uncomplete_children = yes" in ch and "has_war = no" in ch and all(k in ch for k in subs_), "politics: reset focus uncompletes the root with children, needs no war and any subtype", "politics: reset focus is wrong")
 pid_txt = (M / "common/ideas/ktits_pol_ideas.txt").read_text(encoding="utf-8") if (M / "common/ideas/ktits_pol_ideas.txt").exists() else ""
 sp_ids = set(re.findall(r"(?m)^\t\t(ktits_pol_sp_\w+) = \{", pid_txt))
+# lore descriptions of all our spirits (every ktits_* idea): non-empty, not a technical placeholder, not shared between ideas
+all_ru = {}
+for f_ in sorted((M / "localisation/russian").glob("ktits_*.yml")): all_ru.update(load_loc(f_))
+idea_all = [k for f_ in sorted((M / "common/ideas").glob("ktits_*.txt")) for k in re.findall(r"(?m)^\t\t(ktits_\w+) = \{", f_.read_text(encoding="utf-8"))]
+PLACEHOLDERS = ("Временное изменение стабильности", "последствия события", "Уровень образованности населения", "Бонусы выбора подтипа", "TODO", "placeholder")
+bad_d = [k for k in idea_all if not all_ru.get(k + "_desc", "").strip() or any(ph in all_ru[k + "_desc"] for ph in PLACEHOLDERS)]
+descs = [all_ru.get(k + "_desc", "") for k in idea_all]
+dup_d = sorted({k for k in idea_all if descs.count(all_ru.get(k + "_desc", "")) > 1})
+check(len(idea_all) >= 30 and not bad_d and not dup_d, f"spirits: all {len(idea_all)} ktits_* ideas have a unique lore description", f"spirits: missing/placeholder desc {bad_d[:5]}, duplicated desc {dup_d[:5]}")
 check(len(sp_ids) == 14 and all(f"add_ideas = {s_}" in gen and f"remove_ideas = {s_}" in ch and pol_ru.get(s_) and pol_en.get(s_) for s_ in sp_ids), "politics: 14 spirits are given, removed by the reset focus and have loc", "politics: spirit problem")
 check(all(re.search(r"\n\t\tx = (\d+)", pb[k]) and int(re.search(r"\n\t\tx = (\d+)", pb[k]).group(1)) >= 34 for k in pb), "politics: all focuses are at x >= 34 (free columns)", "politics: focus overlaps the vanilla/Casuality columns")
 

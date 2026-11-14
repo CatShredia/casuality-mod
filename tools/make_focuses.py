@@ -106,8 +106,8 @@ def add(k, r, e=None):
     ru.append((k, r)); en.append((k, e or L.translit(r)))
 for fid, n, d, *_ in F:
     add(fid, n); add(fid + "_desc", d)
-add("ktits_cas_sp_ministry", "Министерство Бодрости"); add("ktits_cas_sp_ministry_desc", "Ведомство следит, чтобы никто не засыпал на рабочем месте: стабильность выше, а события Казуальности подталкивают шкалу вдвое слабее.")
-add("ktits_cas_sp_labour", "Трудовая повинность"); add("ktits_cas_sp_labour_desc", "Работать обязан каждый. Решения борьбы с Казуальностью дешевле на 10 %, но стабильность страдает.")
+add("ktits_cas_sp_ministry", "Министерство Бодрости"); add("ktits_cas_sp_ministry_desc", "Чиновники в бодрых жилетах ходят по цехам и громко здороваются с каждым, кто закрыл глаза. Страна не то чтобы проснулась, но спать теперь неудобно.")
+add("ktits_cas_sp_labour", "Трудовая повинность"); add("ktits_cas_sp_labour_desc", "Работать обязан каждый, даже тот, кто давно прикинулся мебелью. Народ трудится, косо смотрит на указ и вздыхает так, что слышно в соседней стране.")
 add("ktits_cas_embassy", "Посольство в Ставке Казуала")
 for k, r, e in [
     ("ktits_foc_tt_schools", "Образование повышается на 1 уровень (не выше 5). Рост Казуальности в месяц умножается на §G0,9§!.", "Education rises by 1 level (max 5). Monthly Casuality growth is multiplied by §G0.9§!."),
@@ -177,6 +177,23 @@ BONUS_EN = {"consumer_goods_factor": "consumer goods", "stability_factor": "stab
             "production_speed_buildings_factor": "construction speed", "conscription_factor": "replenishment (conscription)", "political_power_gain": "political power gain"}
 CONT = "\t\tcancel_if_invalid = no\n\t\tcontinue_if_invalid = yes\n"
 SUB_IDS, SPIRITS = [], []
+# INVENTED lore texts of the subtype spirits (docs/lore/Invented-Lore.md)
+SP_TXT = {
+    "liberal": "Рынок свободен, пресса свободна, только прилавки иногда пустеют: свободу ведь не купишь, зато за неё не берут пошлину.",
+    "socdem": "Государство заботливо подтыкает каждому одеяло и выдаёт пособие на чай. Граждане довольны и немного разбалованы.",
+    "conserv": "Как дедушка говорил, так и делаем, а чуть что - собираем комиссию. Перемены допускаются, но очень медленно и с поклоном традиции.",
+    "techdem": "Любой спор решается голосованием через машину, а машина решает, чьё голосование считать. Учёные в восторге, остальные не в курсе.",
+    "lenin": "Советы заседают допоздна, чистки отложены до лучших времён, а лозунги висят ровно. Строим светлое будущее без лишней нервотрёпки.",
+    "totcom": "Всё общее, включая зубные щётки и мнения. Партия знает лучше, поэтому спорить с ней вредно для здоровья и репутации.",
+    "natstate": "Нация превыше всего, и об этом напоминают на каждом углу. Заводы дымят в строю, но личная жизнь пока остаётся личной.",
+    "totfas": "Государство смотрит в каждое окно и одобряет только строй. Все маршируют, даже те, кто просто шёл в магазин.",
+    "integral": "Нация, вера и традиция слиты в один пирог, который режет только староста. Сытно, чинно и немного душно.",
+    "merit": "Должность получает тот, кто лучше сдал экзамен, а не тот, у кого дядя в канцелярии. Дядьки, разумеется, учатся наперегонки.",
+    "technoc": "Страной правят инженеры, и каждая реформа сопровождается чертежом. Дороги стали ровнее, а споров почти нет: чертёж не обсуждают.",
+    "steppe": "Хан сидит на ковре, совет родов шумит, а конница уже в седле. Законы устные, но запоминаются отлично.",
+    "despot": "Вся власть у одного человека, а остальным остаётся ему кивать. Тишина в стране такая, что слышно, как правитель ест.",
+    "theocr": "Закон и молитва слились настолько, что налоги платят с поклоном. Порядок крепок, ведь спорить со святым себе дороже.",
+}
 pl, pe = [], []   # loc ru entries, en overrides
 
 def pfocus(fid, icon, x, y, days, pre, excl, avail, ai, reward, gate=False):
@@ -213,9 +230,9 @@ for key, grp, gen, cx, (pn, pd, pic), (cn, cd, cic), subs in PATHS:
         if ide == "theology_ideology": rew += scale(-10)
         pblk += pfocus(sid, sic, sx, 3, 70, [cid], [o for o in sids if o != sid], None, "\t\t\tfactor = 2\n", rew)
         pl += [(sid, sn), (sid + "_desc", sd), (f"ktits_pol_tt_{s[0]}", f"Правитель страны получает подтип идеологии «{sn}»"),
-               (sp, sn), (sp + "_desc", "Бонусы выбора подтипа в ветке «Политический курс»: " + ", ".join(f"{BONUS[k]} {v * 100:+g} %" for k, v in mods.items()) + ".")]
+               (sp, sn), (sp + "_desc", SP_TXT[s[0]])]
         pe += [(f"ktits_pol_tt_{s[0]}", f"The ruler gets the ideology subtype \"{L.translit(sn)}\""),
-               (sp + "_desc", "Bonuses of the subtype choice in the Political Course branch: " + ", ".join(f"{BONUS_EN[k]} {v * 100:+g}%" for k, v in mods.items()) + ".")]
+               (sp + "_desc", L.translit(SP_TXT[s[0]]))]
 # reset focus: removes the spirits itself (on_uncomplete is documented only in the effect docs, not seen in a vanilla focus file)
 rm = "".join(f"\t\t\t\tif = {{ limit = {{ has_idea = {sp} }} remove_ideas = {sp} }}\n" for sp, *_ in SPIRITS)
 rew = (f"\t\t\tadd_political_power = -100\n\t\t\tadd_stability = -0.10\n\t\t\tset_country_flag = {{ flag = {P_CD} days = 365 value = 1 }}\n"

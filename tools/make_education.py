@@ -20,6 +20,15 @@ LEVELS = [  # (russian, english, research_speed_factor, production_speed_buildin
     ("Образованное общество", "Educated Society", 0.15, 0.10, -0.06),
     ("Общество Будущего", "Society of the Future", 0.25, 0.15, -0.10),
 ]
+# INVENTED lore texts of the education spirits (docs/lore/Invented-Lore.md)
+EDU_TXT = [
+    "Читать тут умеют единицы, и те не любят хвастаться. Знания передаются из уст в уста и по дороге успевают превратиться в слухи.",
+    "Грамота есть у тех, кому не лень, а пахать и сеять учат с пелёнок. Школа - это сарай с лавкой и строгим дядькой.",
+    "Образование здесь для избранных: университеты полны, а деревня по-прежнему не знает, зачем нужны буквы.",
+    "Школы строят, учебники печатают, и даже в глуши кто-то уже спорит о науке. Дело движется, но не слишком быстро.",
+    "Грамотны почти все, и почти все имеют мнение по любому вопросу. Науке хорошо, а работать некому: все заняты чтением.",
+    "Дети здесь учатся летать мыслью, а взрослые - переучиваться. Знания растут быстрее, чем успевают придумать, куда их девать.",
+]
 # lore (docs/lore/Contries-Description.md): lore tag -> level
 LORE_LEVEL = {"CSL": 0, "SVS": 1, "KZZ": 2, "BRT": 4, "IRK": 2, "IRR": 1, "MUS": 0, "TRV": 0, "TMR": 4, "SOY": 4, "SRK": 0}
 # INVENTED (docs/lore/Contries-Description.md says TODO): from analogs and hints ("Челяба - промышленный гигант", Технодемократия -> науч. советы, ...)
@@ -43,9 +52,9 @@ if __name__ == "__main__":
     out.write_text("".join(ideas), encoding="utf-8")
 
     ru = [(f"ktits_edu_{i}", f"Образованность: {n_ru}") for i, (n_ru, *_) in enumerate(LEVELS)] + \
-         [(f"ktits_edu_{i}_desc", f"Уровень образованности населения (шкала из 6 уровней, docs/lore/Contries-Description.md): {n_ru}.") for i, (n_ru, *_) in enumerate(LEVELS)]
+         [(f"ktits_edu_{i}_desc", EDU_TXT[i]) for i in range(len(LEVELS))]
     en = [(f"ktits_edu_{i}", f"Education: {n_en}") for i, (_, n_en, *_) in enumerate(LEVELS)] + \
-         [(f"ktits_edu_{i}_desc", f"Education level of the population (6-level scale): {n_en}.") for i, (_, n_en, *_) in enumerate(LEVELS)]
+         [(f"ktits_edu_{i}_desc", L.translit(EDU_TXT[i])) for i in range(len(LEVELS))]
     L.write_yml(str(M / "localisation/russian/ktits_education_l_russian.yml"), "russian", ru)
     L.write_yml(str(M / "localisation/english/ktits_education_l_english.yml"), "english", en)
 
