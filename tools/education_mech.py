@@ -22,7 +22,7 @@ ATTRACT = [
     ("ktits_edu_attr_1", "Приют для беглых умов", "Страна принимает учёных, бегущих от войны и Казуальности. Они приезжают с чемоданами формул и без лишних вопросов.", 75, 180),
     ("ktits_edu_attr_2", "Наставничество", "Каждый приезжий специалист обязан взять учеников. Ученики сначала пугаются, потом привыкают, а потом сами начинают учить.", 100, 365),
 ]
-COOP = ("ktits_edu_coop", "Договор о сотрудничестве", "Министры просвещения двух стран подписывают договор: лаборатории открывают двери, учёные едут в обе стороны. Подписать должны оба министра, а второй может и не захотеть.", 100, 180)
+COOP = ("ktits_edu_coop", "Договор о сотрудничестве с §Y[FROM.GetName]§!", "Министры просвещения двух стран подписывают договор: лаборатории открывают двери, учёные едут в обе стороны. Подписать должны оба министра, а второй может и не захотеть.", 100, 180)
 # simplification decisions: key, ru name, ru description, cooldown days (0 = once), own lost (full, halved after "Своими силами")
 SIMP = [
     ("ktits_edu_simp_1", "Студентов — на поля", "Учебный год отменяется, студенты едут на уборку урожая. Урожай собран, конспекты утеряны.", 90, 5, 3),
@@ -67,9 +67,11 @@ def effects_text(KAZ):
     th = THRESH
     own_chain = "".join(f"\tif = {{\n\t\tlimit = {{ has_idea = ktits_edu_{i} }}\n\t\tset_variable = {{ var = ktits_spec_own value = {th[i]} }}\n\t}}\n" for i in range(6))
     lvl = "".join(f"\tif = {{\n\t\tlimit = {{ check_variable = {{ var = ktits_spec_own value = {th[i]} compare = greater_than_or_equals }} }}\n\t\tset_variable = {{ var = ktits_edu_t value = {i} }}\n\t}}\n" for i in range(1, 6))
-    nxt = f"\tset_variable = {{ var = ktits_spec_next value = 0 }}\n" + "".join(
+    nxt = f"\tset_variable = {{ var = ktits_spec_next value = 0 }}\n\tset_variable = {{ var = ktits_spec_nthr value = 0 }}\n\tset_variable = {{ var = ktits_spec_progress value = 100 }}\n" + "".join(
         f"\tif = {{\n\t\tlimit = {{ check_variable = {{ var = ktits_edu_t value = {i} compare = equals }} }}\n\t\tset_variable = {{ var = ktits_spec_next value = ktits_spec_own }}\n"
-        f"\t\tmultiply_variable = {{ var = ktits_spec_next value = -1 }}\n\t\tadd_to_variable = {{ var = ktits_spec_next value = {th[i + 1]} }}\n\t}}\n" for i in range(5))
+        f"\t\tmultiply_variable = {{ var = ktits_spec_next value = -1 }}\n\t\tadd_to_variable = {{ var = ktits_spec_next value = {th[i + 1]} }}\n\t\tset_variable = {{ var = ktits_spec_nthr value = {th[i + 1]} }}\n"
+        f"\t\tset_variable = {{ var = ktits_spec_progress value = ktits_spec_own }}\n\t\tadd_to_variable = {{ var = ktits_spec_progress value = -{th[i]} }}\n\t\tmultiply_variable = {{ var = ktits_spec_progress value = 100 }}\n"
+        f"\t\tdivide_variable = {{ var = ktits_spec_progress value = {th[i + 1] - th[i]} }}\n\t\tround_variable = ktits_spec_progress\n\t\tclamp_variable = {{ var = ktits_spec_progress min = 0 max = 100 }}\n\t}}\n" for i in range(5))
     rm = "".join(f"\tif = {{\n\t\tlimit = {{\n\t\t\thas_idea = ktits_edu_{i}\n\t\t\tNOT = {{ check_variable = {{ var = ktits_edu_t value = {i} compare = equals }} }}\n\t\t}}\n\t\tremove_ideas = ktits_edu_{i}\n\t}}\n" for i in range(6))
     ad = "".join(f"\tif = {{\n\t\tlimit = {{\n\t\t\tcheck_variable = {{ var = ktits_edu_t value = {i} compare = equals }}\n\t\t\tNOT = {{ has_idea = ktits_edu_{i} }}\n\t\t}}\n\t\tadd_ideas = ktits_edu_{i}\n\t}}\n" for i in range(6))
     rnd = "".join(f"\t\t1 = {{ set_variable = {{ var = ktits_spec_foreign value = {n} }} }}\n" for n in range(11))
@@ -90,6 +92,9 @@ ktits_education_update = {{
 		set_variable = {{ var = ktits_spec_own value = 0 }}
 		set_variable = {{ var = ktits_spec_foreign value = 0 }}
 	}}
+	# create the counters before the first use (avoids "Unknow variable" in error.log)
+	if = {{ limit = {{ NOT = {{ has_variable = ktits_spec_own }} }} set_variable = {{ var = ktits_spec_own value = 0 }} }}
+	if = {{ limit = {{ NOT = {{ has_variable = ktits_spec_foreign }} }} set_variable = {{ var = ktits_spec_foreign value = 0 }} }}
 	clamp_variable = {{ var = ktits_spec_own min = 0 max = 99999 }}
 	clamp_variable = {{ var = ktits_spec_foreign min = 0 max = 99999 }}
 	set_variable = {{ var = ktits_edu_t value = 0 }}
@@ -111,6 +116,7 @@ ktits_education_costs = {{
 
 # monthly: 5 % of foreign (at least 1) become own (8 % after the focus, 10 % during the decision; maximum), swamp -1, institutes +1
 ktits_education_monthly = {{
+	ktits_edu_coop_monthly = yes
 	if = {{
 		limit = {{
 			OR = {{
@@ -162,7 +168,7 @@ ktits_education_monthly = {{
 """
 
 
-def decisions_text(KAZ):
+def decisions_text(KAZ, tags):
     lim_att = ("\t\t\tcustom_trigger_tooltip = {\n\t\t\t\ttooltip = ktits_edu_tt_kaz\n\t\t\t\tNOT = { ktits_is_kazualia = yes }\n"
                f"\t\t\t\tNOT = {{ is_puppet_of = {KAZ} }}\n\t\t\t}}\n")
     big = ("\t\t\tcustom_trigger_tooltip = {\n\t\t\t\ttooltip = ktits_edu_req_big\n\t\t\t\tktits_is_big_country = yes\n\t\t\t}\n"
@@ -198,6 +204,8 @@ def decisions_text(KAZ):
 """
     # targeted decision: cooperation treaty (docs/global_mechanics/Education.md); the target answers with the event ktits_edu.1 (events/ktits_education_events.txt)
     ck, _cn, _cd, ccost, ccd = COOP
+    # per-pair flags sit on the target and carry OUR tag (ref = refusal for 365 days, done = treaty in force); generated for every tag
+    pair_block = "".join(f"\t\t\t\tNOT = {{ has_country_flag = ktits_edu_coop_ref_{x} ROOT = {{ original_tag = {x} }} }}\n\t\t\t\tNOT = {{ has_country_flag = ktits_edu_coop_done_{x} ROOT = {{ original_tag = {x} }} }}\n" for x in tags).replace("\t", chr(9)).replace("\n", chr(10))
     d += f"""
 \t{ck} = {{
 \t\ticon = generic_research
@@ -210,8 +218,7 @@ def decisions_text(KAZ):
 \t\t\t\tNOT = {{ has_war_with = ROOT }}
 \t\t\t\tNOT = {{ ktits_is_kazualia = yes }}
 \t\t\t\tNOT = {{ is_puppet_of = {KAZ} }}
-\t\t\t\tNOT = {{ has_country_flag = ktits_edu_coop_target }}
-\t\t\t\tOR = {{
+{pair_block}\t\t\t\tOR = {{
 \t\t\t\t\thas_idea = ktits_edu_2
 \t\t\t\t\thas_idea = ktits_edu_3
 \t\t\t\t\thas_idea = ktits_edu_4
@@ -225,7 +232,6 @@ def decisions_text(KAZ):
 \t\tcomplete_effect = {{
 \t\t\tcustom_effect_tooltip = ktits_edu_tt_coop
 \t\t\tFROM = {{
-\t\t\t\tset_country_flag = {{ flag = ktits_edu_coop_target days = 365 value = 1 }}
 \t\t\t\tcountry_event = {{ id = ktits_edu.1 }}
 \t\t\t}}
 \t\t}}
@@ -283,8 +289,8 @@ def loc_entries():
     L += [
         ("ktits_edu_tt_kaz", "Ставке Казуала специалисты не нужны", "Kazual's Stavka needs no specialists"),
         ("ktits_edu_req_big", "Крупная страна (та, у которой есть выделяемые государства)", "A big country (one with releasable states)"),
-        ("ktits_edu_tt_coop", "Выбранной стране уйдёт предложение о сотрудничестве. Если она согласится: у нас иностранных специалистов §G+15§! тыс., у неё §G+5§! тыс. Если откажет, политическая власть не вернётся.",
-         "The chosen country gets a cooperation offer. If it accepts: foreign specialists §G+15§! k for us, §G+5§! k for it. If it refuses, political power is not refunded."),
+        ("ktits_edu_tt_coop", "Выбранной стране уйдёт предложение о сотрудничестве (§Y100§! ПВ списываются сразу). Если она согласится: обе страны получают дух «Научное сотрудничество»; ежемесячно у нас иностранных специалистов §G+2§! тыс., у неё §G+1§! тыс. Если откажет, ПВ не вернутся, а эту страну можно будет просить снова только через 365 дней.",
+         "The chosen country gets a cooperation offer (§Y100§! PP are spent at once). If it accepts: both get the spirit Scientific Cooperation; monthly foreign specialists §G+2§! k for us, §G+1§! k for it. If it refuses, PP are not refunded and we can ask this country again only after 365 days."),
         ("ktits_edu_req_for10", "Иностранных специалистов не меньше §Y10§! (сейчас [?ktits_spec_foreign|0])", "Foreign specialists at least §Y10§! (now [?ktits_spec_foreign|0])"),
         ("ktits_edu_req_refuge", "У соседа идёт война или ступень Казуальности не ниже §Y3§!", "A neighbour is at war or has a Casuality tier of at least §Y3§!"),
         ("ktits_edu_req_totalitarian", "Правитель: тотальный фашизм или тотальный коммунизм", "Ruler: total fascism or total communism"),
@@ -304,7 +310,7 @@ def loc_entries():
     return L
 
 
-def events_text():
+def events_text(tags):
     """events of the cooperation treaty: 1 = offer to the target (options accept / refuse), 2 = answer 'accepted' to the sender, 3 = answer 'refused' to the sender"""
     pic = "GFX_report_event_ktits_casuality"
     return f"""# cooperation treaty (docs/global_mechanics/Education.md); generated by tools/make_education.py, do not edit by hand
@@ -330,11 +336,16 @@ country_event = {{
 @t@t@t@tNOT = {{ is_in_faction_with = FROM }}
 @t@t@t}}
 @t@t}}
-{spec(0, 5, "@t@t")}@t@tFROM = {{ country_event = {{ id = ktits_edu.2 }} }}
+@t@tktits_edu_coop_accept = yes
+@t@tFROM = {{
+@t@t@tktits_edu_coop_accept_sender = yes
+@t@t@tcountry_event = {{ id = ktits_edu.2 }}
+@t@t}}
 @t}}
 @toption = {{
 @t@tname = ktits_edu.1.b
 @t@tai_chance = {{ base = 1 }}
+@t@tktits_edu_coop_refuse = yes
 @t@tFROM = {{ country_event = {{ id = ktits_edu.3 }} }}
 @t}}
 }}
@@ -349,7 +360,7 @@ country_event = {{
 
 @toption = {{
 @t@tname = ktits_edu.2.a
-{spec(0, 15, "@t@t")}@t}}
+@t}}
 }}
 
 # to the sender: refused (the political power is not refunded)
@@ -369,13 +380,68 @@ country_event = {{
 
 EVENT_LOC = [  # key, ru text (INVENTED flavour, docs/lore/Invented-Lore.md)
     ("ktits_edu.1.t", "Предложение о сотрудничестве"),
-    ("ktits_edu.1.d", "Министр просвещения страны [From.GetName] прислал проект договора: обмен учёными, открытые лаборатории и общие конференции. Взамен просят только уважения и пару свободных кафедр. Решать нам, и торопиться некуда: учёные народ терпеливый."),
+    ("ktits_edu.1.d", "Министр просвещения страны [From.GetName] прислал проект договора: обмен учёными, открытые лаборатории и общие конференции. Взамен просят только уважения и пару свободных кафедр. Если согласимся, обе страны получат дух «Научное сотрудничество»: у нас ежемесячно +1 тыс. иностранных специалистов, у них +2. Решать нам, и торопиться некуда: учёные народ терпеливый."),
     ("ktits_edu.1.a", "Согласиться"),
     ("ktits_edu.1.b", "Отказать"),
     ("ktits_edu.2.t", "Договор подписан"),
-    ("ktits_edu.2.d", "Страна [From.GetName] приняла наше предложение. В лабораториях меняют таблички, в общежитиях ищут свободные койки, а первые иностранные специалисты уже ищут, где здесь можно поесть."),
+    ("ktits_edu.2.d", "Страна [From.GetName] приняла наше предложение. У нас появился дух «Научное сотрудничество»: ежемесячно +2 тыс. иностранных специалистов, пока мы не поссоримся. В лабораториях меняют таблички, в общежитиях ищут свободные койки, а первые иностранные специалисты уже ищут, где здесь можно поесть."),
     ("ktits_edu.2.a", "Добро пожаловать"),
     ("ktits_edu.3.t", "Договор отклонён"),
-    ("ktits_edu.3.d", "Страна [From.GetName] вежливо отказалась. Проект договора вернулся с пометкой «рассмотрено», а потраченную политическую власть уже не вернуть. Учёные пожимают плечами и пишут новые черновики."),
+    ("ktits_edu.3.d", "Страна [From.GetName] вежливо отказалась. Проект договора вернулся с пометкой «рассмотрено», а потраченную политическую власть уже не вернуть. Просить эту страну снова можно будет через год. Учёные пожимают плечами и пишут новые черновики."),
     ("ktits_edu.3.a", "Жаль"),
 ]
+
+
+COOP_RU = "Наши и их учёные пишут друг другу письма, ездят на конференции и спорят до хрипоты. Лаборатории открыты, знания текут через границу."
+
+
+def coop_effects_text(KAZ, tags):
+    """per-tag scripted effects of the cooperation treaty; flags on a country: ktits_edu_coop_done_<PARTNER> (treaty in force), ktits_edu_coop_init_<PARTNER> (we proposed:
+    +2 a month instead of +1), ktits_edu_coop_ref_<PROPOSER> (refusal, 365 days, on the target)"""
+    acc = "".join(f"\tif = {{\n\t\tlimit = {{ FROM = {{ original_tag = {x} }} }}\n\t\tadd_ideas = ktits_edu_coop_{x}\n\t\tset_country_flag = ktits_edu_coop_done_{x}\n\t}}\n" for x in tags)
+    snd = "".join(f"\tif = {{\n\t\tlimit = {{ ROOT = {{ original_tag = {x} }} }}\n\t\tadd_ideas = ktits_edu_coop_{x}\n\t\tset_country_flag = ktits_edu_coop_done_{x}\n\t\tset_country_flag = ktits_edu_coop_init_{x}\n\t}}\n" for x in tags)
+    ref = "".join(f"\tif = {{\n\t\tlimit = {{ FROM = {{ original_tag = {x} }} }}\n\t\tset_country_flag = {{ flag = ktits_edu_coop_ref_{x} days = 365 value = 1 }}\n\t}}\n" for x in tags)
+    mon = ""
+    for x in tags:
+        mon += f"""\tif = {{
+\t\tlimit = {{ has_idea = ktits_edu_coop_{x} }}
+\t\tif = {{
+\t\t\tlimit = {{
+\t\t\t\tOR = {{
+\t\t\t\t\tktits_is_kazualia = yes
+\t\t\t\t\tis_puppet_of = {KAZ}
+\t\t\t\t\tNOT = {{ country_exists = {x} }}
+\t\t\t\t\thas_war_with = {x}
+\t\t\t\t\t{x} = {{ is_puppet_of = {KAZ} }}
+\t\t\t\t}}
+\t\t\t}}
+\t\t\tremove_ideas = ktits_edu_coop_{x}
+\t\t\tclr_country_flag = ktits_edu_coop_done_{x}
+\t\t\tclr_country_flag = ktits_edu_coop_init_{x}
+\t\t}}
+\t\telse_if = {{
+\t\t\tlimit = {{ has_country_flag = ktits_edu_coop_init_{x} }}
+\t\t\tadd_to_variable = {{ var = ktits_spec_foreign value = 2 }}
+\t\t}}
+\t\telse = {{
+\t\t\tadd_to_variable = {{ var = ktits_spec_foreign value = 1 }}
+\t\t}}
+\t}}
+"""
+    return f"""# cooperation treaty (docs/global_mechanics/Education.md); generated by tools/make_education.py, do not edit by hand
+# scope: the target (accepting side) = ROOT of the event, FROM = the proposer
+ktits_edu_coop_accept = {{
+{acc}}}
+
+# scope: the proposer, ROOT = the target
+ktits_edu_coop_accept_sender = {{
+{snd}}}
+
+# scope: the target; a refusal blocks only this pair for 365 days
+ktits_edu_coop_refuse = {{
+{ref}}}
+
+# monthly: removes the spirit of a broken treaty (war, partner gone, Kazualia puppet) and gives +2 (proposer) / +1 (acceptor) foreign specialists per spirit
+ktits_edu_coop_monthly = {{
+{mon}}}
+"""
