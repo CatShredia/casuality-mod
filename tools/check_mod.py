@@ -229,6 +229,70 @@ if orig.exists():
 bad_idx = sorted(set(np.unique(ra[riv]).tolist()) - set(range(0, 12)))
 check(not bad_idx, "rivers.bmp: only palette indices 0-11 used for rivers", f"rivers.bmp: unexpected indices {bad_idx}")
 
+# ---- focus branch "Казуальность" (make_focuses.py) ----
+FOC_IDS = ["ktits_cas_culture", "ktits_cas_schools", "ktits_cas_drain", "ktits_cas_ministry", "ktits_cas_anticas", "ktits_cas_service",
+           "ktits_cas_rest", "ktits_cas_resorts", "ktits_cas_houses", "ktits_cas_embassy", "ktits_cas_wing"]
+gen_p = M / "common/national_focus/generic.txt"
+gen = gen_p.read_text(encoding="utf-8-sig") if gen_p.exists() else ""
+fl_ru, fl_en = load_loc(M / "localisation/russian/ktits_focuses_l_russian.yml"), load_loc(M / "localisation/english/ktits_focuses_l_english.yml")
+foc_def = re.findall(r"(?m)^\tfocus = \{\r?\n\t\tid = (ktits_cas_\w+)", gen)
+check(sorted(foc_def) == sorted(FOC_IDS) and gen.count("{") == gen.count("}") and gen.count("KTITS_CASUALITY_BRANCH_BEGIN") == 1,
+      "focuses: all 11 Casuality focuses defined once in the generic tree, braces balanced", f"focuses: defined {sorted(foc_def)} (need 11), braces {gen.count('{')}/{gen.count('}')}")
+miss_fl = [k for f in FOC_IDS for k in (f, f + "_desc") if not fl_ru.get(k, "").strip() or not fl_en.get(k, "").strip()]
+check(not miss_fl, "focuses: every focus has ru/en name and description", f"focuses: loc missing for {miss_fl[:6]}")
+blk_f = {m.group(1): m.group(0) for m in re.finditer(r"\tfocus = \{\r?\n\t\tid = (ktits_cas_\w+)[\s\S]*?\r?\n\t\}", gen)}
+check("mutually_exclusive = { focus = ktits_cas_rest }" in blk_f.get("ktits_cas_culture", "") and "mutually_exclusive = { focus = ktits_cas_culture }" in blk_f.get("ktits_cas_rest", ""),
+      "focuses: 'Культура труда' and 'Право на отдых' are mutually exclusive both ways", "focuses: mutual exclusivity of culture/rest missing")
+check("has_country_leader_ideology = total_fascism" in blk_f.get("ktits_cas_service", "") and "has_country_leader_ideology = total_communism" in blk_f.get("ktits_cas_service", ""),
+      "focuses: 'Трудовая повинность' requires total fascism or total communism", "focuses: ktits_cas_service condition missing")
+used_sub = set(re.findall(r"has_country_leader_ideology = (\w+)", "\n".join(blk_f.values())))
+ide_txt = (M / "common/ideologies/00_ideologies.txt").read_text(encoding="utf-8-sig") if (M / "common/ideologies/00_ideologies.txt").exists() else ""
+check(all(re.search(r"(?m)^\s*" + s + r"\s*=\s*\{", ide_txt) for s in used_sub), "focuses: sub-ideologies used in conditions exist", f"focuses: unknown sub-ideology in {sorted(used_sub)}")
+weeks = {"ktits_cas_culture": 10, "ktits_cas_schools": 10, "ktits_cas_drain": 15, "ktits_cas_ministry": 10, "ktits_cas_anticas": 10, "ktits_cas_service": 5,
+         "ktits_cas_rest": 10, "ktits_cas_resorts": 10, "ktits_cas_houses": 10, "ktits_cas_embassy": 5, "ktits_cas_wing": 15}
+check(all(f"cost = {v}\n" in blk_f.get(k, "").replace("\r", "") for k, v in weeks.items()), "focuses: durations match the doc (days / 7 weeks)", "focuses: cost differs from the doc table")
+dec_txt = (M / "common/decisions/ktits_casuality.txt").read_text(encoding="utf-8")
+sup = re.findall(r"(?m)^\t(ktits_cas_support_\w+) = \{([\s\S]*?)\n\t\}", dec_txt)
+bad_sup = [k for k, b in sup if "has_completed_focus = ktits_cas_rest" not in b]
+bad_fight = [k for k, b in re.findall(r"(?m)^\t(ktits_cas_fight_\w+) = \{([\s\S]*?)\n\t\}", dec_txt) if "has_completed_focus" in b]
+check(len(sup) >= 7 and not bad_sup and not bad_fight, f"focuses: all {len(sup)} support decisions require 'Право на отдых', fight decisions do not", f"focuses: support without the focus {bad_sup}, fight with it {bad_fight}")
+mc = "\n".join(p.read_text(encoding="utf-8") for p in (M / "common/scripted_effects").glob("ktits_casuality*.txt")) + "\n" + (M / "events/ktits_casuality_events.txt").read_text(encoding="utf-8") + dec_txt + gen
+flags_set = set(re.findall(r"set_country_flag = (?:\{ flag = )?(ktits_cas_f_\w+)", gen))
+flags_read = set(re.findall(r"has_country_flag = (ktits_cas_f_\w+)", mc.replace(gen, "")))
+check(flags_set == flags_read and len(flags_set) == 7, f"focuses: all {len(flags_set)} focus flags that are set are read by the mechanic", f"focuses: flags set {sorted(flags_set)} vs read {sorted(flags_read)}")
+sp = (M / "common/ideas/ktits_focus_ideas.txt").read_text(encoding="utf-8") if (M / "common/ideas/ktits_focus_ideas.txt").exists() else ""
+check(all(k in sp and fl_ru.get(k) and fl_ru.get(k + "_desc") for k in ("ktits_cas_sp_ministry", "ktits_cas_sp_labour")) and "ktits_cas_embassy" in (M / "common/opinion_modifiers/ktits_opinion_modifiers.txt").read_text(encoding="utf-8"),
+      "focuses: both spirits and the embassy opinion modifier exist with loc", "focuses: spirits / opinion modifier missing")
+
+# ---- focus branch "Политический курс" (make_focuses.py) ----
+pol_defs = re.findall(r"(?m)^\tfocus = \{\r?\n\t\tid = (ktits_pol_\w+)", gen)
+check(len(pol_defs) == 26 and len(set(pol_defs)) == 26 and gen.count("KTITS_POLITICS_BRANCH_BEGIN") == 1 and gen.count("{") == gen.count("}"),
+      "politics: 26 unique focuses in the generic tree, braces balanced", f"politics: {len(pol_defs)} focuses ({len(set(pol_defs))} unique)")
+pol_ru, pol_en = load_loc(M / "localisation/russian/ktits_pol_l_russian.yml"), load_loc(M / "localisation/english/ktits_pol_l_english.yml")
+miss_pl = [k for f in pol_defs for k in (f, f + "_desc") if not pol_ru.get(k, "").strip() or not pol_en.get(k, "").strip()]
+check(not miss_pl, "politics: every focus has ru/en name and description", f"politics: loc missing {miss_pl[:6]}")
+pb = {m.group(1): m.group(0).replace("\r", "") for m in re.finditer(r"\tfocus = \{\r?\n\t\tid = (ktits_pol_\w+)[\s\S]*?\r?\n\t\}", gen)}
+pops_ = [k for k in pb if k.endswith("_pop")]
+def excl_of(b):
+    m = re.search(r"mutually_exclusive = \{([^}]*)\}", b)
+    return set(re.findall(r"focus = (\w+)", m.group(1))) if m else set()
+check(len(pops_) == 5 and all(excl_of(pb[k]) == set(pops_) - {k} for k in pops_), "politics: the 5 paths are mutually exclusive both ways", "politics: path exclusivity broken")
+subs_ = {k: b for k, b in pb.items() if "set_country_leader_ideology" in b}
+by_pre = {}
+for k, b in subs_.items():
+    by_pre.setdefault(re.search(r"prerequisite = \{ focus = (\w+) \}", b).group(1), []).append(k)
+check(len(subs_) == 14 and all(excl_of(subs_[k]) == set(v) - {k} for v in by_pre.values() for k in v), "politics: 14 subtypes, mutually exclusive inside each path", "politics: subtype exclusivity broken")
+sub_keys = {re.search(r"set_country_leader_ideology = (\w+)", b).group(1) for b in subs_.values()}
+check(all(re.search(r"(?m)^\s*" + s_ + r"\s*=\s*\{", ide_txt) for s_ in sub_keys) and len(sub_keys) == 14, "politics: all 14 subtype keys exist in the ideologies file", f"politics: unknown subtype keys {sorted(sub_keys)}")
+ch = pb.get("ktits_pol_change", "")
+check("uncomplete_national_focus" in ch and "focus = ktits_pol_root" in ch and "uncomplete_children = yes" in ch and "has_war = no" in ch and all(k in ch for k in subs_), "politics: reset focus uncompletes the root with children, needs no war and any subtype", "politics: reset focus is wrong")
+pid_txt = (M / "common/ideas/ktits_pol_ideas.txt").read_text(encoding="utf-8") if (M / "common/ideas/ktits_pol_ideas.txt").exists() else ""
+sp_ids = set(re.findall(r"(?m)^\t\t(ktits_pol_sp_\w+) = \{", pid_txt))
+check(len(sp_ids) == 14 and all(f"add_ideas = {s_}" in gen and f"remove_ideas = {s_}" in ch and pol_ru.get(s_) and pol_en.get(s_) for s_ in sp_ids), "politics: 14 spirits are given, removed by the reset focus and have loc", "politics: spirit problem")
+check(all(re.search(r"\n\t\tx = (\d+)", pb[k]) and int(re.search(r"\n\t\tx = (\d+)", pb[k]).group(1)) >= 34 for k in pb), "politics: all focuses are at x >= 34 (free columns)", "politics: focus overlaps the vanilla/Casuality columns")
+
+sp_ids = set(re.findall(r"(?m)^		(ktits_pol_sp_\w+) = \{", pid_txt))
+
 w = {"PASS": 0, "WARN": 0, "FAIL": 0}
 for lvl, msg in res:
     w[lvl] += 1
