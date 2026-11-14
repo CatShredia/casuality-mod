@@ -152,14 +152,13 @@ w("common/scripted_effects/ktits_casuality_effects.txt", f"""ktits_casuality_upd
 	}}
 }}
 
-# author's rule: puppets of Kazualia have education level 0; the level is NOT restored after the country stops being a puppet (invented)
+# author's rule: puppets of Kazualia have no specialists and education level 0 (ktits_education_update, tools/make_education.py); the level is NOT restored after the country stops being a puppet (invented)
 ktits_kaz_puppet_education = {{
 	if = {{
-		limit = {{
-			is_puppet_of = {KAZ}
-			NOT = {{ has_idea = ktits_edu_0 }}
-		}}
-{"".join(f"{chr(9)}{chr(9)}remove_ideas = ktits_edu_{i}{chr(10)}" for i in range(1, 6))}		add_ideas = ktits_edu_0
+		limit = {{ is_puppet_of = {KAZ} }}
+		set_variable = {{ var = ktits_spec_own value = 0 }}
+		set_variable = {{ var = ktits_spec_foreign value = 0 }}
+		ktits_education_update = yes
 	}}
 }}
 
@@ -200,7 +199,9 @@ COSTS = "".join(
     "\t# focus \"Трудовая повинность\": fight decisions 10 % cheaper\n\tif = {\n\t\tlimit = { has_country_flag = ktits_cas_f_labour }\n" + "".join(
     f"\t\tmultiply_variable = {{ var = ktits_cas_cost_{k.rsplit('_', 1)[1]} value = 0.9 }}\n\t\tround_variable = ktits_cas_cost_{k.rsplit('_', 1)[1]}\n" for k in FIGHT_KEYS) + "\t}\n"
 POP_STEPS = "".join(
-    f"\tif = {{\n\t\tlimit = {{ casuality > {i / 10 - 0.001:.3f} }}\n\t\tadd_to_variable = {{ var = ktits_cas_g value = 1 }}\n\t}}\n" for i in range(1, 11))
+    f"\tif = {{\n\t\tlimit = {{ casuality > {i / 10 - 0.001:.3f} }}\n\t\tadd_to_variable = {{ var = ktits_cas_g value = 1 }}\n\t}}\n" for i in range(1, 11)) + (
+    "\t# focus \"Dry houses\" (economy branch): the party component of the growth is 1 lower while the party has 10 % or more\n"
+    "\tif = {\n\t\tlimit = {\n\t\t\thas_country_flag = ktits_cas_f_dry\n\t\t\tcasuality > 0.099\n\t\t}\n\t\tadd_to_variable = { var = ktits_cas_g value = -1 }\n\t}\n")
 w("common/scripted_effects/ktits_casuality_monthly_effects.txt", f"""# edu cost of the fight decisions: -25 % PP at education 4-5, +25 % at 0-1 (the decisions read the variables ktits_cas_cost_N)
 ktits_casuality_costs = {{
 {COSTS}}}
@@ -228,6 +229,11 @@ ktits_casuality_growth = {{
 {POP_STEPS}{edu_chain(lambda i: f"		multiply_variable = {{ var = ktits_cas_g value = {EDU_MULT[i]} }}" + chr(10))}	# focus "Школы труда": growth x0.9
 	if = {{
 		limit = {{ has_country_flag = ktits_cas_f_schools }}
+		multiply_variable = {{ var = ktits_cas_g value = 0.9 }}
+	}}
+	# focus "Лекарство от лени": growth x0.9 (stacks multiplicatively with the schools)
+	if = {{
+		limit = {{ has_country_flag = ktits_cas_f_cure }}
 		multiply_variable = {{ var = ktits_cas_g value = 0.9 }}
 	}}
 	# floor: -0.49 then round to the nearest integer (fractions here are at most .95)
@@ -394,12 +400,17 @@ w("common/on_actions/ktits_casuality_on_actions.txt", """on_actions = {
 				ktits_casuality_costs = yes
 				ktits_casuality_ai_start = yes
 			}
+			# specialists (tools/make_education.py): start values and costs for every country
+			ktits_education_start = yes
+			ktits_education_costs = yes
 		}
 	}
 	on_monthly = {
 		effect = {
 		# safety net for every country, fallen ones included (author's rule: puppets of Kazualia have education 0)
 		ktits_kaz_puppet_education = yes
+			# specialists: monthly transfer foreign -> own, swamp, institutes; Kazualia reset (tools/make_education.py)
+			ktits_education_monthly = yes
 			if = {
 				limit = {
 					NOT = { ktits_is_kazualia = yes }
@@ -508,16 +519,26 @@ w("common/ideas/ktits_casuality_call.txt", """ideas = {
 """)
 
 # ---- decisions ----
-w("common/decisions/categories/ktits_casuality_categories.txt", """ktits_casuality_category = {
+# two categories (docs/global_mechanics/Education.md "Отображение в игре"); the scale bar (scripted GUI) sits on the fight one
+CAT_FIGHT, CAT_SUP = "ktits_casuality_fight_category", "ktits_casuality_support_category"
+w("common/decisions/categories/ktits_casuality_categories.txt", f"""{CAT_FIGHT} = {{
 	icon = generic_propaganda
 	picture = GFX_decision_cat_picture_ktits_casuality
 	scripted_gui = ktits_casuality_ui
-	visible = {
-		NOT = { ktits_is_kazualia = yes }
-	}
-}
+	visible = {{
+		NOT = {{ ktits_is_kazualia = yes }}
+	}}
+}}
+
+{CAT_SUP} = {{
+	icon = generic_propaganda
+	picture = GFX_decision_cat_picture_ktits_casuality
+	visible = {{
+		NOT = {{ ktits_is_kazualia = yes }}
+	}}
+}}
 """)
-dec = "ktits_casuality_category = {\n"
+dec = {"fight": CAT_FIGHT + " = {\n", "support": CAT_SUP + " = {\n"}
 for key, _, _, delta, cost, cd, side, lo, ex in DECISIONS:
     extra = "".join("\t\t\t" + e + "\n" for k_ in ex.split("+") for e in EXTRA.get(k_, []))
     avail = req("ge", max(lo, 1)) if side == "fight" else req("lt", 100)
@@ -542,7 +563,7 @@ for key, _, _, delta, cost, cd, side, lo, ex in DECISIONS:
         vis = "NOT = { ktits_is_kazualia = yes }" + (("\n\t\t\t" + vvis) if vvis else "")
         re_en = f"\t\tdays_re_enable = {vcd}\n" if vcd is not None else ""
         v_ai = ai if vkey == key else ai.replace(f"base = {AI_W[key]}", f"base = {AI_W[vkey]}", 1)
-        dec += f"""
+        dec[side] += f"""
 	{vkey} = {{
 		icon = ktits_casuality
 		visible = {{
@@ -561,7 +582,7 @@ for key, _, _, delta, cost, cd, side, lo, ex in DECISIONS:
 		}}
 	}}
 """
-w("common/decisions/ktits_casuality.txt", dec + "}\n")
+w("common/decisions/ktits_casuality.txt", dec["fight"] + "}\n\n" + dec["support"] + "}\n")
 
 # Kazualia: targeted decision "Позвать с болот" (docs/global_mechanics/Casuality-Mechanic.md, war with Kazualia)
 w("common/decisions/categories/ktits_casuality_kaz_categories.txt", """ktits_casuality_kaz_category = {
@@ -783,11 +804,15 @@ ev_path.write_text(ev_path.read_text(encoding="utf-8").rstrip() + "\n" + rev, en
 ru, en = [], []
 def add(k, ru_t, en_t=None):
     ru.append((k, ru_t)); en.append((k, en_t or L.translit(ru_t)))
-add("ktits_casuality_category", "Казуальность")
-add("ktits_casuality_category_desc", "Шкала Казуальности: [?ktits_casuality|0] из 100. Лень снижает промышленность; на отметке 100 страна переходит в Казуальность и становится марионеткой Казуалии.")
+add(CAT_FIGHT, "Казуальность: борьба")
+add(CAT_FIGHT + "_desc", "Шкала Казуальности: [?ktits_casuality|0] из 100. Лень снижает промышленность; на отметке 100 страна переходит в Казуальность и становится марионеткой Казуалии. Здесь собраны решения, которые тянут шкалу вниз: агитация, профсоюзы, осушение болот.")
+add(CAT_SUP, "Казуальность: поддержка")
+add(CAT_SUP + "_desc", "Всё, что делает жизнь легче, а шкалу Казуальности выше: праздники, сиесты, клубы и культ Священного-Архо-Казуала. Решения открываются после фокуса «Право на отдых», и никто здесь не торопится.")
 for k, n, d, *_ in TIERS:
     add(f"ktits_cas_{k}", f"Казуальность: {n}"); add(f"ktits_cas_{k}_desc", d)
-for key, n, d, *_ in DECISIONS:
+MARK = {"fight": "§R−§! ", "support": "§G+§! "}   # vanilla localisation has no ▲/▼ glyphs: coloured plus / minus (U+2212) instead
+for key, n, d, _dl, _c, _cd, side_, *_ in DECISIONS:
+    n = MARK[side_] + n
     add(key, n); add(f"{key}_desc", d)
     if key == FREE: add(key + "_free", n); add(key + "_free_desc", d + " (Без перезарядки: действует «Дома Безделья по всей стране».)")
 add("ktits_cas_call_1", "Зов болот")
@@ -804,7 +829,7 @@ add("ktits_casuality.1.a", "Всё само получится...")
 for op, n in sorted(REQ):
     add("ktits_cas_req_%s%d" % (op, n), ("Казуальность не меньше §Y%d§! (сейчас [?ktits_casuality|0])" if op == "ge" else "Казуальность меньше §Y%d§! (сейчас [?ktits_casuality|0])") % n,
         ("Casuality at least §Y%d§! (now [?ktits_casuality|0])" if op == "ge" else "Casuality below §Y%d§! (now [?ktits_casuality|0])") % n)
-for d in sorted(CAS_TT | {10, -10, -20, -15, 5, 20}):   # the extra ones are used by the focuses (tools/make_focuses.py)
+for d in sorted(CAS_TT | {10, -10, -20, -15, 5, -5, 20}):   # the extra ones are used by the focuses (tools/make_focuses.py)
     add(tt_key(d), ("Казуальность: §R+%d§!" % d) if d > 0 else ("Казуальность: §G%d§!" % d), ("Casuality: §R+%d§!" % d) if d > 0 else ("Casuality: §G%d§!" % d))
 add("ktits_casuality_31_tt", "Решение «Последний рывок» доступно (шкала не ниже 95).")
 add("ktits_casuality_fall_tt", "Правящая партия станет Казуальностью, захваченные земли вернутся прежним владельцам, страна станет марионеткой Казуалии, а все части, которые можно освободить, станут отдельными марионетками Казуалии.")

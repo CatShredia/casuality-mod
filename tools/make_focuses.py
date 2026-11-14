@@ -14,6 +14,7 @@ Run after make_casuality.py. Usage: python tools/make_focuses.py [--mod PATH]
 import argparse, re
 from pathlib import Path
 import lore_data as L
+import education_mech as E
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--mod", default=L.DEFAULT_MOD)
@@ -34,7 +35,8 @@ def scale(d, t="\t\t\t"):
 def hidden(tip, body, t="\t\t\t"):
     return f"{t}custom_effect_tooltip = {tip}\n{t}hidden_effect = {{\n" + "".join(f"{t}\t{l}\n" for l in body) + f"{t}}}\n"
 
-EDU_UP = [f"if = {{ limit = {{ has_idea = ktits_edu_{i} }} remove_ideas = ktits_edu_{i} add_ideas = ktits_edu_{i + 1} }}" for i in range(4, -1, -1)]
+# (education +1 level was replaced by specialists: Школы труда gives own +30, tools/education_mech.py)
+_UNUSED_EDU_UP = [f"if = {{ limit = {{ has_idea = ktits_edu_{i} }} remove_ideas = ktits_edu_{i} add_ideas = ktits_edu_{i + 1} }}" for i in range(4, -1, -1)]
 POP = lambda p: f"\t\t\tadd_popularity = {{ ideology = casuality popularity = {p} }}\n"
 
 # id, ru name, ru desc, days, icon, x, y, prerequisite, path, extra available, reward
@@ -42,7 +44,7 @@ F = [
  ("ktits_cas_culture", "Культура труда", "Газеты, радио и школы начинают говорить о труде как о достоинстве. Работать снова становится принято.", 70, "GFX_goal_generic_production", 24, 0, None, "trud", None,
   scale(-10) + "\t\t\tadd_political_power = 50\n"),
  ("ktits_cas_schools", "Школы труда", "В школах вместо послеобеденного сна — уроки труда и дисциплины.", 70, "GFX_goal_generic_army_doctrines", 24, 1, "ktits_cas_culture", "trud", None,
-  hidden("ktits_foc_tt_schools", EDU_UP + ["set_country_flag = ktits_cas_f_schools"])),
+  E.spec(own=30) + hidden("ktits_foc_tt_schools", ["set_country_flag = ktits_cas_f_schools"])),
  ("ktits_cas_drain", "Осушение низин", "Государственная программа превращает топи в поля. Болото отступает.", 105, "GFX_goal_generic_construct_infrastructure", 24, 2, "ktits_cas_schools", "trud", None,
   "\t\t\tset_country_flag = ktits_cas_f_drain\n\t\t\tcustom_effect_tooltip = ktits_foc_tt_drain\n" + scale(-20)),
  ("ktits_cas_ministry", "Министерство Бодрости", "Ведомство, которое следит, чтобы никто не засыпал на рабочем месте.", 70, "GFX_goal_generic_national_unity", 24, 3, "ktits_cas_drain", "trud",
@@ -99,7 +101,7 @@ def idea(name, stab):
     return (f"\t\t{name} = {{\n\t\t\tpicture = ktits_casuality\n\t\t\tallowed = {{ always = no }}\n\t\t\tallowed_civil_war = {{ always = yes }}\n"
             f"\t\t\tremoval_cost = -1\n\t\t\tmodifier = {{\n\t\t\t\tstability_factor = {stab}\n\t\t\t}}\n\t\t}}\n")
 w("common/ideas/ktits_focus_ideas.txt", "ideas = {\n\tcountry = {\n" + idea("ktits_cas_sp_ministry", 0.05) + idea("ktits_cas_sp_labour", -0.05) + "\t}\n}\n")
-w("common/opinion_modifiers/ktits_opinion_modifiers.txt", "opinion_modifiers = {\n\n\t# focus «Посольство в Ставке Казуала»: opinion of Kazualia about the country (value INVENTED)\n\tktits_cas_embassy = {\n\t\tvalue = 40\n\t\tmonths = 24\n\t}\n}\n")
+w("common/opinion_modifiers/ktits_opinion_modifiers.txt", "opinion_modifiers = {\n\n\t# focus «Посольство в Ставке Казуала»: opinion of Kazualia about the country (value INVENTED)\n\tktits_cas_embassy = {\n\t\tvalue = 40\n\t\tmonths = 24\n\t}\n\n\t# focus «Иностранные инвестиции»: opinion of the neighbours about the country (value 10 by the author)\n\tktits_eco_investment = {\n\t\tvalue = 10\n\t\tmonths = 24\n\t}\n}\n")
 
 ru, en = [], []
 def add(k, r, e=None):
@@ -108,9 +110,9 @@ for fid, n, d, *_ in F:
     add(fid, n); add(fid + "_desc", d)
 add("ktits_cas_sp_ministry", "Министерство Бодрости"); add("ktits_cas_sp_ministry_desc", "Чиновники в бодрых жилетах ходят по цехам и громко здороваются с каждым, кто закрыл глаза. Страна не то чтобы проснулась, но спать теперь неудобно.")
 add("ktits_cas_sp_labour", "Трудовая повинность"); add("ktits_cas_sp_labour_desc", "Работать обязан каждый, даже тот, кто давно прикинулся мебелью. Народ трудится, косо смотрит на указ и вздыхает так, что слышно в соседней стране.")
-add("ktits_cas_embassy", "Посольство в Ставке Казуала")
+add("ktits_cas_embassy", "Посольство в Ставке Казуала"); add("ktits_eco_investment", "Иностранные инвестиции")
 for k, r, e in [
-    ("ktits_foc_tt_schools", "Образование повышается на 1 уровень (не выше 5). Рост Казуальности в месяц умножается на §G0,9§!.", "Education rises by 1 level (max 5). Monthly Casuality growth is multiplied by §G0.9§!."),
+    ("ktits_foc_tt_schools", "Рост Казуальности в месяц умножается на §G0,9§!.", "Monthly Casuality growth is multiplied by §G0.9§!."),
     ("ktits_foc_req_lt50", "Казуальность меньше §Y50§! (сейчас [?ktits_casuality|0])", "Casuality below §Y50§! (now [?ktits_casuality|0])"),
     ("ktits_foc_req_ge75", "Казуальность не меньше §Y75§! (сейчас [?ktits_casuality|0])", "Casuality at least §Y75§! (now [?ktits_casuality|0])"),
     ("ktits_foc_tt_drain", "Рост Казуальности от соседства с Казуалией: §G-1§! в месяц.", "Casuality growth from neighbouring Kazualia: §G-1§! per month."),
@@ -263,3 +265,232 @@ pl_en.update(dict(pe))
 L.write_yml(str(M / "localisation/russian/ktits_pol_l_russian.yml"), "russian", pl)
 L.write_yml(str(M / "localisation/english/ktits_pol_l_english.yml"), "english", list(pl_en.items()))
 print(f"politics branch written: {len(SUB_IDS) + 12} focuses, {len(SPIRITS)} spirits")
+
+# ======================= branch «Образование» (docs/focuses/Generic-Focus-Tree.md) =======================
+# 13 focuses, columns x >= 68 (vanilla <= 22, Casuality 24..30, Politics 34..64). Effects: specialists counters (tools/education_mech.py);
+# flags ktits_edu_f_* are read by ktits_education_monthly / the decisions; not for Kazualia and its puppets (allow_branch of the root).
+EBEGIN, EEND = "# KTITS_EDUCATION_BRANCH_BEGIN (tools/make_focuses.py, do not edit by hand)", "# KTITS_EDUCATION_BRANCH_END"
+EDU_GATE = ("\t\tallow_branch = {\n\t\t\tNOT = { ktits_is_kazualia = yes }\n\t\t\tNOT = { is_puppet_of = " + KAZ + " }\n"
+            "\t\t\tNOT = { has_country_flag = ktits_casuality_fallen }\n\t\t}\n")
+SPRIT = ("ktits_edu_sp_workers", "Рабочие факультеты", "Днём станок, вечером лекция: к концу смены рабочие знают и как точить деталь, и почему она не точится. Брака меньше, а лекторов не хватает.", "production_factory_efficiency_gain_factor", 0.03)
+SPRIT2 = ("ktits_edu_sp_academy", "Академия наук", "Лучшие умы собраны под одной крышей и спорят там так громко, что окрестные улицы слышат формулы. Открытия делаются быстрее, чайник кипит дольше.", "research_speed_factor", 0.03)
+LVL3 = ("\t\t\tcustom_trigger_tooltip = {\n\t\t\t\ttooltip = ktits_edu_req_lvl3\n\t\t\t\tOR = {\n\t\t\t\t\thas_idea = ktits_edu_3\n\t\t\t\t\thas_idea = ktits_edu_4\n\t\t\t\t\thas_idea = ktits_edu_5\n\t\t\t\t}\n\t\t\t}\n")
+BIGAV = "\t\t\tcustom_trigger_tooltip = {\n\t\t\t\ttooltip = ktits_edu_req_big\n\t\t\t\tktits_is_big_country = yes\n\t\t\t}\n"   # "Импорт умов": big countries only
+INST = "\t\t\tset_country_flag = ktits_edu_f_inst\n\t\t\tcustom_effect_tooltip = ktits_edu_tt_inst\n"
+CITIZEN = ("\t\t\tcustom_effect_tooltip = ktits_edu_tt_citizen\n\t\t\thidden_effect = {\n\t\t\t\tset_variable = { var = ktits_edu_m value = ktits_spec_foreign }\n"
+           "\t\t\t\tdivide_variable = { var = ktits_edu_m value = 3 }\n\t\t\t\tround_variable = ktits_edu_m\n\t\t\t\tadd_to_variable = { var = ktits_spec_own value = ktits_edu_m }\n"
+           "\t\t\t\tmultiply_variable = { var = ktits_edu_m value = -1 }\n\t\t\t\tadd_to_variable = { var = ktits_spec_foreign value = ktits_edu_m }\n\t\t\t\tktits_education_update = yes\n\t\t\t}\n")
+def idea_mod(sp):
+    return (f"\t\t{sp[0]} = {{\n\t\t\tpicture = generic_research_bonus\n\t\t\tallowed = {{ always = no }}\n\t\t\tallowed_civil_war = {{ always = yes }}\n"
+            f"\t\t\tremoval_cost = -1\n\t\t\tmodifier = {{\n\t\t\t\t{sp[3]} = {sp[4]}\n\t\t\t}}\n\t\t}}\n")
+# id, ru, desc, days, icon, x, y, prerequisite(s), exclusive, available, reward, ai
+EF = [
+ ("ktits_edu_root", "Народное просвещение", "Правительство признаёт: страна, которая не умеет читать, не умеет и строить.", 70, "GFX_goal_generic_intelligence_exchange", 76, 0, [], [], "", E.spec(own=5) + "\t\t\tadd_political_power = 25\n", "\t\t\tfactor = 3\n"),
+ ("ktits_edu_own", "Своими силами", "Решено не надеяться на чужаков: учителей и инженеров вырастим сами.", 70, "GFX_goal_generic_army_doctrines", 72, 1, ["ktits_edu_root"], ["ktits_edu_imp"], "",
+  "\t\t\tset_country_flag = ktits_edu_f_self\n\t\t\tcustom_effect_tooltip = ktits_edu_tt_self\n", "\t\t\tfactor = 3\n"),
+ ("ktits_edu_rural", "Сельские школы", "В каждой деревне - школа с печкой и одним учителем на все классы.", 70, "GFX_goal_generic_construct_civilian", 72, 2, ["ktits_edu_own"], [], "", E.spec(own=10), "\t\t\tfactor = 2\n"),
+ ("ktits_edu_workers", "Рабочие факультеты", "Рабочих учат прямо при заводах: днём станок, вечером лекция.", 70, "GFX_goal_generic_production", 72, 3, ["ktits_edu_rural"], [], "",
+  E.spec(own=10) + "\t\t\tadd_ideas = ktits_edu_sp_workers\n", "\t\t\tfactor = 2\n"),
+ ("ktits_edu_inst", "Учительские институты", "Учителя теперь готовят учителей: образование растёт само.", 105, "GFX_goal_generic_propaganda", 72, 4, ["ktits_edu_workers"], [], "", INST, "\t\t\tfactor = 2\n"),
+ ("ktits_edu_imp", "Импорт умов", "Если своих мастеров нет, их можно пригласить. Двери для чужих учёных открыты только у крупных держав: малым странам не хватит ни денег, ни громких имён.", 70, "GFX_goal_generic_positive_trade_relations", 80, 1, ["ktits_edu_root"], ["ktits_edu_own"], BIGAV,
+  "\t\t\tset_country_flag = ktits_edu_f_import\n\t\t\tcustom_effect_tooltip = ktits_edu_tt_import\n\t\t\thidden_effect = { ktits_education_costs = yes }\n", "\t\t\tfactor = 2\n"),
+ ("ktits_edu_open", "Открытые границы для учёных", "Учёным из любой страны - визы без очереди и квартиры в столице.", 70, "GFX_goal_generic_improve_relations", 80, 2, ["ktits_edu_imp"], [], "", E.spec(foreign=15), "\t\t\tfactor = 2\n"),
+ ("ktits_edu_mentor", "Наставник в каждом цеху", "Каждый приезжий специалист берёт учеников.", 70, "GFX_goal_generic_national_unity", 80, 3, ["ktits_edu_open"], [], "",
+  "\t\t\tset_country_flag = ktits_edu_f_mentor\n\t\t\tcustom_effect_tooltip = ktits_edu_tt_mentor_focus\n", "\t\t\tfactor = 2\n"),
+ ("ktits_edu_citizen", "Гражданство за знания", "Иностранцам, отработавшим пять лет, дают гражданство.", 105, "GFX_goal_generic_alliance", 80, 4, ["ktits_edu_mentor"], [], "", CITIZEN, "\t\t\tfactor = 2\n"),
+ ("ktits_edu_univ", "Университеты", "В крупных городах открываются университеты.", 105, "GFX_goal_generic_scientific_exchange", 76, 3, ["ktits_edu_rural", "ktits_edu_open"], [], "", E.spec(own=20), "\t\t\tfactor = 3\n"),
+ ("ktits_edu_academy", "Академия наук", "Лучшие умы страны собраны под одной крышей.", 105, "GFX_goal_generic_secret_weapon", 76, 4, ["ktits_edu_univ"], [], "",
+  E.spec(own=20) + "\t\t\tadd_ideas = ktits_edu_sp_academy\n", "\t\t\tfactor = 3\n"),
+ ("ktits_edu_society", "Общество знаний", "Знание становится главной ценностью страны.", 140, "GFX_goal_generic_radar", 76, 5, ["ktits_edu_academy"], [], LVL3, E.spec(own=30), "\t\t\tfactor = 3\n"),
+ ("ktits_edu_cure", "Лекарство от лени", "Учёные доказывают: Казуальность - болезнь, и от неё есть лечение.", 70, "GFX_goal_generic_dangerous_deal", 78, 4, ["ktits_edu_univ"], [], "",
+  scale(-10) + "\t\t\tset_country_flag = ktits_cas_f_cure\n\t\t\tcustom_effect_tooltip = ktits_foc_tt_cure\n",
+  "\t\t\tfactor = 3\n\t\t\tmodifier = {\n\t\t\t\tfactor = 0.2\n\t\t\t\tcheck_variable = { var = ktits_casuality value = 10 compare = less_than }\n\t\t\t}\n"),
+]
+assert len(EF) == 13 and all(f[3] % 7 == 0 for f in EF)
+eblk = EBEGIN + "\n"
+el, ee = [], []
+for fid, ru_, desc, days, icon, x, y, pre, excl, av, rew, ai in EF:
+    eblk += pfocus(fid, icon, x, y, days, pre or None, excl or None, av or None, ai, rew)
+    el += [(fid, ru_), (fid + "_desc", desc)]
+eblk = eblk.replace("\t\tx = 76\n\t\ty = 0\n", EDU_GATE + "\t\tx = 76\n\t\ty = 0\n", 1)   # allow_branch of the root only
+eblk += "\n" + EEND + "\n"
+txt = g.read_text(encoding="utf-8", newline="")
+nl = "\r\n" if "\r\n" in txt else "\n"
+txt = re.sub(r"\r?\n?" + re.escape(EBEGIN) + r".*?" + re.escape(EEND) + r"\r?\n?", "", txt, flags=re.S)
+k = txt.rindex("}")
+txt = txt[:k].rstrip() + nl + nl + eblk.replace("\n", nl) + nl + txt[k:]
+g.write_text(txt, encoding="utf-8", newline="")
+w("common/ideas/ktits_edu_focus_ideas.txt", "ideas = {\n\tcountry = {\n" + idea_mod(SPRIT) + idea_mod(SPRIT2) + "\t}\n}\n")
+for sp in (SPRIT, SPRIT2):
+    el += [(sp[0], "Образование: " + sp[1]), (sp[0] + "_desc", sp[2])]
+ru_e = [
+    ("ktits_edu_req_lvl3", "Образованность не ниже уровня §Y3§! («Развивающееся общество»)", "Education at least level §Y3§!"),
+    ("ktits_edu_tt_self", "Решения упрощения отнимают вдвое меньше наших специалистов.", "Simplification decisions cost half as many own specialists."),
+    ("ktits_edu_tt_import", "Открываются решения привлечения специалистов («Приют для беглых умов», «Наставничество», «Договор о сотрудничестве»). «Приют» и «Наставничество» дешевле на §G25 %§!.", "Attraction decisions open (refuge, mentorship, cooperation treaty). Refuge and mentorship are §G25%§! cheaper."),
+    ("ktits_edu_tt_mentor_focus", "Иностранные специалисты становятся нашими по §G8 %§! в месяц вместо 5 % (навсегда).", "§G8%§! of foreign specialists a month become own instead of 5% (permanent)."),
+    ("ktits_edu_tt_inst", "Наших специалистов §G+1§! тыс. в месяц навсегда.", "Own specialists §G+1§! k a month, permanently."),
+    ("ktits_edu_tt_citizen", "Треть иностранных специалистов сразу становится нашими.", "A third of the foreign specialists become own at once."),
+    ("ktits_foc_tt_cure", "Рост Казуальности в месяц умножается на §G0,9§! (вместе с «Школами труда»: ×0,81).", "Monthly Casuality growth is multiplied by §G0.9§! (with the labour schools: x0.81)."),
+]
+for k_, r_, e_ in ru_e:
+    el.append((k_, r_)); ee.append((k_, e_))
+el_en = {k_: L.translit(v_) for k_, v_ in el}
+el_en.update(dict(ee))
+L.write_yml(str(M / "localisation/russian/ktits_edu_focus_l_russian.yml"), "russian", el)
+L.write_yml(str(M / "localisation/english/ktits_edu_focus_l_english.yml"), "english", list(el_en.items()))
+print(f"education branch written: {len(EF)} focuses, 2 spirits")
+
+# ======================= branch «Экономика» (docs/focuses/Generic-Focus-Tree.md) =======================
+# 36 focuses, columns x = 84..108 (vanilla <= 22, Casuality 24..30, Politics 34..64, Education 72..80). Open to every country (Kazualia too).
+# Factories / slots / infrastructure / dockyards / resources are hidden_effect blocks over random_owned_controlled_state (vanilla pattern of
+# common/national_focus/generic.txt) with a custom_effect_tooltip; percent modifiers are national spirits ktits_eco_sp_* (common/ideas/ktits_eco_ideas.txt).
+XBEGIN, XEND = "# KTITS_ECONOMY_BRANCH_BEGIN (tools/make_focuses.py, do not edit by hand)", "# KTITS_ECONOMY_BRANCH_END"
+TTL = {}   # tooltip loc: key -> (ru, en)
+def ttl(key, ru_, en_): TTL[key] = (ru_, en_)
+def hid(tip, body, t="\t\t\t"):
+    return f"{t}custom_effect_tooltip = {tip}\n{t}hidden_effect = {{\n" + "".join(f"{t}\t{l}\n" for l in body) + f"{t}}}\n"
+def in_states(n, lines, limit="impassable = no"):
+    return [f"random_owned_controlled_state = {{ limit = {{ {limit} }} " + " ".join(lines) + " }" for _ in range(n)]
+def civ(n):
+    ttl(f"ktits_eco_tt_civ{n}", f"Гражданских фабрик: §G+{n}§! (в случайном штате)", f"Civilian factories: §G+{n}§! (in a random state)")
+    return hid(f"ktits_eco_tt_civ{n}", in_states(1, [f"add_extra_state_shared_building_slots = {n}", f"add_building_construction = {{ type = industrial_complex level = {n} instant_build = yes }}"]))
+def mil(n):
+    ttl(f"ktits_eco_tt_mil{n}", f"Военных фабрик: §G+{n}§! (в случайном штате)", f"Military factories: §G+{n}§! (in a random state)")
+    return hid(f"ktits_eco_tt_mil{n}", in_states(1, [f"add_extra_state_shared_building_slots = {n}", f"add_building_construction = {{ type = arms_factory level = {n} instant_build = yes }}"]))
+def dock(n):
+    ttl(f"ktits_eco_tt_dock{n}", f"Верфей: §G+{n}§! (в случайном прибрежном штате)", f"Dockyards: §G+{n}§! (in a random coastal state)")
+    return hid(f"ktits_eco_tt_dock{n}", in_states(1, [f"add_extra_state_shared_building_slots = {n}", f"add_building_construction = {{ type = dockyard level = {n} instant_build = yes }}"], "is_coastal = yes"))
+def slots(n, st):
+    ttl(f"ktits_eco_tt_slots{n}_{st}", f"Слотов строительства: §G+{n}§! в каждом из {st} случайных штатов", f"Building slots: §G+{n}§! in each of {st} random states")
+    return hid(f"ktits_eco_tt_slots{n}_{st}", in_states(st, [f"add_extra_state_shared_building_slots = {n}"]))
+def capslots(n):
+    ttl(f"ktits_eco_tt_cap{n}", f"Слотов строительства в столице: §G+{n}§!", f"Building slots in the capital: §G+{n}§!")
+    return hid(f"ktits_eco_tt_cap{n}", [f"capital_scope = {{ add_extra_state_shared_building_slots = {n} }}"])
+def infra(st):
+    ttl(f"ktits_eco_tt_infra{st}", f"Инфраструктура: §G+1§! уровень в {st} штатах", f"Infrastructure: §G+1§! level in {st} states")
+    return hid(f"ktits_eco_tt_infra{st}", in_states(st, ["add_building_construction = { type = infrastructure level = 1 instant_build = yes }"],
+                                                    "impassable = no free_building_slots = { building = infrastructure size > 0 }"))
+def resrc(pairs, key):
+    return hid(key, in_states(1, [f"add_resource = {{ type = {t_} amount = {n_} show_state_in_tooltip = no }}" for t_, n_ in pairs]))
+def sp(name): return f"\t\t\tadd_ideas = ktits_eco_sp_{name}\n"
+def stab(v): return f"\t\t\tadd_stability = {v}\n"
+def pp(v): return f"\t\t\tadd_political_power = {v}\n"
+
+# spirits: name -> (ru, lore desc [INVENTED], idea picture, modifiers)
+SPX = {
+ "root": ("Экономический курс", "Министры составили программу на сорок страниц, из которых работает последняя. Товаров на прилавках стало чуть меньше: бумаги на планы ушло много.", "generic_economic_recovery", {"consumer_goods_factor": -0.02}),
+ "devalue": ("Девальвация валюты", "Деньги дешевеют быстрее, чем их успевают печатать. Соседи в восторге от наших цен, свои только вздыхают над кошельком.", "generic_devalue_currency", {"resource_trade_cost_bonus_per_factory": 1, "consumer_goods_factor": -0.03}),
+ "crash": ("Последствия девальвации", "Вчерашние сбережения сегодня стоят буханку хлеба. Люди ходят по лавкам с кошельком в одной руке и калькулятором в другой.", "generic_economic_crisis", {"stability_factor": -0.05}),
+ "export": ("Экспортный рывок", "Порты загружены, склады пусты, а строители работают в три смены: заказы из-за границы не ждут.", "generic_economic_increase", {"production_speed_buildings_factor": 0.05}),
+ "settle": ("Рабочие посёлки", "Одинаковые дома стоят ровными рядами, и в каждом живёт будущий призывник, который точно знает, где его улица.", "generic_build_infrastructure", {"conscription_factor": 0.02}),
+ "base": ("Расширение ресурсной базы", "Опись недр составлена и подшита в папку. Добыча растёт не потому, что руды стало больше, а потому, что её наконец сосчитали.", "generic_exploit_mines", {"local_resources_factor": 0.05}),
+ "reserve": ("Стратегический резерв", "На складах лежит всё, что понадобится в войну, и немного того, что не понадобится никогда. Снабженцы спят спокойно.", "generic_fuel_reserves", {"local_resources_factor": 0.05, "supply_consumption_factor": -0.05}),
+ "plan": ("Плановая экономика", "Каждый гвоздь учтён, каждая лопата внесена в таблицу. Правда, гвоздей иногда меньше, чем строчек в таблице.", "generic_central_management", {"production_speed_buildings_factor": 0.10, "consumer_goods_factor": 0.05}),
+ "gosplan": ("Госплан", "Комитет плановиков заседает днём и ночью и рисует на карте стрелки, по которым ездят настоящие грузовики.", "generic_central_management", {"production_factory_efficiency_gain_factor": 0.05}),
+ "second": ("Вторая пятилетка", "Новый план перекрывает прежний, а прежний ещё не закончен. Прорабы привыкли и строят одновременно оба.", "generic_build_infrastructure", {"production_speed_buildings_factor": 0.05}),
+ "heavy": ("Тяжёлая промышленность", "Станки теперь важнее ботинок. Ботинки, впрочем, тоже когда-нибудь выпустят, по плану.", "generic_improved_industries", {"consumer_goods_factor": 0.02}),
+ "collective": ("Коллективные хозяйства", "Тракторы общие, лозунги общие, урожай общий, и только жалобы почему-то у каждого свои.", "generic_agrarian_reform", {"conscription_factor": 0.03}),
+ "stakhanov": ("Стахановское движение", "Передовики выполняют норму за полсмены и обедают остаток дня. Остальные стараются не отставать, но получается не у всех.", "generic_economic_increase", {"production_factory_max_efficiency_factor": 0.05}),
+ "electro": ("Электрификация страны", "Лампочка в каждой избе светит тускло, зато ярче любых докладов. В лабораториях тоже стало светлее.", "generic_research_bonus", {"research_speed_factor": 0.03}),
+ "market": ("Рыночная экономика", "Цены меняются каждый день, и все сразу становятся экономистами. Лавки открываются, государство только следит за правилами.", "generic_foreign_capital", {"consumer_goods_factor": -0.05, "production_speed_buildings_factor": 0.05}),
+ "banks": ("Частные банки", "Банкиры дают ссуду любому, у кого есть идея и залог, а залогом нередко служит сама идея. Стройки идут бойко.", "generic_foreign_capital", {"production_speed_buildings_factor": 0.05}),
+ "tax": ("Налоговые льготы", "Новое предприятие пять лет не платит налогов, а потом внезапно закрывается и открывается под другим названием.", "generic_economic_recovery", {"consumer_goods_factor": -0.03}),
+ "boom": ("Потребительский бум", "Полки ломятся от товаров, люди покупают в кредит то, что им совсем не нужно. Зато настроение отличное.", "generic_goods_red_bonus", {"consumer_goods_factor": 0.02}),
+ "trade": ("Торговые компании", "Караваны компаний ходят по всему материку, и каждый купец знает, где дешевле. Фабрикам теперь выгоднее менять товар на сырьё.", "generic_foreign_capital", {"resource_trade_cost_bonus_per_factory": 1}),
+ "rail": ("Железные дороги", "Поезда ходят почти по расписанию, а те, что не по расписанию, зато доставляют грузы быстрее, чем их ждут.", "generic_build_infrastructure", {"supply_consumption_factor": -0.05}),
+}
+ICO = {"cap": "GFX_goal_generic_construct_civ_factory", "mil": "GFX_goal_generic_construct_mil_factory", "inf": "GFX_goal_generic_construct_infrastructure",
+       "tr": "GFX_goal_generic_trade", "pr": "GFX_goal_generic_production", "co": "GFX_goal_generic_construction"}
+OPIN = hid("ktits_eco_tt_opinion", ["every_neighbor_country = { add_opinion_modifier = { target = ROOT modifier = ktits_eco_investment } }"])
+GEO = resrc([("steel", 4), ("aluminium", 2)], "ktits_eco_tt_geo")
+SWAMP = resrc([("oil", 4)], "ktits_eco_tt_swamp")
+ttl("ktits_eco_tt_opinion", "Отношения соседей со страной: §G+10§!", "Neighbours' opinion of the country: §G+10§!")
+ttl("ktits_eco_tt_dry", "Рост Казуальности от популярности Казуальности: §G-1§! в месяц (если у партии не меньше 10 %).", "Casuality growth from the casuality party: §G-1§! per month (if the party has 10% or more).")
+ttl("ktits_eco_tt_swamp", "§G+4§! нефти в случайном штате.", "§G+4§! oil in a random state.")
+ttl("ktits_eco_tt_geo", "§G+4§! стали и §G+2§! алюминия в случайном штате.", "§G+4§! steel and §G+2§! aluminium in a random state.")
+ttl("ktits_eco_tt_crash_off", "Снимает штраф от девальвации валюты.", "Removes the devaluation penalty.")
+
+# id suffix, ru, desc, days, icon, x, y, prerequisites (list of OR-groups; groups are ANDed), exclusive, reward, ai
+X = [
+ ("root", "Экономический курс", "Министры спорят, как поднимать хозяйство страны, и садятся писать программу.", 70, ICO["pr"], 100, 0, [], [], pp(50) + sp("root"), "\t\t\tfactor = 5\n"),
+ # finance
+ ("dev", "Девальвация валюты", "Национальная валюта резко дешевеет. Товары страны дешевле для соседей, а сбережения граждан тают.", 35, "GFX_goal_generic_dangerous_deal", 84, 1, [["root"]], [],
+  sp("devalue") + "\t\t\tadd_timed_idea = { idea = ktits_eco_sp_crash days = 180 }\n", "\t\t\tfactor = 1\n\t\t\tmodifier = {\n\t\t\t\tfactor = 0\n\t\t\t\thas_stability < 0.55\n\t\t\t}\n"),
+ ("export", "Экспортный рывок", "Дешёвая валюта превращается в заказы из-за границы.", 70, ICO["tr"], 84, 2, [["dev"]], [], civ(1) + sp("export"), "\t\t\tfactor = 2\n"),
+ ("gold", "Золотой запас", "Выручку от экспорта переплавляют в слитки и прячут в подвалы Центробанка.", 70, "GFX_goal_generic_scientific_exchange", 84, 3, [["export"]], [],
+  pp(100) + stab(0.05) + "\t\t\tcustom_effect_tooltip = ktits_eco_tt_crash_off\n\t\t\thidden_effect = {\n\t\t\t\tif = {\n\t\t\t\t\tlimit = { has_idea = ktits_eco_sp_crash }\n\t\t\t\t\tremove_ideas = ktits_eco_sp_crash\n\t\t\t\t}\n\t\t\t}\n", "\t\t\tfactor = 2\n"),
+ # housing
+ ("house", "Жилищная программа", "Государство обещает каждой семье крышу над головой.", 70, ICO["co"], 88, 1, [["root"]], [], stab(0.05) + slots(1, 2), "\t\t\tfactor = 3\n"),
+ ("settle", "Рабочие посёлки", "Рядом с заводами вырастают посёлки из одинаковых домов.", 70, "GFX_goal_generic_construct_civilian", 88, 2, [["house"]], [], civ(1) + sp("settle"), "\t\t\tfactor = 3\n"),
+ ("quarters", "Городские кварталы", "Старые трущобы сносят, на их месте строят кварталы с водопроводом.", 70, ICO["cap"], 88, 3, [["settle"]], [], capslots(2) + stab(0.05), "\t\t\tfactor = 3\n"),
+ ("dry", "Сухие дома", "Новые дома ставят на сваях и подсыпке: болотная сырость больше не проникает в жильё.", 70, "GFX_goal_generic_fortify_city", 88, 4, [["quarters"]], [],
+  scale(-5) + "\t\t\tset_country_flag = ktits_cas_f_dry\n\t\t\tcustom_effect_tooltip = ktits_eco_tt_dry\n", "\t\t\tfactor = 1\n"),
+ # resources
+ ("base", "Расширение ресурсной базы", "Страна составляет опись всего, что лежит в её недрах.", 70, "GFX_goal_generic_oil_refinery", 92, 1, [["root"]], [], sp("base"), "\t\t\tfactor = 3\n"),
+ ("geo", "Геологоразведка", "Экспедиции геологов уходят в горы и пустоши.", 70, "GFX_goal_generic_secret_weapon", 92, 2, [["base"]], [], GEO, "\t\t\tfactor = 3\n"),
+ ("swamp", "Добыча в болотах", "Торф, болотная руда и газ: топи тоже могут кормить страну.", 70, "GFX_goal_generic_construct_infrastructure", 92, 3, [["geo"]], [], SWAMP + scale(5), "\t\t\tfactor = 1\n"),
+ ("reserve", "Стратегический резерв", "Склады ресурсов на случай войны или кризиса.", 70, "GFX_goal_generic_construct_military", 92, 4, [["swamp"]], [], sp("reserve"), "\t\t\tfactor = 2\n"),
+ # planned economy
+ ("plan", "Плановая экономика", "Государство само решает, что, где и сколько производить.", 70, "GFX_goal_generic_soviet_construction", 98, 1, [["root"]], ["market"], sp("plan"),
+  "\t\t\tfactor = 1\n\t\t\tmodifier = {\n\t\t\t\tfactor = 4\n\t\t\t\tOR = {\n\t\t\t\t\thas_government = communism\n\t\t\t\t\thas_government = fascism\n\t\t\t\t}\n\t\t\t}\n"),
+ ("gosplan", "Госплан", "Комитет плановиков расписывает выпуск каждой фабрики на годы вперёд.", 70, "GFX_goal_generic_political_pressure", 98, 2, [["plan"]], [], pp(50) + sp("gosplan"), "\t\t\tfactor = 3\n"),
+ ("five1", "Первая пятилетка", "План на пять лет: заводы, электростанции, каналы.", 105, ICO["cap"], 98, 3, [["gosplan"]], [], civ(2), "\t\t\tfactor = 3\n"),
+ ("heavy", "Тяжёлая промышленность", "Сталь и станки важнее одежды и мебели.", 70, ICO["mil"], 96, 4, [["five1"]], [], mil(2) + sp("heavy"), "\t\t\tfactor = 2\n"),
+ ("collect", "Коллективные хозяйства", "Крестьян объединяют в хозяйства с общими тракторами.", 70, "GFX_goal_generic_construct_civilian", 100, 4, [["five1"]], [], sp("collective") + stab(-0.05), "\t\t\tfactor = 2\n"),
+ ("five2", "Вторая пятилетка", "Новый план ещё больше прежнего.", 105, ICO["cap"], 98, 5, [["heavy", "collect"]], [], civ(2) + sp("second"), "\t\t\tfactor = 3\n"),
+ ("stakh", "Стахановское движение", "Передовиков, перевыполняющих норму, ставят в пример всей стране.", 70, ICO["pr"], 96, 6, [["five2"]], [], scale(-10) + sp("stakhanov"), "\t\t\tfactor = 2\n"),
+ ("order", "Оборонный заказ", "Часть плана отдаётся армии.", 70, "GFX_goal_generic_army_tanks", 100, 6, [["five2"]], [], mil(2), "\t\t\tfactor = 2\n"),
+ ("electro", "Электрификация страны", "Провода тянут в каждую деревню.", 70, "GFX_goal_generic_radar", 98, 7, [["stakh", "order"]], [], slots(1, 3) + sp("electro"), "\t\t\tfactor = 2\n"),
+ ("great", "Великие стройки", "Каналы, плотины и города в пустых местах.", 105, ICO["co"], 98, 8, [["electro"]], [], civ(3) + stab(-0.05), "\t\t\tfactor = 2\n"),
+ # market economy
+ ("market", "Рыночная экономика", "Цены и выпуск решает рынок, государство только следит за правилами.", 70, "GFX_goal_generic_positive_trade_relations", 106, 1, [["root"]], ["plan"], sp("market"),
+  "\t\t\tfactor = 2\n\t\t\tmodifier = {\n\t\t\t\tfactor = 0.25\n\t\t\t\tOR = {\n\t\t\t\t\thas_government = communism\n\t\t\t\t\thas_government = fascism\n\t\t\t\t}\n\t\t\t}\n"),
+ ("free", "Свободный рынок", "Отменены ценовые ограничения, лавки и мастерские открываются без разрешений.", 70, ICO["tr"], 106, 2, [["market"]], [], civ(1) + stab(0.03), "\t\t\tfactor = 3\n"),
+ ("banks", "Частные банки", "Банки дают ссуды всем, у кого есть идея и залог.", 70, "GFX_goal_generic_improve_relations", 106, 3, [["free"]], [], pp(50) + sp("banks"), "\t\t\tfactor = 3\n"),
+ ("stock", "Биржа", "В столице открывается фондовая биржа.", 70, ICO["cap"], 104, 4, [["banks"]], [], civ(2), "\t\t\tfactor = 2\n"),
+ ("tax", "Налоговые льготы", "Новым предприятиям — несколько лет без налогов.", 70, "GFX_goal_generic_construction2", 108, 4, [["banks"]], [], sp("tax"), "\t\t\tfactor = 2\n"),
+ ("invest", "Иностранные инвестиции", "Иностранные компании строят заводы в стране.", 105, "GFX_goal_generic_alliance", 106, 5, [["stock", "tax"]], [], civ(2) + OPIN, "\t\t\tfactor = 3\n"),
+ ("boom", "Потребительский бум", "Магазины полны, люди покупают в кредит.", 70, "GFX_goal_generic_production2", 104, 6, [["invest"]], [], stab(0.05) + sp("boom"), "\t\t\tfactor = 2\n"),
+ ("yards", "Частные верфи", "Судостроение отдают частным владельцам.", 70, "GFX_goal_generic_construct_naval_dockyard", 108, 6, [["invest"]], [], dock(2), "\t\t\tfactor = 2\n"),
+ ("firms", "Торговые компании", "Крупные компании возят товары по всему материку.", 70, "GFX_goal_generic_trade", 106, 7, [["boom", "yards"]], [], sp("trade") + pp(50), "\t\t\tfactor = 2\n"),
+ ("flower", "Деловой расцвет", "Страна — один из деловых центров материка.", 105, ICO["co"], 106, 8, [["firms"]], [], civ(3) + scale(-5), "\t\t\tfactor = 2\n"),
+ # common finale
+ ("road", "Дорожная сеть", "Шоссе связывают все крупные города.", 70, "GFX_goal_generic_construct_infrastructure", 102, 10, [["great", "flower", "quarters"]], [], infra(4), "\t\t\tfactor = 3\n"),
+ ("rail", "Железные дороги", "Новые линии и вокзалы.", 70, "GFX_goal_generic_army_motorized", 102, 11, [["road"]], [], infra(4) + sp("rail"), "\t\t\tfactor = 3\n"),
+ ("belt", "Промышленный пояс", "Вдоль железных дорог вырастает пояс заводов.", 105, ICO["mil"], 100, 12, [["rail"], ["reserve"]], [], civ(2) + mil(2), "\t\t\tfactor = 3\n"),
+ ("bureau", "Научно-промышленные бюро", "Учёные работают прямо при заводах.", 70, "GFX_goal_generic_scientific_exchange", 100, 13, [["belt"]], [],
+  "\t\t\tadd_research_slot = 1\n" + E.spec(own=15), "\t\t\tfactor = 3\n"),
+]
+assert len(X) == 36 and all(f[3] % 7 == 0 for f in X)
+XID = lambda k: "ktits_eco_" + k
+xblk = XBEGIN + "\n"
+xl = []
+for k, ru_, desc, days, icon, x, y, pre, excl, rew, ai in X:
+    s_ = f"\n\tfocus = {{\n\t\tid = {XID(k)}\n\t\ticon = {icon}\n"
+    for grp in pre:
+        s_ += "\t\tprerequisite = { " + " ".join(f"focus = {XID(p)}" for p in grp) + " }\n"
+    if excl: s_ += "\t\tmutually_exclusive = { " + " ".join(f"focus = {XID(p)}" for p in excl) + " }\n"
+    s_ += f"\t\tx = {x}\n\t\ty = {y}\n\t\tcost = {days // 7}\n\t\tsearch_filters = {{ FOCUS_FILTER_INDUSTRY }}\n" + CONT
+    s_ += "\t\tai_will_do = {\n" + ai + "\t\t}\n\t\tcompletion_reward = {\n" + rew + "\t\t}\n\t}\n"
+    xblk += s_
+    xl += [(XID(k), ru_), (XID(k) + "_desc", desc)]
+xblk += "\n" + XEND + "\n"
+txt = g.read_text(encoding="utf-8", newline="")
+nl = "\r\n" if "\r\n" in txt else "\n"
+txt = re.sub(r"\r?\n?" + re.escape(XBEGIN) + r".*?" + re.escape(XEND) + r"\r?\n?", "", txt, flags=re.S)
+k_ = txt.rindex("}")
+txt = txt[:k_].rstrip() + nl + nl + xblk.replace("\n", nl) + nl + txt[k_:]
+g.write_text(txt, encoding="utf-8", newline="")
+def xidea(name, v):
+    body = "".join(f"\t\t\t\t{k} = {x:g}\n" for k, x in v[3].items())
+    return (f"\t\tktits_eco_sp_{name} = {{\n\t\t\tpicture = {v[2]}\n\t\t\tallowed = {{ always = no }}\n\t\t\tallowed_civil_war = {{ always = yes }}\n"
+            f"\t\t\tremoval_cost = -1\n\t\t\tmodifier = {{\n{body}\t\t\t}}\n\t\t}}\n")
+w("common/ideas/ktits_eco_ideas.txt", "ideas = {\n\tcountry = {\n" + "".join(xidea(n, v) for n, v in SPX.items()) + "\t}\n}\n")
+for n, v in SPX.items():
+    xl += [(f"ktits_eco_sp_{n}", v[0]), (f"ktits_eco_sp_{n}_desc", v[1])]
+xl_en = {k: L.translit(v) for k, v in xl}
+for k, (r_, e_) in TTL.items():
+    xl.append((k, r_)); xl_en[k] = e_
+L.write_yml(str(M / "localisation/russian/ktits_eco_l_russian.yml"), "russian", xl)
+L.write_yml(str(M / "localisation/english/ktits_eco_l_english.yml"), "english", list(xl_en.items()))
+print(f"economy branch written: {len(X)} focuses, {len(SPX)} spirits")

@@ -171,7 +171,7 @@ ke = re.search(r"ktits_kaz_puppet_education = [{][\s\S]*?\r?\n[}]", all_cas)
 ke = ke.group(0) if ke else ""
 ev_imm = ev1.split("option = {")[0]
 oa_m = oa.split("on_weekly")[0]
-check(all(f"remove_ideas = ktits_edu_{i}" in ke for i in range(1, 6)) and "add_ideas = ktits_edu_0" in ke and "is_puppet_of" in ke and "ktits_kaz_puppet_education = yes" in ev_imm and "ktits_kaz_puppet_education = yes" in oa_m, "casuality: puppets of Kazualia get education 0 (effect, fall event, monthly net)", "casuality: ktits_kaz_puppet_education missing or not called from the fall event / on_monthly")
+check("ktits_spec_own" in ke and "ktits_spec_foreign" in ke and "ktits_education_update = yes" in ke and "is_puppet_of" in ke and "ktits_kaz_puppet_education = yes" in ev_imm and "ktits_kaz_puppet_education = yes" in oa_m, "casuality: puppets of Kazualia get education 0 (effect, fall event, monthly net)", "casuality: ktits_kaz_puppet_education missing or not called from the fall event / on_monthly")
 
 # ---- game rules (make_casuality.py, make_game_rules.py) ----
 gr_dir = M / "common/game_rules"
@@ -259,7 +259,7 @@ check(len(sup) >= 7 and not bad_sup and not bad_fight, f"focuses: all {len(sup)}
 mc = "\n".join(p.read_text(encoding="utf-8") for p in (M / "common/scripted_effects").glob("ktits_casuality*.txt")) + "\n" + (M / "events/ktits_casuality_events.txt").read_text(encoding="utf-8") + dec_txt + gen
 flags_set = set(re.findall(r"set_country_flag = (?:\{ flag = )?(ktits_cas_f_\w+)", gen))
 flags_read = set(re.findall(r"has_country_flag = (ktits_cas_f_\w+)", mc.replace(gen, "")))
-check(flags_set == flags_read and len(flags_set) == 7, f"focuses: all {len(flags_set)} focus flags that are set are read by the mechanic", f"focuses: flags set {sorted(flags_set)} vs read {sorted(flags_read)}")
+check(flags_set == flags_read and len(flags_set) == 9, f"focuses: all {len(flags_set)} focus flags that are set are read by the mechanic", f"focuses: flags set {sorted(flags_set)} vs read {sorted(flags_read)}")
 sp = (M / "common/ideas/ktits_focus_ideas.txt").read_text(encoding="utf-8") if (M / "common/ideas/ktits_focus_ideas.txt").exists() else ""
 check(all(k in sp and fl_ru.get(k) and fl_ru.get(k + "_desc") for k in ("ktits_cas_sp_ministry", "ktits_cas_sp_labour")) and "ktits_cas_embassy" in (M / "common/opinion_modifiers/ktits_opinion_modifiers.txt").read_text(encoding="utf-8"),
       "focuses: both spirits and the embassy opinion modifier exist with loc", "focuses: spirits / opinion modifier missing")
@@ -301,6 +301,114 @@ check(len(sp_ids) == 14 and all(f"add_ideas = {s_}" in gen and f"remove_ideas = 
 check(all(re.search(r"\n\t\tx = (\d+)", pb[k]) and int(re.search(r"\n\t\tx = (\d+)", pb[k]).group(1)) >= 34 for k in pb), "politics: all focuses are at x >= 34 (free columns)", "politics: focus overlaps the vanilla/Casuality columns")
 
 sp_ids = set(re.findall(r"(?m)^		(ktits_pol_sp_\w+) = \{", pid_txt))
+
+# ---- specialists and branch "Образование" (make_education.py, education_mech.py, make_focuses.py) ----
+ed_fx = (M / "common/scripted_effects/ktits_education_effects.txt").read_text(encoding="utf-8") if (M / "common/scripted_effects/ktits_education_effects.txt").exists() else ""
+ths = [int(x) for x in re.findall(r"set_variable = \{ var = ktits_spec_own value = (\d+) \}\n\t\}\n", ed_fx)]
+lv_th = re.findall(r"ktits_spec_own value = (\d+) compare = greater_than_or_equals \}\s*\}\n\t\tset_variable = \{ var = ktits_edu_t value = (\d)", ed_fx)
+check(ths == [0, 10, 30, 60, 100, 150] and [(int(a), int(b)) for a, b in lv_th] == [(10, 1), (30, 2), (60, 3), (100, 4), (150, 5)] and all(f"add_ideas = ktits_edu_{i}" in ed_fx for i in range(6)),
+      "specialists: thresholds 0/10/30/60/100/150 map to levels 0..5 (start and update effects)", f"specialists: thresholds wrong {ths} {lv_th}")
+check("random_list" in ed_fx and ed_fx.count("ktits_spec_foreign value =") >= 11 and "ktits_education_update" in ed_fx and "ktits_education_monthly = {" in ed_fx and "ktits_education_costs = {" in ed_fx,
+      "specialists: random foreign start, update, monthly and costs effects defined", "specialists: effects missing")
+upd = ed_fx.split("ktits_education_start")[0]
+check("ktits_is_kazualia = yes" in upd and "is_puppet_of" in upd and "ktits_spec_own value = 0" in upd and "ktits_spec_foreign value = 0" in upd,
+      "specialists: Kazualia and its puppets are reset to 0/0 and level 0 in the update effect", "specialists: Kazualia lock missing in ktits_education_update")
+mo = ed_fx.split("ktits_education_monthly = {")[1] if "ktits_education_monthly = {" in ed_fx else ""
+check(all(s in mo for s in ("value = 5 }", "value = 8 }", "value = 10 }", "ktits_edu_f_mentor", "ktits_edu_mentor_dec", "ktits_cas_3", "ktits_cas_5", "ktits_edu_f_inst", "clamp_variable = { var = ktits_edu_m min = 1")),
+      "specialists: monthly transfer 5/8/10 %, min 1, swamp -1 at tier 3+, institutes +1", "specialists: monthly effect incomplete")
+edoa = (M / "common/on_actions/ktits_casuality_on_actions.txt").read_text(encoding="utf-8")
+check("ktits_education_start = yes" in edoa.split("on_monthly = {")[0] and "ktits_education_monthly = yes" in edoa.split("on_monthly = {")[1].split("on_weekly")[0],
+      "specialists: start hooked to on_startup, monthly to on_monthly", "specialists: on_actions hooks missing")
+ed_dec = (M / "common/decisions/ktits_education.txt").read_text(encoding="utf-8") if (M / "common/decisions/ktits_education.txt").exists() else ""
+ed_cat = (M / "common/decisions/categories/ktits_education_categories.txt").read_text(encoding="utf-8") if (M / "common/decisions/categories/ktits_education_categories.txt").exists() else ""
+ed_ids = [f"ktits_edu_attr_{i}" for i in range(1, 3)] + ["ktits_edu_coop"] + [f"ktits_edu_simp_{i}" for i in range(1, 4)]
+ed_loc = {}
+for f_ in sorted((M / "localisation/russian").glob("ktits_education_l_russian.yml")): ed_loc.update(load_loc(f_))
+miss_ed = [k for d_ in ed_ids for k in (d_, d_ + "_desc") if not ed_loc.get(k, "").strip()] + [k for k in ("ktits_education_dev_category", "ktits_education_dev_category_desc", "ktits_education_simp_category", "ktits_education_simp_category_desc", "ktits_edu_tt_kaz", "ktits_edu_req_big", "ktits_edu_tt_coop") if not ed_loc.get(k, "").strip()]
+dev_blk, simp_blk = (ed_dec.split("ktits_education_simp_category = {") + [""])[:2]
+check(all(re.search(r"(?m)^\t" + d_ + r" = {", ed_dec) for d_ in ed_ids) and "ktits_education_dev_category = {" in ed_cat and "ktits_education_simp_category = {" in ed_cat and not miss_ed and "[?ktits_spec_own|0]" in ed_loc.get("ktits_education_dev_category_desc", ""),
+      "specialists: two categories (development, simplification) and 6 decisions defined with ru name and lore description", f"specialists: decisions/loc missing {miss_ed[:5]}")
+check(dev_blk.count("ktits_edu_attr_") >= 2 and "ktits_edu_coop" in dev_blk and all(f"ktits_edu_simp_{i}" in simp_blk and f"ktits_edu_simp_{i}" not in dev_blk for i in range(1, 4)) and "ktits_edu_attr_" not in simp_blk and "ktits_edu_coop" not in simp_blk,
+      "categories: attraction, mentorship and cooperation are in development, the three simplifications in simplification", "categories: education decisions in the wrong category")
+ed_n = lambda k_: ed_loc.get(k_, "")
+mk_ok = all(ed_n(k_).startswith("§G+§!") for k_ in ("ktits_edu_attr_1", "ktits_edu_attr_2", "ktits_edu_coop")) and all(ed_n(f"ktits_edu_simp_{i}").startswith("§R−§!") for i in range(1, 4))
+cs_loc = load_loc(M / "localisation/russian/ktits_casuality_l_russian.yml")
+cs_dec = (M / "common/decisions/ktits_casuality.txt").read_text(encoding="utf-8")
+cs_fight, cs_sup = (cs_dec.split("ktits_casuality_support_category = {") + [""])[:2]
+cs_cat = (M / "common/decisions/categories/ktits_casuality_categories.txt").read_text(encoding="utf-8")
+mk_ok = mk_ok and all(cs_loc.get(f"ktits_cas_fight_{i}", "").startswith("§R−§!") for i in range(0, 6)) and all(cs_loc.get(f"ktits_cas_support_{i}", "").startswith("§G+§!") for i in range(1, 7)) and cs_loc.get("ktits_cas_support_6_free", "").startswith("§G+§!")
+check(mk_ok, "markers: raising decisions start with §G+§!, lowering with §R−§! (no ▲/▼ glyphs in the vanilla fonts)", "markers: decision names without the coloured marker")
+check("ktits_casuality_fight_category = {" in cs_cat and "ktits_casuality_support_category = {" in cs_cat and re.search(r"ktits_casuality_fight_category = [{][^}]*scripted_gui = ktits_casuality_ui", cs_cat) and cs_cat.count("scripted_gui") == 1
+      and all(f"ktits_cas_fight_{i} = {{" in cs_fight for i in range(0, 6)) and "ktits_cas_fight_" not in cs_sup and cs_sup.count("ktits_cas_support_") >= 7 and "ktits_cas_support_6_free = {" in cs_sup and "ktits_cas_support_" not in cs_fight
+      and all(cs_loc.get(k_, "").strip() for k_ in ("ktits_casuality_fight_category", "ktits_casuality_fight_category_desc", "ktits_casuality_support_category", "ktits_casuality_support_category_desc")) and "[?ktits_casuality|0]" in cs_loc.get("ktits_casuality_fight_category_desc", ""),
+      "casuality: split into fight and support categories, the scale bar (scripted GUI) is on the fight one, both have loc and lore description", "casuality: category split / scale bar / loc wrong")
+att = [b for k_, b in re.findall(r"(?m)^\t(ktits_edu_(?:attr_\d|coop)) = {([\s\S]*?)\n\t}", dev_blk)]
+check(len(att) == 3 and all("ktits_edu_tt_kaz" in b and "is_puppet_of" in b and "ktits_is_kazualia" in b for b in att),
+      "specialists: refuge, mentorship and cooperation are closed for Kazualia and its puppets (tooltip 'Ставке Казуала специалисты не нужны')", "specialists: Kazualia lock missing in an attraction decision")
+check(all("ktits_is_big_country = yes" in b and "ktits_edu_req_big" in b and "has_completed_focus = ktits_edu_imp" in b for b in att),
+      "education: attraction decisions need the focus 'Импорт умов' and a big country (readable tooltip)", "education: attraction decisions without big-country / 'Импорт умов' condition")
+burn = re.search(r"(?m)^\tktits_edu_simp_3 = {([\s\S]*?)\n\t}", ed_dec)
+burn = burn.group(1) if burn else ""
+check("fire_only_once = yes" in burn and "total_fascism" in burn and "total_communism" in burn and "has_country_leader_ideology" in burn, "specialists: 'Сожжение книг' fires once and needs total fascism/communism", "specialists: book burning conditions wrong")
+check(all(f"ktits_edu_cost_{i}" in ed_dec for i in range(1, 3)) and "ktits_edu_f_self" in ed_dec, "specialists: variable costs and the halving flag are used by the decisions", "specialists: costs/flag missing in decisions")
+coop = re.search(r"(?m)^\tktits_edu_coop = {([\s\S]*?)\n\t}", dev_blk)
+coop = coop.group(1) if coop else ""
+ed_ev = (M / "events/ktits_education_events.txt").read_text(encoding="utf-8") if (M / "events/ktits_education_events.txt").exists() else ""
+ev_ids = re.findall(r"id = (ktits_edu.\d+)\n", ed_ev)
+check("target_trigger" in coop and all(f"has_idea = ktits_edu_{i}" in coop for i in (2, 3, 4, 5)) and "has_war_with = ROOT" in coop and "ktits_is_kazualia" in coop and "ktits_edu_coop_target" in coop
+      and "cost = 100" in coop and "days_re_enable = 180" in coop and "days = 365" in coop and "country_event = { id = ktits_edu.1 }" in coop,
+      "cooperation: targeted decision (level >= 2, not at war, not Kazualia, 365-day flag on the target, 100 PP, 180 days) fires ktits_edu.1", "cooperation: decision conditions or event call wrong")
+check(ev_ids == ["ktits_edu.1", "ktits_edu.2", "ktits_edu.3"] and ed_ev.count("{") == ed_ev.count("}") and "has_opinion = { target = FROM value < 0 }" in ed_ev and "is_in_faction_with = FROM" in ed_ev
+      and "ktits_edu.2" in ed_ev.split("name = ktits_edu.1.b")[0] and "ktits_edu.3" in ed_ev.split("name = ktits_edu.1.b")[1] and "ktits_spec_foreign value = 5 }" in ed_ev and "ktits_spec_foreign value = 15 }" in ed_ev
+      and all(ed_loc.get(f"ktits_edu.{n}.{s}", "").strip() for n in (1, 2, 3) for s in ("t", "d", "a")) and ed_loc.get("ktits_edu.1.b", "").strip(),
+      "cooperation: events 1-3 (offer with accept/refuse, answers +15 / refusal) with AI conditions (opinion, rival faction) and ru loc", "cooperation: events or their loc wrong")
+dv = ed_loc.get("ktits_education_dev_category_desc", "")
+check(dv.count(chr(92) + "n") == 3 and all(s_ in dv for s_ in ("£research_icon£", "£manpower_texticon£", "£right_arrow£", "[?ktits_spec_own|0]", "[?ktits_spec_foreign|0]", "[?ktits_spec_next|0]"))
+      and "ktits_spec_next value = 0 }" in ed_fx and ed_fx.count("ktits_spec_next value = ktits_spec_own") == 5,
+      "specialists: development category shows own / foreign / until next level on three lines with text icons; ktits_spec_next computed in the update", "specialists: three-line description or ktits_spec_next wrong")
+# branch "Образование"
+EDU_F = ["root", "own", "rural", "workers", "inst", "imp", "open", "mentor", "citizen", "univ", "academy", "society", "cure"]
+eb = {m.group(1): m.group(0).replace("\r", "") for m in re.finditer(r"\tfocus = \{\r?\n\t\tid = (ktits_edu_\w+)[\s\S]*?\r?\n\t\}", gen)}
+efl = {**load_loc(M / "localisation/russian/ktits_edu_focus_l_russian.yml")}
+check(sorted(eb) == sorted("ktits_edu_" + s for s in EDU_F) and gen.count("KTITS_EDUCATION_BRANCH_BEGIN") == 1 and gen.count("{") == gen.count("}"),
+      "education focuses: 13 focuses defined once in the generic tree, braces balanced", f"education focuses: {sorted(eb)}")
+check(all(efl.get(k, "").strip() for f_ in eb for k in (f_, f_ + "_desc")), "education focuses: every focus has ru name and description", "education focuses: loc missing")
+check("ktits_is_big_country = yes" in eb.get("ktits_edu_imp", "") and "ktits_edu_req_big" in eb.get("ktits_edu_imp", "") and "ktits_is_big_country" not in eb.get("ktits_edu_own", ""),
+      "education focuses: 'Импорт умов' only for big countries (readable tooltip), 'Своими силами' for all", "education focuses: big-country condition of 'Импорт умов' missing")
+check("mutually_exclusive = { focus = ktits_edu_imp }" in eb.get("ktits_edu_own", "") and "mutually_exclusive = { focus = ktits_edu_own }" in eb.get("ktits_edu_imp", ""),
+      "education focuses: 'Своими силами' and 'Импорт умов' are mutually exclusive both ways", "education focuses: exclusivity broken")
+check("focus = ktits_edu_rural" in eb.get("ktits_edu_univ", "") and "focus = ktits_edu_open" in eb.get("ktits_edu_univ", "") and "ktits_edu_3" in eb.get("ktits_edu_society", "") and "ktits_edu_5" in eb.get("ktits_edu_society", "") and "ktits_cas_f_cure" in eb.get("ktits_edu_cure", ""),
+      "education focuses: 'Университеты' needs school or open borders, 'Общество знаний' needs level 3+, 'Лекарство от лени' sets the growth flag", "education focuses: prerequisites/conditions wrong")
+check(all(int(re.search(r"\n\t\tx = (\d+)", b).group(1)) >= 68 for b in eb.values()) and "NOT = { ktits_is_kazualia = yes }" in eb.get("ktits_edu_root", "") and "is_puppet_of" in eb.get("ktits_edu_root", ""),
+      "education focuses: all at x >= 68 (free columns), root closed for Kazualia and its puppets", "education focuses: position or Kazualia gate wrong")
+ew = {"root": 10, "own": 10, "rural": 10, "workers": 10, "inst": 15, "imp": 10, "open": 10, "mentor": 10, "citizen": 15, "univ": 15, "academy": 15, "society": 20, "cure": 10}
+check(all(f"cost = {v}\n" in eb.get("ktits_edu_" + k, "") for k, v in ew.items()), "education focuses: durations match the doc (days / 7 weeks)", "education focuses: cost differs from the doc")
+check("ktits_spec_own value = 30" in blk_f.get("ktits_cas_schools", "") and "ktits_edu_{" not in blk_f.get("ktits_cas_schools", ""), "focuses: 'Школы труда' gives own specialists +30 (not a level)", "focuses: schools reward wrong")
+
+# ---- focus branch "Экономика" (make_focuses.py) ----
+eco = {m.group(1): m.group(0).replace("\r", "") for m in re.finditer(r"\tfocus = \{\r?\n\t\tid = (ktits_eco_\w+)[\s\S]*?\r?\n\t\}", gen)}
+eco_ru, eco_en = load_loc(M / "localisation/russian/ktits_eco_l_russian.yml"), load_loc(M / "localisation/english/ktits_eco_l_english.yml")
+check(len(eco) == 36 and gen.count("KTITS_ECONOMY_BRANCH_BEGIN") == 1 and gen.count("{") == gen.count("}"), "economy: 36 unique focuses (the doc table), braces balanced", f"economy: {len(eco)} focuses")
+miss_e = [k for f_ in eco for k in (f_, f_ + "_desc") if not eco_ru.get(k, "").strip() or not eco_en.get(k, "").strip()]
+check(not miss_e, "economy: every focus has ru/en name and description", f"economy: loc missing {miss_e[:6]}")
+check("mutually_exclusive = { focus = ktits_eco_market }" in eco.get("ktits_eco_plan", "") and "mutually_exclusive = { focus = ktits_eco_plan }" in eco.get("ktits_eco_market", ""),
+      "economy: 'Плановая экономика' and 'Рыночная экономика' are mutually exclusive both ways", "economy: exclusivity broken")
+def eco_pre(k): return re.findall(r"prerequisite = \{ ([^}]*) \}", eco.get(k, ""))
+check(eco_pre("ktits_eco_five2") == ["focus = ktits_eco_heavy focus = ktits_eco_collect"] and eco_pre("ktits_eco_invest") == ["focus = ktits_eco_stock focus = ktits_eco_tax"]
+      and len(eco_pre("ktits_eco_belt")) == 2 and eco_pre("ktits_eco_road") == ["focus = ktits_eco_great focus = ktits_eco_flower focus = ktits_eco_quarters"],
+      "economy: OR prerequisites in one block, AND prerequisites in separate blocks", "economy: prerequisites differ from the doc")
+xs_ = {k: (int(re.search(r"\n\t\tx = (\d+)", b).group(1)), int(re.search(r"\n\t\ty = (\d+)", b).group(1))) for k, b in eco.items()}
+check(all(x_ >= 84 for x_, _ in xs_.values()) and len(set(xs_.values())) == len(xs_), "economy: all at x >= 84 (free columns), no two focuses on one cell", "economy: position clash or x < 84")
+eco_ideas = (M / "common/ideas/ktits_eco_ideas.txt").read_text(encoding="utf-8")
+sp_def = set(re.findall(r"(?m)^\t\t(ktits_eco_sp_\w+) = \{", eco_ideas))
+sp_used = set(re.findall(r"(?:add_ideas|idea|add_timed_idea = \{ idea|remove_ideas|has_idea) = (ktits_eco_sp_\w+)", "\n".join(eco.values())))
+check(sp_used <= sp_def and all(eco_ru.get(k, "").strip() and eco_ru.get(k + "_desc", "").strip() and eco_en.get(k + "_desc", "").strip() for k in sp_def) and {"ktits_eco_sp_plan", "ktits_eco_sp_market", "ktits_eco_sp_reserve"} <= sp_def,
+      f"economy: {len(sp_def)} spirits defined, used ones exist, all with lore description", f"economy: spirits undefined {sorted(sp_used - sp_def)} or without loc")
+tt_used = set(re.findall(r"custom_effect_tooltip = (ktits_eco_tt_\w+)", "\n".join(eco.values())))
+check(all(eco_ru.get(k, "").strip() for k in tt_used) and "ktits_eco_investment" in (M / "common/opinion_modifiers/ktits_opinion_modifiers.txt").read_text(encoding="utf-8") and "ktits_cas_tt_m5" in "\n".join(load_loc(M / "localisation/russian/ktits_casuality_l_russian.yml")) if (M / "localisation/russian/ktits_casuality_l_russian.yml").exists() else True,
+      "economy: tooltips and the opinion modifier exist", "economy: tooltip loc / opinion modifier missing")
+check("ktits_spec_own value = 15" in eco.get("ktits_eco_bureau", "") and "add_research_slot = 1" in eco.get("ktits_eco_bureau", "") and "has_country_flag = ktits_cas_f_dry" in mc,
+      "economy: 'Научно-промышленные бюро' gives a research slot and own specialists +15; 'Сухие дома' flag is read by the growth", "economy: bureau / dry houses wiring missing")
 
 w = {"PASS": 0, "WARN": 0, "FAIL": 0}
 for lvl, msg in res:
