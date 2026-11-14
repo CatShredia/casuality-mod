@@ -69,6 +69,13 @@ def main():
     for f in sorted((V / "common/decisions").glob("*.txt")):
         if EMPTY_DECISIONS.search(rd(f)):
             emptied.add(f"common/decisions/{f.name}")
+    # vanilla decision files bound to the vanilla map: >= 5 references to states that do not exist on our map
+    # (country decisions, formable nations, resource prospecting; they flood error.log, e.g. "Invalid state for is_owned_and_controlled_by 942 = MAK")
+    max_state = max(int(re.match(r"\d+", p.name).group(0)) for p in (M / "history/states").glob("*.txt") if re.match(r"\d+", p.name))
+    ref_re = re.compile(r"(?m)(?:^\s*|\bstate\s*=\s*|owns_state\s*=\s*|controls_state\s*=\s*)(\d{3,5})\b")
+    for f in sorted((V / "common/decisions").glob("*.txt")):
+        if sum(1 for x in ref_re.findall(rd(f)) if int(x) > max_state) >= 5:
+            emptied.add(f"common/decisions/{f.name}")
     # the vanilla 1939 scenario (bookmark "Blitzkrieg") does not work with the mod's map and countries: only 1936 stays
     emptied.add("common/bookmarks/blitzkrieg.txt")
     for rel in emptied:
