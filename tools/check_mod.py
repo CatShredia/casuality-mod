@@ -163,6 +163,10 @@ check(bool(used_costs) and used_costs <= set_costs, f"casuality: {len(used_costs
 ret_txt = (M / "common/scripted_effects/ktits_casuality_return_effects.txt").read_text(encoding="utf-8") if (M / "common/scripted_effects/ktits_casuality_return_effects.txt").exists() else ""
 ev1 = (M / "events/ktits_casuality_events.txt").read_text(encoding="utf-8")
 check("ktits_return_lands = {" in ret_txt and "transfer_state_to" in ret_txt and 0 <= ev1.find("ktits_return_lands = yes") < ev1.find("ktits_split_on_fall = yes") and not re.search(r"is_core_of = (K\d\d|"+{v: k for k, v in tag2lore.items()}["CSL"]+")\b", ret_txt), "casuality: return of conquered lands is called before the split and skips Kxx/Kazualia", "casuality: ktits_return_lands missing, wrongly ordered or touches Kxx/Kazualia")
+spl_txt = (M / "common/scripted_effects/ktits_splits_effects.txt").read_text(encoding="utf-8")
+rel1 = re.search(r"ktits_release_K01 = [{][\s\S]*?ktits_release_K02", spl_txt)
+rel1 = rel1.group(0) if rel1 else ""
+check(len(re.findall(r"target = event_target:ktits_split_target", spl_txt)) == 100 and "$T$" not in spl_txt.replace("$T$ failed","") and "keep_unit_leaders_trigger" in spl_txt and "K01 = { save_event_target_as = ktits_split_target }" in rel1 and "ktits_split_share = yes" in rel1 and 0 <= rel1.find("state_population_k") < rel1.find("transfer_state") < rel1.find("ktits_split_share") < rel1.find("puppet"), "splits: army/navy/air/stockpile are split by population (100-step ratio ladder, population read before the transfer, units moved before the puppet)", "splits: population-based unit split is missing or wrongly ordered")
 oa = cas_txt.get(M / "common/on_actions/ktits_casuality_on_actions.txt", "")
 check(all(x in oa for x in ("on_startup", "on_monthly", "on_daily")) and "ktits_casuality_monthly = {" in all_cas, "casuality: on_actions has on_startup, on_monthly, on_daily; the monthly effect is defined", "casuality: on_actions or ktits_casuality_monthly missing")
 bad_edu = [i for i in range(6) if f"ktits_edu_{i}" not in all_cas]
@@ -238,6 +242,11 @@ fl_ru, fl_en = load_loc(M / "localisation/russian/ktits_focuses_l_russian.yml"),
 foc_def = re.findall(r"(?m)^\tfocus = \{\r?\n\t\tid = (ktits_cas_\w+)", gen)
 check(sorted(foc_def) == sorted(FOC_IDS) and gen.count("{") == gen.count("}") and gen.count("KTITS_CASUALITY_BRANCH_BEGIN") == 1,
       "focuses: all 11 Casuality focuses defined once in the generic tree, braces balanced", f"focuses: defined {sorted(foc_def)} (need 11), braces {gen.count('{')}/{gen.count('}')}")
+all_foc = re.findall(r"(?m)^\tfocus = \{\r?\n\t\tid = (\w+)", gen)
+check(all_foc and all(i.startswith("ktits_") for i in all_foc) and "id = generic_focus" in gen and "initial_show_position" in gen,
+      f"generic tree: {len(all_foc)} focuses, all ours (vanilla generic focuses removed), header generic_focus kept", f"generic tree: foreign focuses {[i for i in all_foc if not i.startswith('ktits_')][:5]}")
+gx = [int(x) for x in re.findall(r"(?m)^\t\tx = (-?\d+)\r?$", gen)]
+check(gx and min(gx) == 0 and max(gx) <= 90, f"generic tree: x range {min(gx) if gx else '?'}..{max(gx) if gx else '?'} (starts at 0, branches shifted left)", "generic tree: x range wrong (must start at 0)")
 miss_fl = [k for f in FOC_IDS for k in (f, f + "_desc") if not fl_ru.get(k, "").strip() or not fl_en.get(k, "").strip()]
 check(not miss_fl, "focuses: every focus has ru/en name and description", f"focuses: loc missing for {miss_fl[:6]}")
 blk_f = {m.group(1): m.group(0) for m in re.finditer(r"\tfocus = \{\r?\n\t\tid = (ktits_cas_\w+)[\s\S]*?\r?\n\t\}", gen)}
@@ -297,8 +306,27 @@ bad_d = [k for k in idea_all if not all_ru.get(k + "_desc", "").strip() or any(p
 descs = [all_ru.get(k + "_desc", "") for k in idea_all]
 dup_d = sorted({k for k in idea_all if not k.startswith("ktits_edu_coop_") and descs.count(all_ru.get(k + "_desc", "")) > 1})
 check(len(idea_all) >= 30 and not bad_d and not dup_d, f"spirits: all {len(idea_all)} ktits_* ideas have a unique lore description", f"spirits: missing/placeholder desc {bad_d[:5]}, duplicated desc {dup_d[:5]}")
+# lore descriptions of decisions, decision categories, events and focuses (rule of CLAUDE.md): non-empty, no placeholder / meta text, not a copy of the name, not shared
+all_en = {}
+for f_ in sorted((M / "localisation/english").glob("ktits_*.yml")): all_en.update(load_loc(f_))
+dec_ids_all = [k for f_ in sorted((M / "common/decisions").glob("ktits_*.txt")) for k in re.findall(r"(?m)^	(ktits_\w+) = \{", f_.read_text(encoding="utf-8"))]
+cat_ids_all = [k for f_ in sorted((M / "common/decisions/categories").glob("ktits_*.txt")) for k in re.findall(r"(?m)^(ktits_\w+) = \{", f_.read_text(encoding="utf-8"))]
+ev_txt_all = "".join(f_.read_text(encoding="utf-8") for f_ in sorted((M / "events").glob("ktits_*.txt")))
+ev_ids_all = re.findall(r"(?m)^	id = ([\w.]+)", ev_txt_all)
+ev_opts_all = re.findall(r"(?m)^		option|^		name = ([\w.]+)", ev_txt_all)
+foc_ids_all = re.findall(r"(?m)^		id = (ktits_\w+)", (M / "common/national_focus/generic.txt").read_text(encoding="utf-8-sig"))
+META = PLACEHOLDERS + ("Бонус", "бонус", "Модификатор", "модификатор", "Описание", "desc")
+lore_pairs = [(k, k + "_desc") for k in dec_ids_all + cat_ids_all + foc_ids_all] + [(k, k + ".d") for k in ev_ids_all]
+bad_l = [d_ for _, d_ in lore_pairs if not all_ru.get(d_, "").strip() or not all_en.get(d_, "").strip() or len(all_ru.get(d_, "")) < 30 or any(m_ in all_ru[d_] for m_ in META)]
+same_l = [d_ for n_, d_ in lore_pairs if all_ru.get(d_, "") == all_ru.get(n_, "") or all_ru.get(d_, "") == all_ru.get(n_ + ".t", "x")]
+cnt_l = collections.Counter(all_ru.get(d_, "") for _, d_ in lore_pairs)
+dup_l = sorted(d_ for _, d_ in lore_pairs if cnt_l[all_ru.get(d_, "")] > 1)
+bad_o = [k for k in ev_opts_all if k and (not all_ru.get(k, "").strip() or not all_en.get(k, "").strip())]
+check(len(dec_ids_all) >= 20 and len(cat_ids_all) >= 5 and len(ev_ids_all) >= 20 and len(foc_ids_all) >= 80 and not (bad_l or same_l or dup_l or bad_o),
+      f"lore: {len(dec_ids_all)} decisions, {len(cat_ids_all)} categories, {len(ev_ids_all)} events, {len(foc_ids_all)} focuses (+ event options) have a non-empty unique lore description",
+      f"lore: missing/short/meta desc {bad_l[:5]}, equal to name {same_l[:5]}, duplicated {dup_l[:5]}, options without loc {bad_o[:5]}")
 check(len(sp_ids) == 14 and all(f"add_ideas = {s_}" in gen and f"remove_ideas = {s_}" in ch and pol_ru.get(s_) and pol_en.get(s_) for s_ in sp_ids), "politics: 14 spirits are given, removed by the reset focus and have loc", "politics: spirit problem")
-check(all(re.search(r"\n\t\tx = (\d+)", pb[k]) and int(re.search(r"\n\t\tx = (\d+)", pb[k]).group(1)) >= 34 for k in pb), "politics: all focuses are at x >= 34 (free columns)", "politics: focus overlaps the vanilla/Casuality columns")
+check(all(re.search(r"\n\t\tx = (\d+)", pb[k]) and int(re.search(r"\n\t\tx = (\d+)", pb[k]).group(1)) >= 10 for k in pb), "politics: all focuses are at x >= 10 (right of the Casuality branch)", "politics: focus overlaps the Casuality columns")
 
 sp_ids = set(re.findall(r"(?m)^		(ktits_pol_sp_\w+) = \{", pid_txt))
 
@@ -411,8 +439,8 @@ check("mutually_exclusive = { focus = ktits_edu_imp }" in eb.get("ktits_edu_own"
       "education focuses: 'Своими силами' and 'Импорт умов' are mutually exclusive both ways", "education focuses: exclusivity broken")
 check("focus = ktits_edu_rural" in eb.get("ktits_edu_univ", "") and "focus = ktits_edu_open" in eb.get("ktits_edu_univ", "") and "ktits_edu_3" in eb.get("ktits_edu_society", "") and "ktits_edu_5" in eb.get("ktits_edu_society", "") and "ktits_cas_f_cure" in eb.get("ktits_edu_cure", ""),
       "education focuses: 'Университеты' needs school or open borders, 'Общество знаний' needs level 3+, 'Лекарство от лени' sets the growth flag", "education focuses: prerequisites/conditions wrong")
-check(all(int(re.search(r"\n\t\tx = (\d+)", b).group(1)) >= 68 for b in eb.values()) and "NOT = { ktits_is_kazualia = yes }" in eb.get("ktits_edu_root", "") and "is_puppet_of" in eb.get("ktits_edu_root", ""),
-      "education focuses: all at x >= 68 (free columns), root closed for Kazualia and its puppets", "education focuses: position or Kazualia gate wrong")
+check(all(int(re.search(r"\n\t\tx = (\d+)", b).group(1)) >= 44 for b in eb.values()) and "NOT = { ktits_is_kazualia = yes }" in eb.get("ktits_edu_root", "") and "is_puppet_of" in eb.get("ktits_edu_root", ""),
+      "education focuses: all at x >= 44 (right of Politics), root closed for Kazualia and its puppets", "education focuses: position or Kazualia gate wrong")
 ew = {"root": 10, "own": 10, "rural": 10, "workers": 10, "inst": 15, "imp": 10, "open": 10, "mentor": 10, "citizen": 15, "univ": 15, "academy": 15, "society": 20, "cure": 10}
 check(all(f"cost = {v}\n" in eb.get("ktits_edu_" + k, "") for k, v in ew.items()), "education focuses: durations match the doc (days / 7 weeks)", "education focuses: cost differs from the doc")
 check("ktits_spec_own value = 30" in blk_f.get("ktits_cas_schools", "") and "ktits_edu_{" not in blk_f.get("ktits_cas_schools", ""), "focuses: 'Школы труда' gives own specialists +30 (not a level)", "focuses: schools reward wrong")
@@ -430,7 +458,7 @@ check(eco_pre("ktits_eco_five2") == ["focus = ktits_eco_heavy focus = ktits_eco_
       and len(eco_pre("ktits_eco_belt")) == 2 and eco_pre("ktits_eco_road") == ["focus = ktits_eco_great focus = ktits_eco_flower focus = ktits_eco_quarters"],
       "economy: OR prerequisites in one block, AND prerequisites in separate blocks", "economy: prerequisites differ from the doc")
 xs_ = {k: (int(re.search(r"\n\t\tx = (\d+)", b).group(1)), int(re.search(r"\n\t\ty = (\d+)", b).group(1))) for k, b in eco.items()}
-check(all(x_ >= 84 for x_, _ in xs_.values()) and len(set(xs_.values())) == len(xs_), "economy: all at x >= 84 (free columns), no two focuses on one cell", "economy: position clash or x < 84")
+check(all(x_ >= 60 for x_, _ in xs_.values()) and len(set(xs_.values())) == len(xs_), "economy: all at x >= 60 (right of Education), no two focuses on one cell", "economy: position clash or x < 60")
 eco_ideas = (M / "common/ideas/ktits_eco_ideas.txt").read_text(encoding="utf-8")
 sp_def = set(re.findall(r"(?m)^\t\t(ktits_eco_sp_\w+) = \{", eco_ideas))
 sp_used = set(re.findall(r"(?:add_ideas|idea|add_timed_idea = \{ idea|remove_ideas|has_idea) = (ktits_eco_sp_\w+)", "\n".join(eco.values())))
