@@ -295,7 +295,7 @@ idea_all = [k for f_ in sorted((M / "common/ideas").glob("ktits_*.txt")) for k i
 PLACEHOLDERS = ("Временное изменение стабильности", "последствия события", "Уровень образованности населения", "Бонусы выбора подтипа", "TODO", "placeholder")
 bad_d = [k for k in idea_all if not all_ru.get(k + "_desc", "").strip() or any(ph in all_ru[k + "_desc"] for ph in PLACEHOLDERS)]
 descs = [all_ru.get(k + "_desc", "") for k in idea_all]
-dup_d = sorted({k for k in idea_all if descs.count(all_ru.get(k + "_desc", "")) > 1})
+dup_d = sorted({k for k in idea_all if not k.startswith("ktits_edu_coop_") and descs.count(all_ru.get(k + "_desc", "")) > 1})
 check(len(idea_all) >= 30 and not bad_d and not dup_d, f"spirits: all {len(idea_all)} ktits_* ideas have a unique lore description", f"spirits: missing/placeholder desc {bad_d[:5]}, duplicated desc {dup_d[:5]}")
 check(len(sp_ids) == 14 and all(f"add_ideas = {s_}" in gen and f"remove_ideas = {s_}" in ch and pol_ru.get(s_) and pol_en.get(s_) for s_ in sp_ids), "politics: 14 spirits are given, removed by the reset focus and have loc", "politics: spirit problem")
 check(all(re.search(r"\n\t\tx = (\d+)", pb[k]) and int(re.search(r"\n\t\tx = (\d+)", pb[k]).group(1)) >= 34 for k in pb), "politics: all focuses are at x >= 34 (free columns)", "politics: focus overlaps the vanilla/Casuality columns")
@@ -355,13 +355,45 @@ coop = re.search(r"(?m)^\tktits_edu_coop = {([\s\S]*?)\n\t}", dev_blk)
 coop = coop.group(1) if coop else ""
 ed_ev = (M / "events/ktits_education_events.txt").read_text(encoding="utf-8") if (M / "events/ktits_education_events.txt").exists() else ""
 ev_ids = re.findall(r"id = (ktits_edu.\d+)\n", ed_ev)
-check("target_trigger" in coop and all(f"has_idea = ktits_edu_{i}" in coop for i in (2, 3, 4, 5)) and "has_war_with = ROOT" in coop and "ktits_is_kazualia" in coop and "ktits_edu_coop_target" in coop
-      and "cost = 100" in coop and "days_re_enable = 180" in coop and "days = 365" in coop and "country_event = { id = ktits_edu.1 }" in coop,
-      "cooperation: targeted decision (level >= 2, not at war, not Kazualia, 365-day flag on the target, 100 PP, 180 days) fires ktits_edu.1", "cooperation: decision conditions or event call wrong")
+check("target_trigger" in coop and all(f"has_idea = ktits_edu_{i}" in coop for i in (2, 3, 4, 5)) and "has_war_with = ROOT" in coop and "ktits_is_kazualia" in coop and "ktits_edu_coop_target" not in coop and "ktits_edu_coop_ref_" in coop and "ktits_edu_coop_done_" in coop
+      and "cost = 100" in coop and "days_re_enable = 180" in coop and "country_event = { id = ktits_edu.1 }" in coop,
+      "cooperation: targeted decision (level >= 2, not at war, not Kazualia, per-pair refusal/done flags, 100 PP, 180 days) fires ktits_edu.1", "cooperation: decision conditions or event call wrong")
 check(ev_ids == ["ktits_edu.1", "ktits_edu.2", "ktits_edu.3"] and ed_ev.count("{") == ed_ev.count("}") and "has_opinion = { target = FROM value < 0 }" in ed_ev and "is_in_faction_with = FROM" in ed_ev
-      and "ktits_edu.2" in ed_ev.split("name = ktits_edu.1.b")[0] and "ktits_edu.3" in ed_ev.split("name = ktits_edu.1.b")[1] and "ktits_spec_foreign value = 5 }" in ed_ev and "ktits_spec_foreign value = 15 }" in ed_ev
+      and "ktits_edu.2" in ed_ev.split("name = ktits_edu.1.b")[0] and "ktits_edu.3" in ed_ev.split("name = ktits_edu.1.b")[1] and "ktits_spec_foreign" not in ed_ev and "ktits_edu_coop_accept = yes" in ed_ev and "ktits_edu_coop_accept_sender = yes" in ed_ev and "ktits_edu_coop_refuse = yes" in ed_ev
       and all(ed_loc.get(f"ktits_edu.{n}.{s}", "").strip() for n in (1, 2, 3) for s in ("t", "d", "a")) and ed_loc.get("ktits_edu.1.b", "").strip(),
-      "cooperation: events 1-3 (offer with accept/refuse, answers +15 / refusal) with AI conditions (opinion, rival faction) and ru loc", "cooperation: events or their loc wrong")
+      "cooperation: events 1-3 (offer with accept/refuse, answers: spirit / refusal flag) with AI conditions (opinion, rival faction) and ru loc", "cooperation: events or their loc wrong")
+# cooperation treaty: spirits per tag, per-pair flags, monthly +2/+1, science bar
+import itertools
+tags_all = sorted(set(re.findall(r"(?m)^(\w{3})\s*=\s*\"countries", "".join(f_.read_text(encoding="utf-8", errors="ignore") for f_ in (M / "common/country_tags").glob("*.txt")))))
+ed_cfx = (M / "common/scripted_effects/ktits_education_coop_effects.txt").read_text(encoding="utf-8") if (M / "common/scripted_effects/ktits_education_coop_effects.txt").exists() else ""
+ed_ideas = (M / "common/ideas/ktits_education.txt").read_text(encoding="utf-8")
+check(len(tags_all) >= 60 and all(f"	ktits_edu_coop_{x} = {{" in ed_ideas and ed_loc.get(f"ktits_edu_coop_{x}", "").strip() and ed_loc.get(f"ktits_edu_coop_{x}_desc", "").strip() for x in tags_all),
+      f"cooperation: a spirit with name and lore description for each of {len(tags_all)} tags", "cooperation: spirit/loc missing for some tag")
+check(all(f"ktits_edu_coop_ref_{x}" in dev_blk and f"ktits_edu_coop_done_{x}" in dev_blk and f"ktits_edu_coop_ref_{x} days = 365" in ed_cfx and f"ktits_edu_coop_init_{x}" in ed_cfx for x in tags_all)
+      and ed_cfx.count("{") == ed_cfx.count("}") and "value = 2 }" in ed_cfx and "value = 1 }" in ed_cfx and "has_war_with" in ed_cfx and "country_exists" in ed_cfx and "ktits_is_kazualia = yes" in ed_cfx and "ktits_edu_coop_monthly = yes" in ed_fx,
+      "cooperation: per-pair refusal (365 days) and done flags for every tag, monthly +2 (proposer) / +1, removal on war / no partner / Kazualia, called from the monthly effect", "cooperation: per-pair flags or monthly effect wrong")
+check(ed_loc.get("ktits_edu_coop", "").startswith("§G+§!") and "[FROM.GetName]" in ed_loc.get("ktits_edu_coop", "") and "[X.GetName]" not in ed_loc.get("ktits_edu_coop_AFR", "") and "[AFR.GetName]" in ed_loc.get("ktits_edu_coop_AFR", ""),
+      "cooperation: decision title shows the target ([FROM.GetName]), spirit title the partner ([TAG.GetName])", "cooperation: names do not use the country name")
+bar_gui = (M / "interface/ktits_education.gui").read_text(encoding="utf-8") if (M / "interface/ktits_education.gui").exists() else ""
+bar_sg = (M / "common/scripted_guis/ktits_education.txt").read_text(encoding="utf-8") if (M / "common/scripted_guis/ktits_education.txt").exists() else ""
+bar_sl = (M / "common/scripted_localisation/ktits_education_scripted_loc.txt").read_text(encoding="utf-8") if (M / "common/scripted_localisation/ktits_education_scripted_loc.txt").exists() else ""
+bar_gfx = (M / "interface/ktits_education.gfx").read_text(encoding="utf-8") if (M / "interface/ktits_education.gfx").exists() else ""
+cat_f = (M / "common/decisions/categories/ktits_education_categories.txt").read_text(encoding="utf-8")
+check(bar_gui.count('name = "ktits_edu_seg_') == 20 and all(f'name = "ktits_edu_seg_{i}"' in bar_gui and f"ktits_edu_seg_{i}_visible" in bar_sg for i in range(1, 21)) and not bar_gui.startswith(chr(0xFEFF)) and not bar_gfx.startswith(chr(0xFEFF))
+      and bar_sg.count("ktits_spec_progress") == 20 and re.search(r"(?m)^ktits_education_dev_category = {[^}]*scripted_gui = ktits_education_ui", cat_f) and 'window_name = "ktits_education_ui_window"' in bar_sg and 'name = "ktits_education_ui_window"' in bar_gui
+      and all(f"GFX_ktits_edu_seg_{i}" in bar_gfx for i in range(1, 5)) and all((M / f"gfx/interface/ktits/edu_seg_{i}.png").exists() for i in range(1, 5)) and (M / "gfx/interface/ktits/edu_bar_frame.png").exists(),
+      "science bar: scripted GUI over the development category, 20 segments by ktits_spec_progress, 4 colours, sprites and PNGs exist", "science bar: gui/scripted gui/sprites wrong")
+bar_loc = load_loc(M / "localisation/russian/ktits_education_bar_l_russian.yml")
+check(bar_sl.count("localization_key") == 6 and all(f"ktits_edu_bar_{i}" in bar_sl and bar_loc.get(f"ktits_edu_bar_{i}", "").strip() for i in range(6)) and bar_loc.get("ktits_education_bar_label") == "[GetKtitsEduBar]"
+      and "высший уровень" in bar_loc.get("ktits_edu_bar_5", "") and "[?ktits_spec_own|0]" in bar_loc.get("ktits_edu_bar_0", "") and "из 10 тыс." in bar_loc.get("ktits_edu_bar_0", "") and "из 150 тыс." in bar_loc.get("ktits_edu_bar_4", ""),
+      "science bar: label by level via defined_text GetKtitsEduBar (6 texts, level 5 = highest level)", "science bar: label loc wrong")
+check(all(f'name = "ktits_edu_st_{nm}_{i}"' in bar_gui and f"ktits_edu_st_{nm}_{i}_visible" in bar_sg and f"GFX_ktits_edu_stage_{i}_{nm}" in bar_gfx and (M / f"gfx/interface/ktits/edu_stage_{i}_{nm}.png").exists()
+          for i in range(6) for nm in ("passed", "cur", "next", "future")) and bar_gui.count('pdx_tooltip = "ktits_edu_stage_tt_') == 24 and all(f"ktits_edu_stage_tt_{i}" in bar_loc and "тыс. наших специалистов" in bar_loc[f"ktits_edu_stage_tt_{i}"] for i in range(6))
+      and all(f'name = "ktits_edu_st_thr_{i}"' in bar_gui and bar_loc.get(f"ktits_edu_stage_thr_{i}") == str(t) for i, t in enumerate([0, 10, 30, 60, 100, 150]) if i) and bar_loc.get("ktits_edu_stage_next") == "далее"
+      and all(f'name = "ktits_edu_st_lbl_{i}"' in bar_gui and f"ktits_edu_st_lbl_{i}_visible" in bar_sg for i in range(6)) and bar_sg.count("var = ktits_edu_t") == 30,
+      "stage row over the bar: 6 cells x 4 states (passed/current/next/future) by ktits_edu_t, sprites, PNGs, thresholds, 'next' label, tooltips with level modifiers", "stage row: gui/triggers/sprites/loc wrong")
+check("ktits_spec_progress value = 100 }" in ed_fx and ed_fx.count("ktits_spec_progress min = 0 max = 100") == 5 and ed_fx.count("divide_variable = { var = ktits_spec_progress") == 5 and "ktits_spec_nthr" in ed_fx,
+      "science bar: ktits_spec_progress (0-100, 100 at level 5) computed in ktits_education_update", "science bar: progress computation missing")
 dv = ed_loc.get("ktits_education_dev_category_desc", "")
 check(dv.count(chr(92) + "n") == 3 and all(s_ in dv for s_ in ("£research_icon£", "£manpower_texticon£", "£right_arrow£", "[?ktits_spec_own|0]", "[?ktits_spec_foreign|0]", "[?ktits_spec_next|0]"))
       and "ktits_spec_next value = 0 }" in ed_fx and ed_fx.count("ktits_spec_next value = ktits_spec_own") == 5,

@@ -394,15 +394,18 @@ ktits_casuality_monthly = {{
 """)
 w("common/on_actions/ktits_casuality_on_actions.txt", """on_actions = {
 	on_startup = {
+		# on_startup has no country scope (vanilla 00_on_actions.txt: "Not run on a specific country"): loop over all countries
 		effect = {
-			if = {
-				limit = { NOT = { ktits_is_kazualia = yes } }
-				ktits_casuality_costs = yes
-				ktits_casuality_ai_start = yes
+			every_country = {
+				if = {
+					limit = { NOT = { ktits_is_kazualia = yes } }
+					ktits_casuality_costs = yes
+					ktits_casuality_ai_start = yes
+				}
+				# specialists (tools/make_education.py): start values and costs for every country
+				ktits_education_start = yes
+				ktits_education_costs = yes
 			}
-			# specialists (tools/make_education.py): start values and costs for every country
-			ktits_education_start = yes
-			ktits_education_costs = yes
 		}
 	}
 	on_monthly = {
