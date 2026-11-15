@@ -312,7 +312,7 @@ for f_ in sorted((M / "localisation/english").glob("ktits_*.yml")): all_en.updat
 dec_ids_all = [k for f_ in sorted((M / "common/decisions").glob("ktits_*.txt")) for k in re.findall(r"(?m)^	(ktits_\w+) = \{", f_.read_text(encoding="utf-8"))]
 cat_ids_all = [k for f_ in sorted((M / "common/decisions/categories").glob("ktits_*.txt")) for k in re.findall(r"(?m)^(ktits_\w+) = \{", f_.read_text(encoding="utf-8"))]
 ev_txt_all = "".join(f_.read_text(encoding="utf-8") for f_ in sorted((M / "events").glob("ktits_*.txt")))
-ev_ids_all = re.findall(r"(?m)^	id = ([\w.]+)", ev_txt_all)
+ev_ids_all = re.findall(r"(?m)^	id = ([\w.]+)\r?\n(?!	hidden = yes)", ev_txt_all)  # hidden events have no text
 ev_opts_all = re.findall(r"(?m)^		option|^		name = ([\w.]+)", ev_txt_all)
 foc_ids_all = re.findall(r"(?m)^		id = (ktits_\w+)", (M / "common/national_focus/generic.txt").read_text(encoding="utf-8-sig"))
 META = PLACEHOLDERS + ("Бонус", "бонус", "Модификатор", "модификатор", "Описание", "desc")
@@ -469,6 +469,154 @@ check(all(eco_ru.get(k, "").strip() for k in tt_used) and "ktits_eco_investment"
       "economy: tooltips and the opinion modifier exist", "economy: tooltip loc / opinion modifier missing")
 check("ktits_spec_own value = 15" in eco.get("ktits_eco_bureau", "") and "add_research_slot = 1" in eco.get("ktits_eco_bureau", "") and "has_country_flag = ktits_cas_f_dry" in mc,
       "economy: 'Научно-промышленные бюро' gives a research slot and own specialists +15; 'Сухие дома' flag is read by the growth", "economy: bureau / dry houses wiring missing")
+
+# ---- vanilla leftovers (fix_vanilla_leftovers.py): nothing of the vanilla world that the mod no longer has may be referenced ----
+import fix_vanilla_leftovers as FV
+import make_game_rules as MG
+VAN = Path(MG.GAME)
+def rdv(p_): return p_.read_bytes().decode("utf-8-sig", errors="replace")
+# 1. no vanilla focus tree can be selected by our tags: every focus file except generic.txt / ours / title-bar styles is an empty override
+trees_left = []
+tree_re_ = re.compile(r"(?m)^\s*(?:focus_tree|shared_focus|joint_focus|focus)\s*=\s*\{")
+for d_ in (VAN, M):
+    for f_ in (d_ / "common/national_focus").glob("*.txt"):
+        if f_.name == "generic.txt" or f_.name.startswith("ktits_"): continue
+        mf_ = M / "common/national_focus" / f_.name
+        tx_ = rdv(mf_) if mf_.exists() else rdv(f_)
+        if tree_re_.search(tx_) and not re.search(r"(?m)^style\s*=", tx_):
+            trees_left.append(f_.name)
+check(not trees_left, "vanilla leftovers: every vanilla focus tree is an empty override (no vanilla tree for any tag)", f"vanilla leftovers: vanilla focus trees still active: {sorted(set(trees_left))[:6]}")
+gen_t = rdv(M / "common/national_focus/generic.txt")
+check(len(re.findall(r"(?m)^\s*focus_tree\s*=", gen_t)) == 1, "vanilla leftovers: generic.txt holds exactly one focus tree (the one all our countries get)", "vanilla leftovers: generic.txt does not hold exactly one focus tree")
+# 2. loaded scripts (mod + vanilla files that the mod neither overrides nor replaces): no reference to a decision/event/template that does not exist
+REPL_ = tuple(x.rstrip("/") + "/" for x in re.findall(r'(?m)^replace_path\s*=\s*"([^"]+)"', rdv(M / "descriptor.mod")))
+loaded_ = {}
+for d_ in (VAN, M):
+    for top_ in ("common", "events"):
+        for f_ in (d_ / top_).rglob("*.txt"):
+            rel_ = f_.relative_to(d_).as_posix()
+            if d_ == VAN and rel_.startswith(REPL_): continue
+            loaded_[rel_] = f_
+dec_def, ev_def, tpl_def = set(), set(), set()
+for rel_, f_ in loaded_.items():
+    if re.fullmatch(r"common/decisions/[^/]+\.txt", rel_): dec_def |= FV.decision_names(rdv(f_))
+    if rel_.startswith("events/"): ev_def |= FV.event_ids(rdv(f_))
+    if rel_.startswith("common/factions/templates/"): tpl_def |= {n_[0] for n_ in FV.parse(rdv(f_)) if n_[5] == 0 and n_[0]}
+rx_dec = re.compile(r"(?:unlock_decision_tooltip|activate_mission_tooltip|activate_mission|activate_decision|remove_mission|has_decision|has_active_mission)\s*=\s*(\w+)")
+rx_blk = re.compile(r"(?:decision|mission)\s*=\s*(\w+)")
+rx_ev = re.compile(r"(?:country_event|state_event|news_event)\s*=\s*(?:\{[^{}]*?\bid\s*=\s*)?([A-Za-z_]\w*\.\d+)")
+rx_rnd = re.compile(r"(?m)^[ \t]*\d+[ \t]*=[ \t]*([A-Za-z_]\w*\.\d+)")
+bad_dec, bad_tpl, bad_ev = [], [], []
+for rel_, f_ in loaded_.items():
+    if "/ktits_" in rel_ or rel_.startswith(("common/decisions/", "common/factions/")): continue
+    raw_ = rdv(f_); tx_ = FV.mask(raw_)
+    bad_dec += [(rel_, x_) for x_ in rx_dec.findall(tx_) if x_ not in dec_def]
+    for n_ in FV.parse(raw_):
+        if n_[0] in FV.BLOCK_DEC_KEYS and (m_ := rx_blk.search(tx_[n_[2]:n_[3]])) and m_.group(1) not in dec_def:
+            bad_dec.append((rel_, m_.group(1)))
+    bad_tpl += [(rel_, x_) for x_ in re.findall(r"has_faction_template\s*=\s*(\w+)", tx_) if x_ not in tpl_def]
+    if rel_.startswith("common/on_actions/"):
+        bad_ev += [(rel_, x_) for x_ in rx_ev.findall(tx_) + rx_rnd.findall(tx_) if x_ not in ev_def]
+check(not bad_dec, f"vanilla leftovers: no effect or trigger refers to a decision/mission that does not exist ({len(dec_def)} decisions defined)", f"vanilla leftovers: references to missing decisions/missions: {sorted(set(bad_dec))[:5]} ({len(set(bad_dec))})")
+check(not bad_tpl, "vanilla leftovers: no has_faction_template of a missing template", f"vanilla leftovers: missing faction templates: {sorted(set(bad_tpl))[:5]}")
+check(not bad_ev, "vanilla leftovers: on_actions call only events that exist", f"vanilla leftovers: on_actions call missing events: {sorted(set(bad_ev))[:5]}")
+# 3. on_actions: no state-scope blocks (ids of the vanilla map) in effects; ai_strategy: no country file of a vanilla tag
+oa_state = []
+for f_ in (M / "common/on_actions").glob("*.txt"):
+    if f_.name.startswith("ktits_"): continue
+    nodes_ = FV.parse(rdv(f_))
+    trig_ = [(n_[1], n_[3]) for n_ in nodes_ if n_[0] in FV.TRIGGER_KEYS]
+    oa_state += [f_.name for n_ in nodes_ if n_[0] and n_[0].isdigit() and n_[4] not in FV.RANDOM_PARENTS and not any(s_ < n_[1] and n_[3] <= e_ for s_, e_ in trig_)]
+check(not oa_state, "vanilla leftovers: on_actions have no state-scope blocks (vanilla map ids) in effects", f"vanilla leftovers: on_actions state blocks of the vanilla map left: {sorted(set(oa_state))}")
+our_t_ = set()
+for f_ in (M / "common/country_tags").glob("*.txt"): our_t_ |= set(re.findall(r"(?m)^\s*([A-Z0-9]{3})\s*=", rdv(f_)))
+ai_left = [f_.name for f_ in (M / "common/ai_strategy").glob("*.txt") if re.fullmatch(r"[A-Z][A-Z0-9]{2}", f_.stem) and f_.stem not in our_t_ and "emptied by Ktits" not in rdv(f_)]
+check(not ai_left, "vanilla leftovers: ai_strategy holds no country file of a vanilla tag", f"vanilla leftovers: ai_strategy files of vanilla tags: {ai_left}")
+# 4. tag collisions: our tags must not be vanilla tags nor be named by a vanilla script that stays active (it would fire for our country)
+vt_ = set()
+for f_ in (VAN / "common/country_tags").glob("*.txt"): vt_ |= set(re.findall(r"(?m)^\s*([A-Z0-9]{3})\s*=", rdv(f_)))
+used_ = collections.Counter()
+tag_re_ = re.compile(r"\b(" + "|".join(sorted(our_t_ - {t_ for t_ in our_t_ if t_[0] == "K" and t_[1:].isdigit()})) + r")\b")
+for rel_, f_ in loaded_.items():
+    if rel_.startswith(("common/names/", "common/country_tags/", "common/countries/", "common/bookmarks/", "common/characters/")) or "/ktits_" in rel_: continue
+    if f_.is_relative_to(M): continue
+    for t_ in tag_re_.findall(FV.mask(rdv(f_))): used_[(rel_, t_)] += 1
+check(not (our_t_ & vt_) and not used_, "tags: none of our tags is a vanilla tag and no vanilla script that stays active names one (no tag collision)", f"tags: collisions {sorted(our_t_ & vt_)} / vanilla scripts naming our tags: {sorted(used_)[:6]}", warn)
+
+# ---- alliances (make_alliances.py, docs/global_mechanics/Alliances.md) ----
+import make_alliances as AL
+al_files = {k: (M / k) for k in ("common/scripted_triggers/ktits_alliance_triggers.txt", "common/scripted_effects/ktits_alliance_effects.txt", "common/on_actions/ktits_alliance_on_actions.txt",
+                                 "common/ideas/ktits_alliance_ideas.txt", "common/decisions/ktits_alliance.txt", "common/decisions/categories/ktits_alliance_categories.txt",
+                                 "common/scripted_localisation/ktits_alliance_loc.txt", "events/ktits_alliance_events.txt")}
+al_txt = {k: (f.read_text(encoding="utf-8") if f.exists() else "") for k, f in al_files.items()}
+check(all(al_txt.values()) and all(t.count("{") == t.count("}") for t in al_txt.values()), f"alliances: {len(al_txt)} script files exist, braces balanced", "alliances: script file missing or unbalanced braces")
+al_ru, al_en = load_loc(M / "localisation/russian/ktits_alliance_l_russian.yml"), load_loc(M / "localisation/english/ktits_alliance_l_english.yml")
+a_tr, a_ef, a_oa, a_id, a_dc, a_ev = (al_txt[k] for k in ("common/scripted_triggers/ktits_alliance_triggers.txt", "common/scripted_effects/ktits_alliance_effects.txt", "common/on_actions/ktits_alliance_on_actions.txt",
+                                                          "common/ideas/ktits_alliance_ideas.txt", "common/decisions/ktits_alliance.txt", "events/ktits_alliance_events.txt"))
+# start alliances: leaders by tag, names from loc, only the leader (no add_to_faction in the start effect)
+l2t = {v: k for k, v in tag2lore.items()}
+st_ef = re.search(r"ktits_ally_start = [{][\s\S]*?\n[}]", a_ef)
+st_ef = st_ef.group(0) if st_ef else ""
+check(all(f"{l2t[lt]} = {{" in st_ef and f"ktits_ally_name_{k}" in st_ef and al_ru.get(f"ktits_ally_name_{k}") and al_en.get(f"ktits_ally_name_{k}") for lt, k in AL.START_LORE.items())
+      and "add_to_faction" not in st_ef and "ktits_ally_start = yes" in a_oa and "on_startup" in a_oa and "create_faction_from_template" in st_ef,
+      "alliances: on_startup creates the three start factions (Казуальная Идиллия, Интернационал, Беспредел) with loc names and only the leader", "alliances: start factions are wrong or lack names")
+# thresholds of world tension by the ideology of the leader (author: democracy 40, theology 35, casuality 0; invented: 30, 20, 10)
+tt_blk = re.search(r"ktits_ally_tension_ok = [{][\s\S]*?\n[}]", a_tr)
+tt_blk = tt_blk.group(0) if tt_blk else ""
+tt_found = {g: float(m_.group(1)) for g in AL.GROUPS if g != "casuality" for m_ in [re.search(r"has_government = " + g + r"\s+NOT = [{] threat < ([0-9.]+) [}]", tt_blk)] if m_}
+check(tt_found == {"democratic": 0.40, "theology": 0.35, "neutrality": 0.30, "fascism": 0.20, "communism": 0.10} and "has_government = casuality" in tt_blk and AL.TENSION["casuality"] == 0
+      and list(AL.TENSION.values()) == sorted(AL.TENSION.values(), reverse=True), "alliances: tension thresholds democracy 40 > theology 35 > dictatorship 30 > fascism 20 > communism 10 > Casuality 0 %", f"alliances: tension thresholds wrong: {tt_found}")
+# decisions: found, request, invite, course, 7 cooperation; name and lore text in ru and en; category description by ideology
+al_dec = re.findall(r"(?m)^\t(ktits_ally_\w+) = [{]", a_dc)
+miss_d = [k for k in al_dec for lg in (al_ru, al_en) if not lg.get(k, "").strip() or not lg.get(k + "_desc", "").strip()]
+check(len(al_dec) == 12 and not miss_d and {"ktits_ally_found", "ktits_ally_request", "ktits_ally_invite", "ktits_ally_course", "ktits_ally_leave"} <= set(al_dec), f"alliances: {len(al_dec)} decisions have ru/en name and description", f"alliances: decisions {len(al_dec)} / loc missing {miss_d[:4]}")
+check(all(f"ktits_ally_lead_{g} = yes" in al_txt["common/scripted_localisation/ktits_alliance_loc.txt"] and al_ru.get(f"ktits_ally_desc_{g}") == AL.CAT_TXT[g] and al_ru.get(f"ktits_ally_name_{g}") for g in AL.GROUPS)
+      and "[GetKtitsAllyDesc]" in al_ru.get("ktits_alliance_category_desc", "") and "ktits_alliance_category = {" in al_txt["common/decisions/categories/ktits_alliance_categories.txt"],
+      "alliances: category \"Альянс\" (visible to all) shows the text of the alliance ideology through scripted localisation (6 texts + fallback)", "alliances: category description by ideology missing")
+# eternal neutrality (author's rule): spirit for Figaria and Ledyshka, blocks founding / request / invitation; join, leave, refusal events
+neu_ok = "ktits_eternal_neutrality = {" in (M / "common/ideas/ktits_neutrality_ideas.txt").read_text(encoding="utf-8") and a_ef.count("add_ideas = ktits_eternal_neutrality") == 2 and a_dc.count("has_idea = ktits_eternal_neutrality") >= 4
+neu_ok = neu_ok and all(f"id = ktits_alliance.{n}" in a_ev for n in (7, 8, 9, 10, 11, 12)) and "modifier = ktits_ally_insult" in a_ev and "ktits_ally_insult = {" in (M / "common/opinion_modifiers/ktits_alliance_opinion.txt").read_text(encoding="utf-8")
+check(neu_ok, "alliances: eternal neutrality (Figaria, Ledyshka) blocks alliances; events: refusal (soft / insult -50), joined, left, expelled", "alliances: neutrality or join/leave events missing")
+# events: loc per ideology for the four events, every desc block, options
+ev_ok = all(al_ru.get(f"ktits_alliance.{n}.d_{g}") == AL.EVENT_TXT[n][g] and f"text = ktits_alliance.{n}.d_{g}" in a_ev for n in (1, 2, 3, 4) for g in AL.GROUPS)
+ev_ok = ev_ok and all(al_ru.get(f"ktits_alliance.{n}.{x}") and al_en.get(f"ktits_alliance.{n}.{x}") for n in (1, 2, 3, 4, 5) for x in ("t", "d")) and all(f"id = ktits_alliance.{n}\n" in a_ev for n in range(1, 6))
+check(ev_ok, "alliances: events 'Стук в дверь', 'Приглашение', 'Чужая среди своих', 'Чужой в доме' have a text per ideology (6 desc blocks each, exactly the texts of the doc) and 'Новый курс' exists", "alliances: event texts per ideology missing or different from the doc")
+check("ktits_ally_has_foreign_leader" in a_ef and "set_country_flag = ktits_ally_alien" in a_ef and "ktits_ally_coop_m20 = yes" in a_ev and "leave_faction = yes" in a_ev and "id = ktits_alliance.11 }" in a_ev
+      and "is_subject = no" in a_ev and "ktits_ally_forget_member" in a_ev, "alliances: ideology change -> event for the member (leave / stay), leader event (expel / tolerate -20); no -5 for the ideology flow; puppets cannot leave or be expelled", "alliances: ideology-change flow incomplete")
+# Kazualia always 100, no cooperation decisions in its alliance
+check(re.search(r"ktits_ally_update = [{]\s+if = [{]\s+limit = [{] ktits_is_kazualia = yes [}]\s+set_variable = [{] var = ktits_alliance_coop value = 100", a_ef) and "ktits_ally_monthly" in a_oa
+      and "ktits_ally_kz" in a_ef and all(f"ktits_ally_k{i}" in a_id and al_ru.get(f"ktits_ally_k{i}") == AL.TIERS[i - 1][3] for i in range(1, 5)) and a_dc.count("NOT = { ktits_ally_in_kaz = yes }") >= 7,
+      "alliances: the scale of Kazualia is reset to 100 on every update and monthly, own tier names, the 7 cooperation decisions are hidden in its alliance", "alliances: Kazualia 100 / tier names / hidden decisions wrong")
+# tiers: names of the doc, research sharing and doctrine cost modifiers, top tier experience; 8 spirits with lore
+tiers_ok = all(al_ru.get(f"ktits_ally_{t}") == n and al_ru.get(f"ktits_ally_{k}") == kn and al_ru.get(f"ktits_ally_{t}_desc") and al_ru.get(f"ktits_ally_{k}_desc") for t, k, n, kn, *_ in AL.TIERS)
+check(tiers_ok and a_id.count("research_sharing_per_country_bonus = 0.05") == 2 and a_id.count("research_sharing_per_country_bonus = 0.1\n") == 2 and a_id.count("research_sharing_per_country_bonus = 0.15") == 2
+      and a_id.count("land_doctrine_cost_factor = -0.15") == 2 and a_id.count("naval_doctrine_cost_factor = -0.05") == 2 and a_id.count("air_doctrine_cost_factor = -0.1\n") == 2 and a_id.count("experience_gain_army = 0.05") == 2
+      and "experience_gain_navy = 0.05" in a_id and "experience_gain_air = 0.05" in a_id, "alliances: 4+4 tier spirits with research sharing +5/10/15 %, doctrine cost -5/10/15 %, top tier +0.05 experience", "alliances: tier spirit modifiers wrong")
+# puppets: sync from the overlord side (monthly and at the start), puppets cannot leave / be kicked, join / offer join blocked
+sync = re.search(r"ktits_ally_sync_subjects = [{][\s\S]*?\n[}]", a_ef)
+sync = sync.group(0) if sync else ""
+dip = (M / "common/scripted_triggers/diplomacy_scripted_triggers.txt").read_text(encoding="utf-8-sig") if (M / "common/scripted_triggers/diplomacy_scripted_triggers.txt").exists() else ""
+def dblk(k):
+    m_ = re.search(r"(?m)^\s*" + k + r" = [{][\s\S]*?\n[}]", dip)
+    return m_.group(0) if m_ else ""
+check("every_subject_country" in sync and "add_to_faction" in sync and "leave_faction = yes" in sync and "ktits_ally_sync_subjects = yes" in a_ef.split("ktits_ally_monthly = {")[1] and "ktits_ally_sync_subjects = yes" in st_ef
+      and "always = no" in dblk("DIPLOMACY_JOIN_FACTION_ENABLE_TRIGGER") and "always = no" in dblk("DIPLOMACY_OFFER_JOIN_FACTION_ENABLE_TRIGGER") and "is_subject = yes" in dblk("DIPLOMACY_LEAVE_FACTION_ENABLE_TRIGGER") and "is_subject = yes" in dblk("DIPLOMACY_KICK_FROM_FACTION_ENABLE_TRIGGER")
+      and all(al_ru.get(k) for k in ("ktits_ally_diplo_blocked", "ktits_ally_puppet_leave", "ktits_ally_puppet_kick")),
+      "alliances: puppets follow the overlord's alliance (monthly + start), cannot leave or be expelled; vanilla 'join / invite to faction' diplomacy is blocked", "alliances: puppet sync or vanilla diplomacy block missing")
+tpl_vis = [m_.group(0) for p_ in (M / "common/factions/templates").glob("*.txt") for m_ in re.finditer(r"(?m)^[ \t]*visible\s*=\s*[{][^}]*[}]", p_.read_text(encoding="utf-8-sig"))]
+check(tpl_vis and all("always = no" in v_ and "always = yes" not in v_ for v_ in tpl_vis), f"alliances: all {len(tpl_vis)} vanilla faction templates are invisible (no 'create faction' list)", "alliances: a faction template is still visible")
+# cooperation scale: monthly sources of the doc (+1 per member, +2 common war, -1 idle, -5 lost member), decisions' deltas
+lm = re.search(r"ktits_ally_leader_monthly = [{][\s\S]*?\n[}]", a_ef)
+lm = lm.group(0) if lm else ""
+check("value = ktits_ally_n" in lm and "value = 2 " in lm and "has_war_together_with" in lm and "value = -1 " in lm and "value = -5" in lm and "ktits_ally_busy" in lm
+      and all(f"ktits_ally_member_coop_{x} = yes" in a_dc for x in ("p5", "p10")) and "ktits_ally_coop_p5 = yes" in a_ev and "ktits_ally_coop_m20 = {\n\tadd_to_variable = { var = ktits_alliance_coop value = -20 }" in a_ef,
+      "alliances: scale sources (members +1, common war +2, idle -1, lost member -5, join +5, tolerate -20, cooperation decisions +5/+10)", "alliances: scale sources wrong")
+# course of a puppet, AI
+course_dec = a_dc.split("ktits_ally_course = {")[1].split("ktits_ally_drills")[0] if "ktits_ally_course = {" in a_dc else ""
+check("ktits_ally_course_needed = yes" in course_dec and "ktits_is_kazualia" in course_dec and "has_focus_tree = generic_focus" in a_ef and "uncomplete_national_focus" in a_ef and "uncomplete_children = yes" in a_ef
+      and "focus = ktits_pol_root" in a_ef and "popularity = 0.4" in a_ef and "add_stability = -0.10" in a_ef and "days = 90" in course_dec, "alliances: puppet course decision (own puppet, overlord's ideology, not Kazualia, 90 days, +40 % popularity, stability -10 %, resets the politics branch of the generic tree)", "alliances: puppet course change wrong")
+foc_gen = (M / "common/national_focus/generic.txt").read_text(encoding="utf-8-sig")
+check("ktits_ai_ally_locked = {" in a_tr and foc_gen.count("ktits_ai_ally_locked = yes") >= 1 + 10 + 14, f"alliances: AI weight 0 in the politics branch for other ideology groups and for the change focus while in an alliance with an independent member ({foc_gen.count('ktits_ai_ally_locked = yes')} places)", "alliances: AI lock missing in the generic focus tree")
 
 w = {"PASS": 0, "WARN": 0, "FAIL": 0}
 for lvl, msg in res:

@@ -207,6 +207,10 @@ SP_TXT = {
 }
 pl, pe = [], []   # loc ru entries, en overrides
 
+def ai_lock(grp):
+    """AI weight 0 for a focus leading to another ideology group while the country is in an alliance with an independent member (docs/global_mechanics/Alliances.md; trigger from tools/make_alliances.py)"""
+    return f"\t\t\tmodifier = {{\n\t\t\t\tfactor = 0\n\t\t\t\tktits_ai_ally_locked = yes\n\t\t\t\tNOT = {{ has_government = {grp} }}\n\t\t\t}}\n"
+
 def pfocus(fid, icon, x, y, days, pre, excl, avail, ai, reward, gate=False):
     s = f"\n\tfocus = {{\n\t\tid = {fid}\n\t\ticon = {icon}\n"
     if pre: s += "\t\tprerequisite = { " + " ".join(f"focus = {p}" for p in pre) + " }\n"
@@ -224,12 +228,12 @@ pops = [f"ktits_pol_{p[0]}_pop" for p in PATHS]
 for key, grp, gen, cx, (pn, pd, pic), (cn, cd, cic), subs in PATHS:
     pid, cid = f"ktits_pol_{key}_pop", f"ktits_pol_{key}_come"
     pblk += pfocus(pid, pic, cx, 1, 70, [P_ROOT], [o for o in pops if o != pid], None,
-                   f"\t\t\tfactor = 3\n\t\t\tmodifier = {{\n\t\t\t\tfactor = 4\n\t\t\t\thas_government = {grp}\n\t\t\t}}\n",
+                   f"\t\t\tfactor = 3\n\t\t\tmodifier = {{\n\t\t\t\tfactor = 4\n\t\t\t\thas_government = {grp}\n\t\t\t}}\n" + ai_lock(grp),
                    f"\t\t\tadd_popularity = {{ ideology = {grp} popularity = 0.15 }}\n")
     need = f"\t\t\tcustom_trigger_tooltip = {{\n\t\t\t\ttooltip = ktits_pol_req_{grp}\n\t\t\t\t{grp} > {POP_NEED}\n\t\t\t}}\n"
     rew = (f"\t\t\tif = {{\n\t\t\t\tlimit = {{ has_government = {grp} }}\n\t\t\t\tadd_stability = 0.10\n\t\t\t}}\n\t\t\telse = {{\n"
            f"\t\t\t\tset_politics = {{\n\t\t\t\t\truling_party = {grp}\n\t\t\t\t\telections_allowed = yes\n\t\t\t\t}}\n\t\t\t}}\n")
-    pblk += pfocus(cid, cic, cx, 2, 70, [pid], None, need, "\t\t\tfactor = 5\n", rew)
+    pblk += pfocus(cid, cic, cx, 2, 70, [pid], None, need, "\t\t\tfactor = 5\n" + ai_lock(grp), rew)
     pl += [(pid, pn), (pid + "_desc", pd), (cid, cn), (cid + "_desc", cd), (f"ktits_pol_req_{grp}", f"Популярность {gen} не ниже §Y40 %§!")]
     pe.append((f"ktits_pol_req_{grp}", f"Popularity of {grp} at least §Y40%§!"))
     sids = [f"ktits_pol_{key}_{s[0]}" for s in subs]
@@ -239,7 +243,7 @@ for key, grp, gen, cx, (pn, pd, pic), (cn, cd, cic), subs in PATHS:
         SUB_IDS.append(sid); SPIRITS.append((sp, sn, mods, ide))
         rew = f"\t\t\thidden_effect = {{ set_country_leader_ideology = {ide} }}\n\t\t\tcustom_effect_tooltip = ktits_pol_tt_{s[0]}\n\t\t\tadd_ideas = {sp}\n"
         if ide == "theology_ideology": rew += scale(-10)
-        pblk += pfocus(sid, sic, sx, 3, 70, [cid], [o for o in sids if o != sid], None, "\t\t\tfactor = 2\n", rew)
+        pblk += pfocus(sid, sic, sx, 3, 70, [cid], [o for o in sids if o != sid], None, "\t\t\tfactor = 2\n" + ai_lock(grp), rew)
         pl += [(sid, sn), (sid + "_desc", sd), (f"ktits_pol_tt_{s[0]}", f"Правитель страны получает подтип идеологии «{sn}»"),
                (sp, sn), (sp + "_desc", SP_TXT[s[0]])]
         pe += [(f"ktits_pol_tt_{s[0]}", f"The ruler gets the ideology subtype \"{L.translit(sn)}\""),
@@ -251,6 +255,7 @@ rew = (f"\t\t\tadd_political_power = -100\n\t\t\tadd_stability = -0.10\n\t\t\tse
        f"\t\t\tuncomplete_national_focus = {{\n\t\t\t\tfocus = {P_ROOT}\n\t\t\t\tuncomplete_children = yes\n\t\t\t}}\n")
 avail = f"\t\t\thas_war = no\n\t\t\tNOT = {{ has_country_flag = {P_CD} }}\n"
 ai = "\t\t\tfactor = 0\n\t\t\tmodifier = {\n\t\t\t\tadd = 1\n\t\t\t\thas_stability < 0.40\n\t\t\t}\n"
+ai += "\t\t\tmodifier = {\n\t\t\t\tfactor = 0\n\t\t\t\tktits_ai_ally_locked = yes\n\t\t\t}\n"   # author's rule: no change of course in an alliance with independent members (docs/global_mechanics/Alliances.md)
 pblk += pfocus(P_CHANGE, "GFX_goal_generic_dangerous_deal", 50, 5, 70, SUB_IDS, None, avail, ai, rew)
 pl += [(P_CHANGE, "Народ голосует за перемены"), (P_CHANGE + "_desc", "Улицы требуют другого будущего. Правительство объявляет, что прежний курс исчерпан, и страна снова выбирает путь."),
        ("ktits_pol_tt_reset", "Снимает выполнение со всей ветки «Политический курс» и её духи; ветку можно пройти заново. Смена курса закрыта на 365 дней.")]

@@ -1,6 +1,6 @@
 """Run every post-export step on the freshly exported mod, check it, and zip it. Run this after each RandomParadox export.
 
-Order: rivers -> population -> state names -> city names -> countries -> ideologies -> rulers -> casuality -> focuses -> game rules -> vanilla leftovers -> education -> splits -> terrain -> strategic regions -> check -> zip.
+Order: rivers -> population -> state names -> city names -> countries -> ideologies -> rulers -> casuality -> focuses -> game rules -> vanilla leftovers -> education -> splits -> alliances -> terrain -> strategic regions -> check -> zip.
 Each step is its own script and can still be run alone. The steps are idempotent, so running the whole chain twice is safe.
 
 Rivers: RandomParadox's own rivers.bmp is saved as no_commit/temp/rivers.bmp.orig whenever the mod's file is not the one this chain built
@@ -9,7 +9,7 @@ Rivers: RandomParadox's own rivers.bmp is saved as no_commit/temp/rivers.bmp.ori
 Usage: python tools/post_export.py [--names-mode style|lore] [--max-idx N] [--no-zip] [--skip a,b] [--mod PATH]
   --names-mode  how states/cities without lore names are named (default: style = generated names in the country's style; lore = "<country> N")
   --max-idx     widest river palette index (default 3: width by index is not confirmed in the game yet)
-  --skip        comma separated steps to skip: rivers,population,states,cities,countries,ideologies,rulers,casuality,focuses,gamerules,leftovers,education,splits,terrain,regions,check,zip
+  --skip        comma separated steps to skip: rivers,population,states,cities,countries,ideologies,rulers,casuality,focuses,gamerules,leftovers,education,splits,alliances,terrain,regions,check,zip
 """
 import argparse, hashlib, shutil, subprocess, sys, time
 from pathlib import Path
@@ -36,10 +36,14 @@ def run(name, *args):
     t0 = time.time()
     print(f"\n=== {name} ===", flush=True)
     r = subprocess.run([sys.executable, "-X", "utf8", str(T / args[0]), *args[1:]], cwd=str(L.REPO))
-    print(f"--- {name}: exit {r.returncode}, {time.time() - t0:.0f} s", flush=True)
+    dt = time.time() - t0
+    times[name] = dt
+    print(f"--- {name}: exit {r.returncode}, {dt:.1f} s", flush=True)
     return r.returncode
 
 results = {}
+times = {}      # seconds per step, printed in the summary
+T_START = time.time()
 m = ["--mod", a.mod]
 if "rivers" not in skip:
     TMP.mkdir(parents=True, exist_ok=True)
@@ -61,6 +65,7 @@ steps = [("population", ["set_population.py", *m]),
          ("leftovers", ["fix_vanilla_leftovers.py", *m]),
          ("education", ["make_education.py", *m]),
          ("splits", ["make_splits.py", *m]),
+         ("alliances", ["make_alliances.py", *m]),
          ("terrain", ["set_terrain.py", *m]),
          ("regions", ["name_regions.py", *m]),
          ("check", ["check_mod.py", *m])]
@@ -72,5 +77,6 @@ if "zip" not in skip:
 
 print("\n=== summary ===")
 for k, v in results.items():
-    print(f"{k:11s} {'ok' if v == 0 else 'FAILED (exit ' + str(v) + ')'}")
+    print(f"{k:11s} {'ok' if v == 0 else 'FAILED (exit ' + str(v) + ')':22s} {times.get(k, 0):6.1f} s")
+print(f"{'total':11s} {'':22s} {time.time() - T_START:6.1f} s")
 sys.exit(1 if any(v for v in results.values()) else 0)

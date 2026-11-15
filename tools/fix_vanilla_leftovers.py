@@ -8,6 +8,13 @@
 3. AST_scripted_effects.txt: the line creating the missing faction template is dropped.
 4. Event namespaces used by id = NS.N but never declared (the vanilla file that declared it is not in the mod) are declared at the top of the file.
 5. common/opinion_modifiers/rpx_call_to_arms.txt: `icon =` is not accepted by 1.19 -> removed.
+6. Vanilla country focus trees (every common/national_focus file except generic.txt and the title-bar styles) are overridden with an empty file:
+   no vanilla tag exists in the mod, so they only produce errors (factions, decisions, states); has_completed_focus of their focuses -> always = no.
+7. common/ai_strategy/<TAG>.txt of tags that are not ours (the folder is replace_path-ed by the mod: only the RandomParadox copies exist) -> empty.
+8. Brace-aware neutralisation (the helpers mask/parse/cut below): references to decisions/missions that no longer exist (any form:
+   one line, `= { decision = X }`, multi-line activate_targeted_decision / add_days_mission_timeout ...) are removed; has_decision/has_active_mission -> always = no.
+9. Vanilla common/on_actions (state ids of the vanilla map, events and characters of the vanilla game): numeric state-scope blocks `123 = { ... }`,
+   calls of events that do not exist (also random_events entries) and `<VANILLATAG>_<char> = { set_unit_leader_flag ... }` blocks are removed.
 Usage: python tools/fix_vanilla_leftovers.py [--mod PATH] [--game PATH]
 """
 import argparse, re
@@ -32,6 +39,162 @@ def has_bom(p):
 def wr(p, text, bom=False):  # keep the BOM state of the source file: a BOM where vanilla has none breaks scripted_triggers/effects
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_bytes((b"\xef\xbb\xbf" if bom else b"") + text.encode("utf-8"))
+
+
+# ---- brace-aware helpers ------------------------------------------------------------------------------------------------
+TOK = re.compile(r"([A-Za-z0-9_.:@$\[\]^|\-]+)\s*(?:=|>=|<=|>|<)\s*\{|\{|\}")
+BLOCK_DEC_KEYS = {"activate_targeted_decision", "remove_targeted_decision", "add_days_mission_timeout", "unlock_decision_tooltip",
+                  "activate_mission_tooltip", "activate_decision", "activate_mission", "remove_mission", "force_remove_decision"}
+LINE_DEC = re.compile(r"(?m)^[ \t]*(?:unlock_decision_tooltip|activate_mission_tooltip|activate_mission|activate_decision|remove_mission|activate_targeted_decision)\s*=\s*(\w+)[ \t]*(?:#[^\n]*)?\r?\n")
+INLINE_DEC = re.compile(r"\b(?:unlock_decision_tooltip|activate_mission_tooltip|activate_mission|activate_decision|remove_mission)\s*=\s*(\w+)")
+FOCUS_EFF = re.compile(r"(?m)^[ \t]*(?:complete_national_focus|uncomplete_national_focus|unlock_national_focus)\s*=\s*(\w+)[ \t]*(?:#[^\n]*)?\r?\n|\b(?:complete_national_focus|uncomplete_national_focus|unlock_national_focus)\s*=\s*(\w+)")
+HFTPL = re.compile(r"\bhas_faction_template\s*=\s*(\w+)")
+HFT = re.compile(r"\bhas_focus_tree\s*=\s*(\w+)")
+DEC_TEST = re.compile(r"\b(?:has_active_mission|has_decision)\s*=\s*(\w+)")
+EVENT_KEYS = {"country_event", "state_event", "news_event", "unit_leader_event", "operative_leader_event", "character_event"}
+LINE_EVENT = re.compile(r"(?m)^[ \t]*(?:country_event|state_event|news_event|unit_leader_event|operative_leader_event|character_event)\s*=\s*([A-Za-z_]\w*\.\d+)[ \t]*(?:#[^\n]*)?\r?\n")
+INLINE_EVENT = re.compile(r"\b(?:country_event|state_event|news_event|unit_leader_event|operative_leader_event|character_event)\s*=\s*([A-Za-z_]\w*\.\d+)")
+RANDOM_EVENT = re.compile(r"(?m)^[ \t]*\d+(?:\.\d+)?[ \t]*=[ \t]*([A-Za-z_]\w*\.\d+)[ \t]*(?:#[^\n]*)?\r?\n")
+TRIGGER_KEYS = {"limit", "trigger", "OR", "AND", "NOT", "available", "allowed", "visible", "modifier", "ai_chance", "bypass", "cancel_trigger", "is_good", "is_bad"}
+RANDOM_PARENTS = {"random_list", "random_events", "random", "weight", "modifier", "ai_chance"}
+
+
+def mask(t):
+    """comments and string contents replaced by blanks (same length): braces inside them do not count"""
+    out, i, n = [], 0, len(t)
+    while i < n:
+        c = t[i]
+        if c == "#":
+            j = t.find("\n", i); j = n if j < 0 else j
+            out.append(" " * (j - i)); i = j
+        elif c == '"':
+            j = t.find('"', i + 1); j = n - 1 if j < 0 else j
+            out.append("x" * (j - i + 1)); i = j + 1
+        else:
+            out.append(c); i += 1
+    return "".join(out)
+
+
+def parse(t):
+    """every {...} block: (key, key_start, open_brace, end, parent_key, depth); depth 0 = top level"""
+    stack, nodes = [], []
+    for m in TOK.finditer(mask(t)):
+        s = m.group(0)
+        if s == "}":
+            if stack:
+                k, ks, op = stack.pop()
+                nodes.append((k, ks, op, m.end(), stack[-1][0] if stack else None, len(stack)))
+        elif s == "{":
+            stack.append((None, m.start(), m.start()))
+        else:
+            stack.append((m.group(1), m.start(1), m.end() - 1))
+    return sorted(nodes, key=lambda n: (n[1], -n[3]))
+
+
+def cut(t, spans):
+    """remove the spans (a nested span goes with its outer one); a span alone on its lines takes the lines"""
+    merged = []
+    for s, e in sorted(spans, key=lambda x: (x[0], -x[1])):
+        if merged and s < merged[-1][1]:
+            continue
+        merged.append((s, e))
+    out, pos = [], 0
+    for s, e in merged:
+        ls = t.rfind("\n", 0, s) + 1
+        m = re.compile(r"[ \t]*(?:#[^\n]*)?\r?\n").match(t, e)
+        if t[ls:s].strip() == "" and m:
+            s, e = ls, m.end()
+        out.append(t[pos:s]); pos = e
+    out.append(t[pos:])
+    return "".join(out)
+
+
+def decision_names(t):
+    return {n[0] for n in parse(t) if n[5] == 1 and n[0] and re.fullmatch(r"\w+", n[0])}
+
+
+def event_ids(t):
+    ids = set()
+    for n in parse(t):
+        if n[5] == 0 and n[0] in EVENT_KEYS:
+            m = re.search(r"(?m)^\s*id\s*=\s*([A-Za-z_]\w*\.\d+)", t[n[2]:n[3]])
+            if m:
+                ids.add(m.group(1))
+    return ids
+
+
+def clean_decision_refs(t, undefined, stat):
+    """remove effects that use an undefined decision/mission (one-line and block forms); triggers on them -> always = no"""
+    spans = [(n[1], n[3]) for n in parse(t) if n[0] in BLOCK_DEC_KEYS
+             and (m := re.search(r"\b(?:decision|mission)\s*=\s*(\w+)", t[n[2]:n[3]])) and undefined(m.group(1))]
+    stat["dec_blocks"] = stat.get("dec_blocks", 0) + len(spans)
+    if spans:
+        t = cut(t, spans)
+    def line(m):
+        if undefined(m.group(1)):
+            stat["dec_lines"] = stat.get("dec_lines", 0) + 1
+            return ""
+        return m.group(0)
+    t = LINE_DEC.sub(line, t)
+    t = INLINE_DEC.sub(line, t)   # `ROOT = { remove_mission = X }` on one line: only the statement goes
+    def test(m):
+        if undefined(m.group(1)):
+            stat["dec_tests"] = stat.get("dec_tests", 0) + 1
+            return "always = no"
+        return m.group(0)
+    return DEC_TEST.sub(test, t)
+
+
+def clean_focus_refs(t, gone, trees, templates, stat):
+    """effects on focuses of removed vanilla trees (complete/uncomplete/unlock_national_focus) are removed, has_focus_tree of a removed tree -> always = no"""
+    keys = {"complete_national_focus", "uncomplete_national_focus", "unlock_national_focus"}
+    spans = [(n[1], n[3]) for n in parse(t) if n[0] in keys and (m := re.search(r"\bfocus\s*=\s*(\w+)", t[n[2]:n[3]])) and m.group(1) in gone]
+    stat["foc_eff"] = stat.get("foc_eff", 0) + len(spans)
+    if spans:
+        t = cut(t, spans)
+    def one(m):
+        if (m.group(1) or m.group(2)) in gone:
+            stat["foc_eff"] = stat.get("foc_eff", 0) + 1
+            return ""
+        return m.group(0)
+    t = FOCUS_EFF.sub(one, t)
+    def tree(m):
+        if m.group(1) in trees:
+            stat["foc_tree"] = stat.get("foc_tree", 0) + 1
+            return "always = no"
+        return m.group(0)
+    t = HFT.sub(tree, t)
+    def tpl(m):
+        if m.group(1) not in templates:
+            stat["foc_tpl"] = stat.get("foc_tpl", 0) + 1
+            return "always = no"
+        return m.group(0)
+    return HFTPL.sub(tpl, t)
+
+
+def clean_on_action(t, ev_defined, our_tags, stat):
+    """vanilla on_actions: state blocks of the vanilla map, events and characters that do not exist"""
+    spans = []
+    nodes = parse(t)
+    trig = [(n[1], n[3]) for n in nodes if n[0] in TRIGGER_KEYS]
+    for n in nodes:
+        k, body = n[0], t[n[2]:n[3]]
+        if k and k.isdigit() and n[4] not in RANDOM_PARENTS and not any(s < n[1] and n[3] <= e for s, e in trig):   # effects only: a state scope inside a trigger stays
+            spans.append((n[1], n[3])); stat["oa_state"] = stat.get("oa_state", 0) + 1
+        elif k in EVENT_KEYS and (m := re.search(r"\bid\s*=\s*([A-Za-z_]\w*\.\d+)", body)) and m.group(1) not in ev_defined:
+            spans.append((n[1], n[3])); stat["oa_event"] = stat.get("oa_event", 0) + 1
+        elif k and (m := re.fullmatch(r"([A-Z][A-Z0-9]{2})_\w+", k)) and m.group(1) not in our_tags and "set_unit_leader_flag" in body:
+            spans.append((n[1], n[3])); stat["oa_char"] = stat.get("oa_char", 0) + 1
+    if spans:
+        t = cut(t, spans)
+    for rx in (LINE_EVENT, RANDOM_EVENT, INLINE_EVENT):
+        def sub(m):
+            if m.group(1) not in ev_defined:
+                stat["oa_event"] = stat.get("oa_event", 0) + 1
+                return ""
+            return m.group(0)
+        t = rx.sub(sub, t)
+    return t
 
 
 def removed_rules(game):
@@ -78,6 +241,31 @@ def main():
             emptied.add(f"common/decisions/{f.name}")
     # the vanilla 1939 scenario (bookmark "Blitzkrieg") does not work with the mod's map and countries: only 1936 stays
     emptied.add("common/bookmarks/blitzkrieg.txt")
+    # vanilla country focus trees: no vanilla tag exists in the mod (only generic.txt, ours and the title-bar styles stay)
+    tree_re = re.compile(r"(?m)^\s*(?:focus_tree|shared_focus|joint_focus|focus)\s*=\s*\{")
+    focus_ids_v, focus_trees_v = set(), set()
+    for base in (V, M):
+        for f in sorted((base / "common/national_focus").glob("*.txt")):
+            if f.name == "generic.txt" or f.name.startswith("ktits_") or f"common/national_focus/{f.name}" in emptied:
+                continue
+            tx = rd(f)
+            if tree_re.search(tx) and not re.search(r"(?m)^style\s*=\s*\{", tx):
+                emptied.add(f"common/national_focus/{f.name}")
+                focus_ids_v |= set(re.findall(r"(?m)^\s*id\s*=\s*(\w+)", tx))
+                focus_trees_v |= set(re.findall(r"(?m)^\s*focus_tree\s*=\s*\{[^{}]*?\bid\s*=\s*(\w+)", tx))
+    n_focus = sum(1 for r in emptied if r.startswith("common/national_focus/"))
+    # tags: ours (mod country_tags) against the vanilla ones
+    our_tags, v_tags = set(), set()
+    for f in (M / "common/country_tags").glob("*.txt"):
+        our_tags |= set(re.findall(r"(?m)^\s*([A-Z0-9]{3})\s*=", rd(f)))
+    for f in (V / "common/country_tags").glob("*.txt"):
+        v_tags |= set(re.findall(r"(?m)^\s*([A-Z0-9]{3})\s*=", rd(f)))
+    print(f"  tags of the mod that are also vanilla tags: {sorted(our_tags & v_tags) or 'none'}")
+    # vanilla ai_strategy files of tags that are not ours (the mod replaces the folder: only RandomParadox copies exist)
+    n_ai = 0
+    for f in sorted((M / "common/ai_strategy").glob("*.txt")):
+        if re.fullmatch(r"[A-Z][A-Z0-9]{2}", f.stem) and f.stem not in our_tags:
+            emptied.add(f"common/ai_strategy/{f.name}"); n_ai += 1
     for rel in emptied:
         wr(M / rel, EMPTY_NOTE); stat["emptied"] += 1
 
@@ -87,7 +275,25 @@ def main():
     for f in (V / "common/national_focus").glob("*.txt"):
         if f.name != "generic.txt":
             ids_o |= set(re.findall(r"(?m)^\s*id\s*=\s*(\w+)", rd(f)))
-    gen_only = ids_g - ids_o
+    kept_ids = set(re.findall(r"(?m)^\s*id\s*=\s*(\w+)", rd(M / "common/national_focus/generic.txt")))
+    gen_only = ((ids_g - ids_o) | focus_ids_v) - kept_ids   # every vanilla focus is gone except ids that our generic.txt still defines
+
+    # decisions/missions that no longer exist (defined only in emptied vanilla files, or never): references are neutralised below
+    # (brace-aware: depth-1 keys of decision files, whatever the indentation)
+    defined = set()
+    for f in (V / "common/decisions").glob("*.txt"):
+        if f"common/decisions/{f.name}" not in emptied:
+            defined |= decision_names(rd(f))
+    for f in (M / "common/decisions").glob("*.txt"):
+        if not (V / "common/decisions" / f.name).exists():
+            defined |= decision_names(rd(f))
+    undefined = lambda name: name not in defined
+    templates = set()   # faction templates that exist (the mod replaces common/factions)
+    for f in (M / "common/factions/templates").glob("*.txt"):
+        templates |= {n[0] for n in parse(rd(f)) if n[5] == 0 and n[0]}
+    ev_defined = set()   # events that exist (the mod replaces the events folder)
+    for f in (M / "events").glob("*.txt"):
+        ev_defined |= event_ids(rd(f))
 
     # 1. has_game_rule of removed rules
     rels = set()
@@ -97,13 +303,25 @@ def main():
             if rel.startswith("common/game_rules/") or "/ktits_" in rel or rel in emptied:
                 continue
             rels.add(rel)
+    for f in (M / "events").glob("*.txt"):   # RandomParadox copies of vanilla events (no vanilla file of that name: the mod copy is rewritten, idempotently)
+        if not f.name.startswith("ktits_"):
+            rels.add(f"events/{f.name}")
+    # folders the mod replaces (descriptor.mod replace_path): vanilla files of them must NOT be copied into the mod, only RandomParadox's copies are rewritten
+    replaced = re.findall(r'(?m)^replace_path\s*=\s*"([^"]+)"', rd(M / "descriptor.mod"))
     for rel in sorted(rels):
+        if not (M / rel).exists() and any(rel.startswith(rp.rstrip("/") + "/") for rp in replaced):
+            continue
         src = V / rel if (V / rel).exists() else M / rel   # always from vanilla: idempotent, never re-reads our own output
         t = rd(src)
-        if "has_game_rule" not in t and "has_completed_focus" not in t:
+        is_oa = rel.startswith("common/on_actions/")
+        if not is_oa and not any(k in t for k in ("has_game_rule", "has_completed_focus", "has_active_mission", "has_decision", "decision", "mission", "has_faction_template")):
             continue
         t2 = HGR.sub(repl, t)
         t2 = HCF.sub(lambda m: "always = no" if m.group(1) in gen_only else m.group(0), t2)
+        t2 = clean_decision_refs(t2, undefined, stat)
+        t2 = clean_focus_refs(t2, gen_only, focus_trees_v, templates, stat)
+        if is_oa:
+            t2 = clean_on_action(t2, ev_defined, our_tags, stat)
         if t2 != t:
             wr(M / rel, t2, bom=has_bom(src)); stat["rewritten"] += 1
 
@@ -133,7 +351,11 @@ def main():
         t2 = re.sub(r"(?m)^[ \t]*icon\s*=\s*\"[^\"]*\"[ \t]*\r?\n", "", t)
         if t2 != t:
             wr(p, t2, bom=False); stat["icon"] = 1
-    print(f"vanilla leftovers: {stat['tests']} has_game_rule tests replaced in {stat['rewritten']} files, {stat['emptied']} files emptied")
+    print(f"vanilla leftovers: {stat['tests']} has_game_rule tests replaced in {stat['rewritten']} files, {stat['emptied']} files emptied "
+          f"({n_focus} focus trees, {n_ai} ai_strategy country files)")
+    print(f"  decision refs removed: {stat.get('dec_blocks', 0)} blocks, {stat.get('dec_lines', 0)} lines, {stat.get('dec_tests', 0)} tests -> always = no")
+    print(f"  focus refs: {stat.get('foc_eff', 0)} effects on removed focuses, {stat.get('foc_tree', 0)} has_focus_tree of removed trees and {stat.get('foc_tpl', 0)} has_faction_template of missing templates -> always = no")
+    print(f"  on_actions: {stat.get('oa_state', 0)} vanilla state blocks, {stat.get('oa_event', 0)} calls of missing events, {stat.get('oa_char', 0)} vanilla character blocks removed")
 
 
 if __name__ == "__main__":
