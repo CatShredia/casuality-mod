@@ -24,6 +24,11 @@ info = L.load_mod(M)
 KAZ = {lt: t for t, lt in info["tag2lore"].items()}["CSL"]
 RAPP = "ktits_cas_ai_rapprochement"
 BEGIN, END = "# KTITS_CASUALITY_BRANCH_BEGIN (tools/make_focuses.py, do not edit by hand)", "# KTITS_CASUALITY_BRANCH_END"
+# Vanilla generic focuses are removed, so the columns of the branches are shifted left by X_SHIFT: the numbers in the tables below are the
+# "design" columns (Casuality 24..30, Politics 34..64, Education 68..80, Economy 84..108), the file gets x - X_SHIFT (0..6, 10..40, 44..56, 60..84).
+X_SHIFT = 24
+def shift_x(block):
+    return re.sub(r"(?m)^(\t\tx = )(-?\d+)$", lambda m: m.group(1) + str(int(m.group(2)) - X_SHIFT), block)
 
 def tt(d):   # tooltip loc keys are created by make_casuality.py (ktits_cas_tt_p10 ...)
     return "ktits_cas_tt_" + ("p%d" % d if d > 0 else "m%d" % -d)
@@ -51,7 +56,7 @@ F = [
   "\t\t\tcustom_trigger_tooltip = {\n\t\t\t\ttooltip = ktits_foc_req_lt50\n\t\t\t\tcheck_variable = { var = ktits_casuality value = 50 compare = less_than }\n\t\t\t}\n",
   "\t\t\tadd_ideas = ktits_cas_sp_ministry\n\t\t\tset_country_flag = ktits_cas_f_ministry\n\t\t\tcustom_effect_tooltip = ktits_foc_tt_ministry\n"),
  ("ktits_cas_anticas", "Анти-Казуальный курс", "Страна открыто объявляет Казуальность главной угрозой. Готовится основа будущей Анти-Казуальной Лиги.", 70, "GFX_goal_generic_defence", 24, 4, "ktits_cas_ministry", "trud", None,
-  "\t\t\tset_country_flag = ktits_cas_f_anticas\n\t\t\tclear_country_flag = " + RAPP + "\n\t\t\tcustom_effect_tooltip = ktits_foc_tt_anticas\n" + scale(-10)),
+  "\t\t\tset_country_flag = ktits_cas_f_anticas\n\t\t\tclr_country_flag = " + RAPP + "\n\t\t\tcustom_effect_tooltip = ktits_foc_tt_anticas\n" + scale(-10)),
  ("ktits_cas_service", "Трудовая повинность", "Каждый гражданин обязан отработать на благо страны. Лень объявлена пережитком, прогульщиков отправляют в трудовые лагеря.", 35, "GFX_goal_generic_construct_mil_factory", 26, 1, "ktits_cas_culture", "trud",
   "\t\t\tOR = {\n\t\t\t\thas_country_leader_ideology = total_fascism\n\t\t\t\thas_country_leader_ideology = total_communism\n\t\t\t}\n",
   "\t\t\tadd_ideas = ktits_cas_sp_labour\n\t\t\tset_country_flag = ktits_cas_f_labour\n\t\t\tcustom_effect_tooltip = ktits_foc_tt_service\n" + scale(-15)),
@@ -87,11 +92,15 @@ for fid, ru, _d, days, icon, x, y, pre, path, av, rew in F:
 blk += "\n" + END + "\n"
 
 g = M / "common/national_focus/generic.txt"
-txt = g.read_text(encoding="utf-8", newline="")          # keep BOM and line endings of the exported file
-nl = "\r\n" if "\r\n" in txt else "\n"
-txt = re.sub(r"\r?\n?" + re.escape(BEGIN) + r".*?" + re.escape(END) + r"\r?\n?", "", txt, flags=re.S)
+# The vanilla generic focuses are dropped: the file is rebuilt from scratch every run (the exported file is ignored): the vanilla header
+# (search filters, focus_tree id generic_focus, country factor, default, reset_on_civilwar) + our branches, injected below between the markers.
+VANILLA_GENERIC = Path("D:/SteamLibrary/steamapps/common/Hearts of Iron IV/common/national_focus/generic.txt")
+_vh = VANILLA_GENERIC.read_bytes().decode("utf-8-sig").replace("\r\n", "\n")
+_vh = _vh[:_vh.index("reset_on_civilwar = no") + len("reset_on_civilwar = no")]
+txt = "\ufeff" + _vh + "\n\n\tinitial_show_position = {\n\t\tfocus = " + F[0][0] + "\n\t}\n}\n"
+nl = "\n"
 k = txt.rindex("}")                                         # closing brace of focus_tree
-txt = txt[:k].rstrip() + nl + nl + blk.replace("\n", nl) + nl + txt[k:]
+txt = txt[:k].rstrip() + nl + nl + shift_x(blk).replace("\n", nl) + nl + txt[k:]
 g.write_text(txt, encoding="utf-8", newline="")
 
 def w(rel, text):
@@ -110,7 +119,7 @@ for fid, n, d, *_ in F:
     add(fid, n); add(fid + "_desc", d)
 add("ktits_cas_sp_ministry", "Министерство Бодрости"); add("ktits_cas_sp_ministry_desc", "Чиновники в бодрых жилетах ходят по цехам и громко здороваются с каждым, кто закрыл глаза. Страна не то чтобы проснулась, но спать теперь неудобно.")
 add("ktits_cas_sp_labour", "Трудовая повинность"); add("ktits_cas_sp_labour_desc", "Работать обязан каждый, даже тот, кто давно прикинулся мебелью. Народ трудится, косо смотрит на указ и вздыхает так, что слышно в соседней стране.")
-add("ktits_cas_embassy", "Посольство в Ставке Казуала"); add("ktits_eco_investment", "Иностранные инвестиции")
+add("ktits_eco_investment", "Иностранные инвестиции")
 for k, r, e in [
     ("ktits_foc_tt_schools", "Рост Казуальности в месяц умножается на §G0,9§!.", "Monthly Casuality growth is multiplied by §G0.9§!."),
     ("ktits_foc_req_lt50", "Казуальность меньше §Y50§! (сейчас [?ktits_casuality|0])", "Casuality below §Y50§! (now [?ktits_casuality|0])"),
@@ -198,6 +207,10 @@ SP_TXT = {
 }
 pl, pe = [], []   # loc ru entries, en overrides
 
+def ai_lock(grp):
+    """AI weight 0 for a focus leading to another ideology group while the country is in an alliance with an independent member (docs/global_mechanics/Alliances.md; trigger from tools/make_alliances.py)"""
+    return f"\t\t\tmodifier = {{\n\t\t\t\tfactor = 0\n\t\t\t\tktits_ai_ally_locked = yes\n\t\t\t\tNOT = {{ has_government = {grp} }}\n\t\t\t}}\n"
+
 def pfocus(fid, icon, x, y, days, pre, excl, avail, ai, reward, gate=False):
     s = f"\n\tfocus = {{\n\t\tid = {fid}\n\t\ticon = {icon}\n"
     if pre: s += "\t\tprerequisite = { " + " ".join(f"focus = {p}" for p in pre) + " }\n"
@@ -215,12 +228,12 @@ pops = [f"ktits_pol_{p[0]}_pop" for p in PATHS]
 for key, grp, gen, cx, (pn, pd, pic), (cn, cd, cic), subs in PATHS:
     pid, cid = f"ktits_pol_{key}_pop", f"ktits_pol_{key}_come"
     pblk += pfocus(pid, pic, cx, 1, 70, [P_ROOT], [o for o in pops if o != pid], None,
-                   f"\t\t\tfactor = 3\n\t\t\tmodifier = {{\n\t\t\t\tfactor = 4\n\t\t\t\thas_government = {grp}\n\t\t\t}}\n",
+                   f"\t\t\tfactor = 3\n\t\t\tmodifier = {{\n\t\t\t\tfactor = 4\n\t\t\t\thas_government = {grp}\n\t\t\t}}\n" + ai_lock(grp),
                    f"\t\t\tadd_popularity = {{ ideology = {grp} popularity = 0.15 }}\n")
     need = f"\t\t\tcustom_trigger_tooltip = {{\n\t\t\t\ttooltip = ktits_pol_req_{grp}\n\t\t\t\t{grp} > {POP_NEED}\n\t\t\t}}\n"
     rew = (f"\t\t\tif = {{\n\t\t\t\tlimit = {{ has_government = {grp} }}\n\t\t\t\tadd_stability = 0.10\n\t\t\t}}\n\t\t\telse = {{\n"
            f"\t\t\t\tset_politics = {{\n\t\t\t\t\truling_party = {grp}\n\t\t\t\t\telections_allowed = yes\n\t\t\t\t}}\n\t\t\t}}\n")
-    pblk += pfocus(cid, cic, cx, 2, 70, [pid], None, need, "\t\t\tfactor = 5\n", rew)
+    pblk += pfocus(cid, cic, cx, 2, 70, [pid], None, need, "\t\t\tfactor = 5\n" + ai_lock(grp), rew)
     pl += [(pid, pn), (pid + "_desc", pd), (cid, cn), (cid + "_desc", cd), (f"ktits_pol_req_{grp}", f"Популярность {gen} не ниже §Y40 %§!")]
     pe.append((f"ktits_pol_req_{grp}", f"Popularity of {grp} at least §Y40%§!"))
     sids = [f"ktits_pol_{key}_{s[0]}" for s in subs]
@@ -230,7 +243,7 @@ for key, grp, gen, cx, (pn, pd, pic), (cn, cd, cic), subs in PATHS:
         SUB_IDS.append(sid); SPIRITS.append((sp, sn, mods, ide))
         rew = f"\t\t\thidden_effect = {{ set_country_leader_ideology = {ide} }}\n\t\t\tcustom_effect_tooltip = ktits_pol_tt_{s[0]}\n\t\t\tadd_ideas = {sp}\n"
         if ide == "theology_ideology": rew += scale(-10)
-        pblk += pfocus(sid, sic, sx, 3, 70, [cid], [o for o in sids if o != sid], None, "\t\t\tfactor = 2\n", rew)
+        pblk += pfocus(sid, sic, sx, 3, 70, [cid], [o for o in sids if o != sid], None, "\t\t\tfactor = 2\n" + ai_lock(grp), rew)
         pl += [(sid, sn), (sid + "_desc", sd), (f"ktits_pol_tt_{s[0]}", f"Правитель страны получает подтип идеологии «{sn}»"),
                (sp, sn), (sp + "_desc", SP_TXT[s[0]])]
         pe += [(f"ktits_pol_tt_{s[0]}", f"The ruler gets the ideology subtype \"{L.translit(sn)}\""),
@@ -242,6 +255,7 @@ rew = (f"\t\t\tadd_political_power = -100\n\t\t\tadd_stability = -0.10\n\t\t\tse
        f"\t\t\tuncomplete_national_focus = {{\n\t\t\t\tfocus = {P_ROOT}\n\t\t\t\tuncomplete_children = yes\n\t\t\t}}\n")
 avail = f"\t\t\thas_war = no\n\t\t\tNOT = {{ has_country_flag = {P_CD} }}\n"
 ai = "\t\t\tfactor = 0\n\t\t\tmodifier = {\n\t\t\t\tadd = 1\n\t\t\t\thas_stability < 0.40\n\t\t\t}\n"
+ai += "\t\t\tmodifier = {\n\t\t\t\tfactor = 0\n\t\t\t\tktits_ai_ally_locked = yes\n\t\t\t}\n"   # author's rule: no change of course in an alliance with independent members (docs/global_mechanics/Alliances.md)
 pblk += pfocus(P_CHANGE, "GFX_goal_generic_dangerous_deal", 50, 5, 70, SUB_IDS, None, avail, ai, rew)
 pl += [(P_CHANGE, "Народ голосует за перемены"), (P_CHANGE + "_desc", "Улицы требуют другого будущего. Правительство объявляет, что прежний курс исчерпан, и страна снова выбирает путь."),
        ("ktits_pol_tt_reset", "Снимает выполнение со всей ветки «Политический курс» и её духи; ветку можно пройти заново. Смена курса закрыта на 365 дней.")]
@@ -252,7 +266,7 @@ txt = g.read_text(encoding="utf-8", newline="")
 nl = "\r\n" if "\r\n" in txt else "\n"
 txt = re.sub(r"\r?\n?" + re.escape(PBEGIN) + r".*?" + re.escape(PEND) + r"\r?\n?", "", txt, flags=re.S)
 k = txt.rindex("}")
-txt = txt[:k].rstrip() + nl + nl + pblk.replace("\n", nl) + nl + txt[k:]
+txt = txt[:k].rstrip() + nl + nl + shift_x(pblk).replace("\n", nl) + nl + txt[k:]
 g.write_text(txt, encoding="utf-8", newline="")
 
 def pidea(name, mods):
@@ -318,7 +332,7 @@ txt = g.read_text(encoding="utf-8", newline="")
 nl = "\r\n" if "\r\n" in txt else "\n"
 txt = re.sub(r"\r?\n?" + re.escape(EBEGIN) + r".*?" + re.escape(EEND) + r"\r?\n?", "", txt, flags=re.S)
 k = txt.rindex("}")
-txt = txt[:k].rstrip() + nl + nl + eblk.replace("\n", nl) + nl + txt[k:]
+txt = txt[:k].rstrip() + nl + nl + shift_x(eblk).replace("\n", nl) + nl + txt[k:]
 g.write_text(txt, encoding="utf-8", newline="")
 w("common/ideas/ktits_edu_focus_ideas.txt", "ideas = {\n\tcountry = {\n" + idea_mod(SPRIT) + idea_mod(SPRIT2) + "\t}\n}\n")
 for sp in (SPRIT, SPRIT2):
@@ -479,7 +493,7 @@ txt = g.read_text(encoding="utf-8", newline="")
 nl = "\r\n" if "\r\n" in txt else "\n"
 txt = re.sub(r"\r?\n?" + re.escape(XBEGIN) + r".*?" + re.escape(XEND) + r"\r?\n?", "", txt, flags=re.S)
 k_ = txt.rindex("}")
-txt = txt[:k_].rstrip() + nl + nl + xblk.replace("\n", nl) + nl + txt[k_:]
+txt = txt[:k_].rstrip() + nl + nl + shift_x(xblk).replace("\n", nl) + nl + txt[k_:]
 g.write_text(txt, encoding="utf-8", newline="")
 def xidea(name, v):
     body = "".join(f"\t\t\t\t{k} = {x:g}\n" for k, x in v[3].items())

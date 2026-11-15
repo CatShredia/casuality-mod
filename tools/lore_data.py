@@ -191,7 +191,15 @@ def assign_state_names(info, mode, rnd):
     return names, kind, used
 
 
+try:
+    from lore_texts import RU as _LORE_RU   # lore description overrides (tools/lore_texts.py)
+except ImportError:
+    _LORE_RU = {}
+
+
 def write_yml(path, lang, entries):
+    if _LORE_RU:   # the Russian text replaces the generated one, English = its transliteration
+        entries = [(k, (_LORE_RU[k] if lang == "russian" else translit(_LORE_RU[k])) if k in _LORE_RU else v) for k, v in entries]
     lines = [f"l_{lang}:"] + [f' {k}:0 "{v}"' for k, v in entries]
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text(chr(10).join(lines) + chr(10), encoding="utf-8-sig")

@@ -137,7 +137,7 @@ def notif(eid, lo):
 			check_variable = {{ var = ktits_casuality value = {lo} compare = less_than }}
 			has_country_flag = ktits_cas_n{eid}
 		}}
-		clear_country_flag = ktits_cas_n{eid}
+		clr_country_flag = ktits_cas_n{eid}
 	}}
 """
 w("common/scripted_effects/ktits_casuality_effects.txt", f"""ktits_casuality_update = {{
@@ -162,12 +162,6 @@ ktits_kaz_puppet_education = {{
 	}}
 }}
 
-ktits_casuality_change = {{
-	add_to_variable = {{ var = ktits_casuality value = $VALUE$ }}
-	clamp_variable = {{ var = ktits_casuality min = 0 max = 100 }}
-	ktits_casuality_update = yes
-	ktits_casuality_call = yes
-}}
 """)
 
 # campaign "Противодействие, труд и власть!": while the flag lives (180 days) the scale falls by 10 every 15 days (on_daily of the country)
@@ -276,7 +270,7 @@ ktits_casuality_call = {{
 			}}
 		}}
 		remove_ideas = ktits_cas_call_1
-		clear_country_flag = ktits_cas_n34
+		clr_country_flag = ktits_cas_n34
 	}}
 }}
 
@@ -314,7 +308,7 @@ ktits_casuality_ai_monthly = {{
 				}}
 			}}
 		}}
-		clear_country_flag = {RAPP}
+		clr_country_flag = {RAPP}
 	}}
 	if = {{
 		limit = {{
@@ -376,7 +370,7 @@ ktits_casuality_party_notify = {{
 			casuality < 0.25
 			has_country_flag = ktits_cas_n35
 		}}
-		clear_country_flag = ktits_cas_n35
+		clr_country_flag = ktits_cas_n35
 	}}
 }}
 
@@ -410,8 +404,8 @@ w("common/on_actions/ktits_casuality_on_actions.txt", """on_actions = {
 	}
 	on_monthly = {
 		effect = {
-		# safety net for every country, fallen ones included (author's rule: puppets of Kazualia have education 0)
-		ktits_kaz_puppet_education = yes
+			# safety net for every country, fallen ones included (author's rule: puppets of Kazualia have education 0)
+			ktits_kaz_puppet_education = yes
 			# specialists: monthly transfer foreign -> own, swamp, institutes; Kazualia reset (tools/make_education.py)
 			ktits_education_monthly = yes
 			if = {
@@ -860,7 +854,7 @@ RK = CAS_RULE.upper()
 _opts = ""
 for o, _r, _e, s, m in CAS_RULE_OPTS:
     _opts += ("\tdefault = {\n" if o == "DEFAULT" else "\toption = {\n") + f'\t\tname = {o}\n\t\ttext = "KTITS_RULE_OPT_{o}"\n\t\tdesc = "KTITS_RULE_OPT_{o}_DESC"\n' + ("\t\tallow_achievements = no\n" if o != "DEFAULT" else "") + "\t}\n"
-w("common/game_rules/ktits_casuality_rules.txt", f'{CAS_RULE} = {{\n\tname = "{RK}"\n\tdesc = "{RK}_DESC"\n\tgroup = "RULE_GROUP_AI_BEHAVIOR"\n{_opts}}}\n')
+w("common/game_rules/ktits_casuality_rules.txt", f'{CAS_RULE} = {{\n\tname = "{RK}"\n\tgroup = "RULE_GROUP_AI_BEHAVIOR"\n{_opts}}}\n')
 _r_ru = [(RK, "Глобальная Казуальность"), (RK + "_DESC", "Как часто ИИ-страны выбирают курс «Сближение» с Казуальностью. Работает только при неисторическом фокусе ИИ (при историческом все воюют, как раньше). Крупные страны (с выделяемыми государствами) всегда на курсе «Борьба».")]
 _r_en = [(RK, "Global Casuality"), (RK + "_DESC", "How often AI countries choose the course of rapprochement with Casuality. Works only with non-historical AI focus (with historical focus everyone fights as before). Big countries (with releasable states) always fight it.")]
 for o, nru, nen, s, m in CAS_RULE_OPTS:

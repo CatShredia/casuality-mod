@@ -145,10 +145,24 @@ if __name__ == "__main__":
     for t, p, nm, sts, *_ in entries:
         moves = "".join("\t\tif = {\n\t\t\tlimit = { %d = { is_owned_by = ROOT } }\n\t\t\t%s = { transfer_state = %d }\n\t\t}\n" % (x, t, x) for x in sts)
         # a part that already exists (released earlier, e.g. through the occupation menu) is left alone: it does not become a puppet of Kazualia
+        # army split: population of the original (incl. this part) and of this part are read before the transfer (state_population_k of the states);
+        # ratio = part / remaining, so sequential release of several parts is proportional to the total
+        calc = ("\t\tset_variable = { ktits_sp_rem = 0 }\n\t\tset_variable = { ktits_sp_part = 0 }\n"
+                "\t\tevery_owned_state = { OWNER = { add_to_variable = { ktits_sp_rem = PREV.state_population_k } } }\n" +
+                "".join("\t\tif = {\n\t\t\tlimit = { %d = { is_owned_by = ROOT } }\n\t\t\t%d = { OWNER = { add_to_variable = { ktits_sp_part = PREV.state_population_k } } }\n\t\t}\n" % (x, x) for x in sts) +
+                "\t\tset_variable = { ktits_sp_ratio = ktits_sp_part }\n\t\tif = {\n\t\t\tlimit = { check_variable = { ktits_sp_rem > 0 } }\n\t\t\tdivide_variable = { ktits_sp_ratio = ktits_sp_rem }\n\t\t}\n")
+        units = "\t\tif = {\n\t\t\tlimit = { country_exists = %s }\n\t\t\t%s = { save_event_target_as = ktits_split_target }\n\t\t\tktits_split_share = yes\n\t\t}\n\t\tclear_variable = ktits_sp_rem\n\t\tclear_variable = ktits_sp_part\n\t\tclear_variable = ktits_sp_ratio\n" % (t, t)
+        moves = calc + moves + units
         eff += ("ktits_release_%s = {\n\tif = {\n\t\tlimit = { ktits_splits_enabled = yes NOT = { country_exists = " + t + " } }\n%s"
                 "\t\tif = {\n\t\t\tlimit = { country_exists = %s }\n\t\t\t%s = {\n\t\t\t\tset_country_flag = ktits_casuality_fallen\n\t\t\t\tset_variable = { var = ktits_casuality value = 100 }\n"
                 "\t\t\t\tset_politics = { ruling_party = casuality }\n\t\t\t\tadd_popularity = { ideology = casuality popularity = 0.5 }\n\t\t\t}\n"
                 "\t\t\tif = {\n\t\t\t\tlimit = { country_exists = %s }\n\t\t\t\t%s = { puppet = %s }\n\t\t\t}\n\t\t}\n\t}\n}\n\n") % (t, moves, t, t, KAZ, KAZ, t)
+    # ladder of 1 % buckets: transfer_units_fraction ratios are constants (vanilla never passes variables there)
+    lad = "# gives the recipient (event target ktits_split_target; parametrised scripted effects with $T$ failed to parse in game) the share ktits_sp_ratio (0..1, rounded to 1 %) of army, navy, air and stockpile of the current country; unit leaders stay\nktits_split_share = {\n"
+    for k in range(100, 0, -1):
+        lad += "\t%s = {\n\t\tlimit = { check_variable = { ktits_sp_ratio > %.3f } }\n\t\ttransfer_units_fraction = {\n\t\t\ttarget = event_target:ktits_split_target\n\t\t\tsize = %.2f\n\t\t\tkeep_unit_leaders_trigger = { always = yes }\n\t\t}\n\t}\n" % ("if" if k == 100 else "else_if", (k - 0.5) / 100, k / 100)
+    lad += "}\n\n"
+    eff = lad + eff
     by_parent = {}
     for t, p, *_ in entries: by_parent.setdefault(p, []).append(t)
     eff += ("# called by the fall event ktits_casuality.1: every part of the fallen big country is released and becomes a puppet of Kazualia\nktits_split_on_fall = {\n" +
@@ -163,6 +177,24 @@ if __name__ == "__main__":
                     ent.append((f"{tag}_{g}{suf}", conv(nm)))
             ent += [(tag, conv(nm)), (f"{tag}_DEF", conv(nm)), (f"{tag}_ADJ", conv(nm))]
         L.write_yml(str(M / f"localisation/{lang}/ktits_splits_l_{lang}.yml"), lang, ent)
+
+    # names and scientist portraits of the new tags (the exported files only know the tags of 02_countries.txt; without them the game logs
+    # "Failed to generate a name/portrait" when it creates scientists): the parent's blocks are copied under the K tag
+    for rel in ("common/names/00_names.txt", "portraits/998_scientist_portraits.txt"):
+        fp = M / rel
+        if not fp.exists(): continue
+        raw = fp.read_bytes(); bom = raw.startswith(b"\xef\xbb\xbf")
+        txt = raw.decode("utf-8-sig"); crlf = "\r\n" in txt
+        txt = txt.replace("\r\n", "\n")
+        txt = re.sub(r"(?ms)^K\d\d = \{\n.*?^\}[ \t]*\n?", "", txt)
+        blocks = {m.group(1): m.group(0) for m in re.finditer(r"(?ms)^([A-Z0-9]{3}) = \{\n.*?^\}[ \t]*(?:\n|$)", txt)}
+        if txt and not txt.endswith("\n"): txt += "\n"
+        for tag, parent, *_ in entries:
+            if parent in blocks:
+                b = blocks[parent]; b = b if b.endswith("\n") else b + "\n"
+                txt += re.sub(r"^[A-Z0-9]{3}", tag, b, count=1)
+        if crlf: txt = txt.replace("\n", "\r\n")
+        fp.write_bytes((b"\xef\xbb\xbf" if bom else b"") + txt.encode("utf-8"))
 
     import csv
     rep = L.REPO / "no_commit/temp/splits_report.csv"
