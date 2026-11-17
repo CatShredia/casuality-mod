@@ -47,10 +47,8 @@
 | K32 | Эмират Южный Ирр | MLN | 8 | 51 57 157 224 278 305 399 479 |
 | TEZ | Бриттан | — | 8 | остаётся у родителя |
 | K33 | Северный Бриттан | TEZ | 12 | 631 633 637 639 640 641 642 643 658 663 669 671 |
-| EAG | Иберадия | — | 10 | остаётся у родителя |
-| K34 | Каталадия | EAG | 7 | 12 53 141 179 200 332 459 |
 | AJA | Королевство Муси | — | 9 | остаётся у родителя |
-| K35 | Верхняя Муси | AJA | 8 | 9 172 193 210 220 228 235 468 |
+| K34 | Верхняя Муси | AJA | 8 | 9 172 193 210 220 228 235 468 |
 
 Скрипт: `tools/make_splits.py` (шаг `splits` в `post_export.py`). Файлы: `common/country_tags/03_ktits_splits.txt`, `common/countries/Kxx.txt`, `history/countries/Kxx - *.txt`, `common/characters/Kxx.txt`, `common/scripted_effects/ktits_splits_effects.txt` (`ktits_release_Kxx`, `transfer_state` [uncertain]), `common/scripted_triggers/ktits_splits_triggers.txt`, флаги — копии родительских, цвета — сдвиг оттенка родителя.
 

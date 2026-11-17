@@ -1,7 +1,7 @@
 """Splittable states for big countries (> 15 states): INVENTED names, see docs/countries/Splits.md.
 
 For each big country (SPLITS) its states are divided into contiguous parts (region growing over state adjacency, parent keeps the part with
-its capital). Each other part becomes a new country K01..K35 (tags file 03_ktits_splits.txt, country file, colour, flag copied from the parent,
+its capital). Each other part becomes a new country K01..K34 (tags file 03_ktits_splits.txt, country file, colour, flag copied from the parent,
 history without states, neutral ruler, localisation). Manual release is BLOCKED: effects ktits_release_Kxx are guarded by ktits_splits_enabled (= the country fell into casuality), so only
 ktits_split_on_fall (called by the fall event of make_casuality.py) releases the parts, makes them casuality countries and puppets of Kazualia.
 Writes: common/country_tags/03_ktits_splits.txt, common/countries/Kxx.txt, history/countries/Kxx - *.txt, common/characters/Kxx.txt,
@@ -25,7 +25,7 @@ SPLITS = {
     "FIU": ["Княжество Заречное", "Дмитровская Марка"],
     "MLN": ["Ирракская Зона", "Эмират Южный Ирр"],
     "TEZ": ["Северный Бриттан"],
-    "EAG": ["Каталадия"],
+    # EAG (old Iberadia, 17 states on two landmasses) is no longer here: tools/make_iberia_split.py makes two countries of 7 and 10 states, both below the limit of 15
     "AJA": ["Верхняя Муси"],
 }
 GROUPS = ("fascism", "communism", "neutrality", "democratic", "casuality", "theology")
@@ -137,6 +137,12 @@ if __name__ == "__main__":
             assert k == 1, f
         if t2 != t: f.write_text(t2, encoding="utf-8", newline="")
 
+    # stale files of tags that no longer exist (the numbering shifted when a parent was removed from SPLITS)
+    live = {t for t, *_ in entries}
+    for f in list((M / "common/countries").glob("K[0-9][0-9].txt")) + list((M / "common/characters").glob("K[0-9][0-9].txt")) + list((M / "history/countries").glob("K[0-9][0-9] - *.txt")) \
+            + [x for d in ("gfx/flags", "gfx/flags/medium", "gfx/flags/small") for x in (M / d).glob("K[0-9][0-9]*.tga")]:
+        if f.name[:3] not in live:
+            f.unlink()
     (M / "common/country_tags/03_ktits_splits.txt").write_text("".join(f'{t} = "countries/{t}.txt"\n' for t, *_ in entries), encoding="utf-8")
     (M / "common/scripted_triggers/ktits_splits_triggers.txt").write_text(
         "# release of the parts of a big country is allowed only for a country that has fallen into casuality (the manual release mechanic is blocked)\nktits_splits_enabled = {\n\thas_country_flag = ktits_casuality_fallen\n}\n", encoding="utf-8")

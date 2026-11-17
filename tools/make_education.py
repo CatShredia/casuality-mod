@@ -36,7 +36,7 @@ EDU_TXT = [
 LORE_LEVEL = {"CSL": 0, "SVS": 1, "KZZ": 2, "BRT": 4, "IRK": 2, "IRR": 1, "MUS": 0, "TRV": 0, "TMR": 4, "SOY": 4, "SRK": 0}
 # INVENTED (docs/lore/Contries-Description.md says TODO): from analogs and hints ("Челяба - промышленный гигант", Технодемократия -> науч. советы, ...)
 INVENTED_LEVEL = {"ZLD": 4, "ADL": 4, "SVA": 5, "FDP": 3, "DMK": 2, "CLB": 3, "MGN": 0, "KTY": 2, "BLK": 4, "CEY": 1,
-                  "Z01": 3, "Z02": 2, "Z03": 3, "Z04": 3, "Z05": 3}
+                  "Z01": 3, "Z02": 2, "Z03": 3, "Z04": 3, "Z05": 3, "Z06": 2}
 LEVEL_OF = {**INVENTED_LEVEL, **LORE_LEVEL}
 
 def write_bar(M):

@@ -122,6 +122,17 @@ for lt, (name, grp, lore_ideo, sub) in RULERS.items():
         ht = re.sub(r"set_popularities\s*=\s*\{[^}]*\}", newblk, ht, count=1)
         hf.write_text(ht, encoding="utf-8", newline="")
         ruling_note = f"ruling_party {rp} -> {grp}"
+    if lt in INV.INVENTED_POLITICS:      # start politics of the invented democracy (docs/lore/Invented-Lore.md): election date, elections allowed, popularities
+        le, ea, pp = INV.INVENTED_POLITICS[lt]
+        ht = hf.read_text(encoding="utf-8", errors="ignore")
+        ht = re.sub(r'last_election\s*=\s*"[^"]*"', f'last_election = "{le}"', ht, count=1)
+        ht = re.sub(r"elections_allowed\s*=\s*\w+", f"elections_allowed = {ea}", ht, count=1)
+        old = {g: int(v) for g, v in re.findall(r"(\w+)\s*=\s*(\d+)", re.search(r"set_popularities\s*=\s*\{([^}]*)\}", ht).group(1))}
+        old.update(pp)
+        nb = "set_popularities = {\n" + "".join(f"\t{g} = {old[g]}\n" for g in IDEO.GROUP_ORDER if g in old and (old[g] or g in ("democratic", "fascism", "communism", "neutrality"))) + "}"
+        ht = re.sub(r"set_popularities\s*=\s*\{[^}]*\}", nb, ht, count=1)
+        hf.write_text(ht, encoding="utf-8", newline="")
+        ruling_note += f"; elections {ea}, popularities {pp}"
     rows.append((tag, lt, name, target, lore_ideo, sub or "", ("INVENTED " if lt in INV.INVENTED_RULERS and lt not in LORE_ONLY else "") + ("placeholder sub-ideology" if PLACEHOLDER.get(lt) else ""), done, ruling_note))
 
 rep = L.REPO / "no_commit/temp/rulers_report.csv"

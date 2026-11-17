@@ -544,6 +544,10 @@ for rel_, f_ in loaded_.items():
 check(not (our_t_ & vt_) and not used_, "tags: none of our tags is a vanilla tag and no vanilla script that stays active names one (no tag collision)", f"tags: collisions {sorted(our_t_ & vt_)} / vanilla scripts naming our tags: {sorted(used_)[:6]}", warn)
 
 # ---- alliances (make_alliances.py, docs/global_mechanics/Alliances.md) ----
+_dip_early = (M / "common/scripted_triggers/diplomacy_scripted_triggers.txt").read_text(encoding="utf-8-sig")
+def dblk_early(k):
+    m_ = re.search(r"(?m)^\s*" + k + r" = [{][\s\S]*?\n[}]", _dip_early)
+    return m_.group(0) if m_ else ""
 import make_alliances as AL
 al_files = {k: (M / k) for k in ("common/scripted_triggers/ktits_alliance_triggers.txt", "common/scripted_effects/ktits_alliance_effects.txt", "common/on_actions/ktits_alliance_on_actions.txt",
                                  "common/ideas/ktits_alliance_ideas.txt", "common/decisions/ktits_alliance.txt", "common/decisions/categories/ktits_alliance_categories.txt",
@@ -553,13 +557,12 @@ check(all(al_txt.values()) and all(t.count("{") == t.count("}") for t in al_txt.
 al_ru, al_en = load_loc(M / "localisation/russian/ktits_alliance_l_russian.yml"), load_loc(M / "localisation/english/ktits_alliance_l_english.yml")
 a_tr, a_ef, a_oa, a_id, a_dc, a_ev = (al_txt[k] for k in ("common/scripted_triggers/ktits_alliance_triggers.txt", "common/scripted_effects/ktits_alliance_effects.txt", "common/on_actions/ktits_alliance_on_actions.txt",
                                                           "common/ideas/ktits_alliance_ideas.txt", "common/decisions/ktits_alliance.txt", "events/ktits_alliance_events.txt"))
-# start alliances: leaders by tag, names from loc, only the leader (no add_to_faction in the start effect)
+# no start alliances (author's decision): the start effect only gives spirits
 l2t = {v: k for k, v in tag2lore.items()}
 st_ef = re.search(r"ktits_ally_start = [{][\s\S]*?\n[}]", a_ef)
 st_ef = st_ef.group(0) if st_ef else ""
-check(all(f"{l2t[lt]} = {{" in st_ef and f"ktits_ally_name_{k}" in st_ef and al_ru.get(f"ktits_ally_name_{k}") and al_en.get(f"ktits_ally_name_{k}") for lt, k in AL.START_LORE.items())
-      and "add_to_faction" not in st_ef and "ktits_ally_start = yes" in a_oa and "on_startup" in a_oa and "create_faction_from_template" in st_ef,
-      "alliances: on_startup creates the three start factions (Казуальная Идиллия, Интернационал, Беспредел) with loc names and only the leader", "alliances: start factions are wrong or lack names")
+check("add_to_faction" not in st_ef and "create_faction_from_template" not in st_ef and "ktits_ally_start_leader" not in a_ef and "ktits_ally_start = yes" in a_oa and "on_startup" in a_oa,
+      "alliances: on_startup creates no alliance (start alliances removed by the author); factions are founded with the vanilla button", "alliances: start effect still creates factions")
 # thresholds of world tension by the ideology of the leader (author: democracy 40, theology 35, casuality 0; invented: 30, 20, 10)
 tt_blk = re.search(r"ktits_ally_tension_ok = [{][\s\S]*?\n[}]", a_tr)
 tt_blk = tt_blk.group(0) if tt_blk else ""
@@ -569,18 +572,18 @@ check(tt_found == {"democratic": 0.40, "theology": 0.35, "neutrality": 0.30, "fa
 # decisions: found, request, invite, course, 7 cooperation; name and lore text in ru and en; category description by ideology
 al_dec = re.findall(r"(?m)^\t(ktits_ally_\w+) = [{]", a_dc)
 miss_d = [k for k in al_dec for lg in (al_ru, al_en) if not lg.get(k, "").strip() or not lg.get(k + "_desc", "").strip()]
-check(len(al_dec) == 12 and not miss_d and {"ktits_ally_found", "ktits_ally_request", "ktits_ally_invite", "ktits_ally_course", "ktits_ally_leave"} <= set(al_dec), f"alliances: {len(al_dec)} decisions have ru/en name and description", f"alliances: decisions {len(al_dec)} / loc missing {miss_d[:4]}")
-check(all(f"ktits_ally_lead_{g} = yes" in al_txt["common/scripted_localisation/ktits_alliance_loc.txt"] and al_ru.get(f"ktits_ally_desc_{g}") == AL.CAT_TXT[g] and al_ru.get(f"ktits_ally_name_{g}") for g in AL.GROUPS)
+check(len(al_dec) == 10 and not miss_d and "ktits_ally_found" not in al_dec and "ktits_ally_invite" not in al_dec and {"ktits_ally_request", "ktits_ally_course", "ktits_ally_leave"} <= set(al_dec), f"alliances: {len(al_dec)} decisions have ru/en name and description", f"alliances: decisions {len(al_dec)} / loc missing {miss_d[:4]}")
+check(all(f"ktits_ally_lead_{g} = yes" in al_txt["common/scripted_localisation/ktits_alliance_loc.txt"] and al_ru.get(f"ktits_ally_desc_{g}") == AL.CAT_TXT[g] for g in AL.GROUPS)
       and "[GetKtitsAllyDesc]" in al_ru.get("ktits_alliance_category_desc", "") and "ktits_alliance_category = {" in al_txt["common/decisions/categories/ktits_alliance_categories.txt"],
       "alliances: category \"Альянс\" (visible to all) shows the text of the alliance ideology through scripted localisation (6 texts + fallback)", "alliances: category description by ideology missing")
 # eternal neutrality (author's rule): spirit for Figaria and Ledyshka, blocks founding / request / invitation; join, leave, refusal events
-neu_ok = "ktits_eternal_neutrality = {" in (M / "common/ideas/ktits_neutrality_ideas.txt").read_text(encoding="utf-8") and a_ef.count("add_ideas = ktits_eternal_neutrality") == 2 and a_dc.count("has_idea = ktits_eternal_neutrality") >= 4
-neu_ok = neu_ok and all(f"id = ktits_alliance.{n}" in a_ev for n in (7, 8, 9, 10, 11, 12)) and "modifier = ktits_ally_insult" in a_ev and "ktits_ally_insult = {" in (M / "common/opinion_modifiers/ktits_alliance_opinion.txt").read_text(encoding="utf-8")
-check(neu_ok, "alliances: eternal neutrality (Figaria, Ledyshka) blocks alliances; events: refusal (soft / insult -50), joined, left, expelled", "alliances: neutrality or join/leave events missing")
+neu_ok = "ktits_eternal_neutrality = {" in (M / "common/ideas/ktits_neutrality_ideas.txt").read_text(encoding="utf-8") and a_ef.count("add_ideas = ktits_eternal_neutrality") == len(AL.NEUTRAL_LORE) and (a_dc.count("ktits_ally_barred = yes") + a_tr.count("ktits_ally_barred = yes")) >= 3 and "ktits_ally_barred = yes" in a_ef and "has_idea = ktits_eternal_neutrality" not in a_dc
+neu_ok = neu_ok and all(f"id = ktits_alliance.{n}" in a_ev for n in (8, 9, 11, 12)) and "ktits_ally_insult" not in a_ev and not (M / "common/opinion_modifiers/ktits_alliance_opinion.txt").exists()
+check(neu_ok, "alliances: eternal neutrality (Figaria, Ledyshka, Aidalia) blocks alliances; events: joined, left, expelled (the refusal events went away with the own invitation)", "alliances: neutrality or join/leave events missing")
 # events: loc per ideology for the four events, every desc block, options
-ev_ok = all(al_ru.get(f"ktits_alliance.{n}.d_{g}") == AL.EVENT_TXT[n][g] and f"text = ktits_alliance.{n}.d_{g}" in a_ev for n in (1, 2, 3, 4) for g in AL.GROUPS)
-ev_ok = ev_ok and all(al_ru.get(f"ktits_alliance.{n}.{x}") and al_en.get(f"ktits_alliance.{n}.{x}") for n in (1, 2, 3, 4, 5) for x in ("t", "d")) and all(f"id = ktits_alliance.{n}\n" in a_ev for n in range(1, 6))
-check(ev_ok, "alliances: events 'Стук в дверь', 'Приглашение', 'Чужая среди своих', 'Чужой в доме' have a text per ideology (6 desc blocks each, exactly the texts of the doc) and 'Новый курс' exists", "alliances: event texts per ideology missing or different from the doc")
+ev_ok = all(al_ru.get(f"ktits_alliance.{n}.d_{g}") == AL.EVENT_TXT[n][g] and f"text = ktits_alliance.{n}.d_{g}" in a_ev for n in (1, 3, 4) for g in AL.GROUPS)
+ev_ok = ev_ok and all(al_ru.get(f"ktits_alliance.{n}.{x}") and al_en.get(f"ktits_alliance.{n}.{x}") for n in (1, 3, 4, 5, 14, 15, 16) for x in ("t", "d")) and all(f"id = ktits_alliance.{n}\n" in a_ev for n in (1, 3, 4, 5, 14, 15, 16)) and all(f"id = ktits_alliance.{n}\n" not in a_ev for n in (2, 7, 10, 13))
+check(ev_ok, "alliances: events 'Стук в дверь', 'Чужая среди своих', 'Чужой в доме' have a text per ideology (6 desc blocks each, exactly the texts of the doc) and 'Новый курс' exists", "alliances: event texts per ideology missing or different from the doc")
 check("ktits_ally_has_foreign_leader" in a_ef and "set_country_flag = ktits_ally_alien" in a_ef and "ktits_ally_coop_m20 = yes" in a_ev and "leave_faction = yes" in a_ev and "id = ktits_alliance.11 }" in a_ev
       and "is_subject = no" in a_ev and "ktits_ally_forget_member" in a_ev, "alliances: ideology change -> event for the member (leave / stay), leader event (expel / tolerate -20); no -5 for the ideology flow; puppets cannot leave or be expelled", "alliances: ideology-change flow incomplete")
 # Kazualia always 100, no cooperation decisions in its alliance
@@ -592,6 +595,69 @@ tiers_ok = all(al_ru.get(f"ktits_ally_{t}") == n and al_ru.get(f"ktits_ally_{k}"
 check(tiers_ok and a_id.count("research_sharing_per_country_bonus = 0.05") == 2 and a_id.count("research_sharing_per_country_bonus = 0.1\n") == 2 and a_id.count("research_sharing_per_country_bonus = 0.15") == 2
       and a_id.count("land_doctrine_cost_factor = -0.15") == 2 and a_id.count("naval_doctrine_cost_factor = -0.05") == 2 and a_id.count("air_doctrine_cost_factor = -0.1\n") == 2 and a_id.count("experience_gain_army = 0.05") == 2
       and "experience_gain_navy = 0.05" in a_id and "experience_gain_air = 0.05" in a_id, "alliances: 4+4 tier spirits with research sharing +5/10/15 %, doctrine cost -5/10/15 %, top tier +0.05 experience", "alliances: tier spirit modifiers wrong")
+# founding: the VANILLA button "create faction" (template ktits_alliance_template is visible only to an allowed founder: major power or 30+ factories); no own diplomatic action, no rule toggling
+can_f = re.search(r"ktits_ally_can_found = [{][\s\S]*?\n[}]", a_tr)
+can_f = can_f.group(0) if can_f else ""
+tpl_k = (M / "common/factions/templates/ktits_alliance_templates.txt").read_text(encoding="utf-8-sig")
+check("is_major = yes" in can_f and f"num_of_factories > {AL.FOUND_FACTORIES - 1}" in can_f and AL.FOUND_FACTORIES == 30 and "ktits_ally_barred = yes" in can_f and "is_subject = no" in can_f and "is_in_faction = no" in can_f and al_ru.get("ktits_ally_can_found_tt"),
+      "alliances: founding is allowed to major powers and to medium ones (30+ factories), outside an alliance, not a subject, no Eternal Neutrality; own tooltip", "alliances: ktits_ally_can_found is wrong")
+check(re.search(r"visible = [{]\s*ktits_ally_can_found = yes\s*[}]", tpl_k) and "name = ktits_alliance_template_name" in tpl_k and al_ru.get("ktits_alliance_template_name")
+      and not (M / "common/scripted_diplomatic_actions/ktits_alliance_actions.txt").exists() and "ktits_ally_create" not in a_ef and "can_create_factions" not in a_ef
+      and "ktits_ally_invite = {" not in a_dc and "ktits_ally_found" not in a_dc and all(f"ktits_alliance.{x}" not in a_ev for x in (13,)) and "ktits_ally_prop_pending" not in a_ef,
+      "alliances: founding goes through the vanilla \"create faction\" button (our template visible only for ktits_ally_can_found, the player types the name); the own diplomatic action, event 13, the rule toggling and the decision 'Пригласить' are gone", "alliances: founding through the vanilla button is wrong")
+
+check("ktits_ally_purge_barred = {" in a_ef and "leave_faction = yes" in a_ef.split("ktits_ally_purge_barred = {")[1].split("\n}\n")[0] and a_ef.count("ktits_ally_purge_barred = yes") >= 2,
+      "alliances: a barred country (Eternal Neutrality / Baku Powder Keg) is removed from any alliance on startup and monthly (the engine adds subjects to the overlord faction by itself)", "alliances: ktits_ally_purge_barred is missing")
+# vanilla invitation "Пригласить в альянс" with our conditions (leader, free independent target, same ideology group or common enemy, world tension)
+ce = re.search(r"ktits_ally_common_enemy = [{][\s\S]*?\n[}]", a_tr)
+ce = ce.group(0) if ce else ""
+check("has_war_with = ROOT" in ce and "has_war_with = FROM" in ce and "ktits_ally_invite_match = {" in a_tr and "ktits_ally_group_match = yes" in a_tr.split("ktits_ally_invite_match = {")[1] and "ktits_ally_common_enemy = yes" in a_tr.split("ktits_ally_invite_match = {")[1]
+      and "ktits_ally_invite_match_tt" in dblk_early("DIPLOMACY_OFFER_JOIN_FACTION_ENABLE_TRIGGER") and "ktits_ally_tension_ok = yes" in dblk_early("DIPLOMACY_OFFER_JOIN_FACTION_ENABLE_TRIGGER") and "is_faction_leader = yes" in dblk_early("DIPLOMACY_OFFER_JOIN_FACTION_ENABLE_TRIGGER")
+      and "ktits_ally_barred = yes" in dblk_early("DIPLOMACY_OFFER_JOIN_FACTION_ENABLE_TRIGGER") and "is_subject = no" in dblk_early("DIPLOMACY_OFFER_JOIN_FACTION_ENABLE_TRIGGER") and al_ru.get("ktits_ally_invite_match_tt") and al_ru.get("ktits_ally_tension_tt"),
+      "alliances: the vanilla invitation works for the leader, a free independent country, the same ideology group or a common enemy (at war with a country that is at war with the leader), by the tension threshold", "alliances: vanilla invitation conditions wrong")
+
+ci = re.search(r"ktits_ally_check_ideology = [{][\s\S]*?\n[}]", a_ef)
+ci = ci.group(0) if ci else ""
+wg = re.search(r"ktits_ally_war_guest_ok = [{][\s\S]*?\n[}]", a_tr)
+wg = wg.group(0) if wg else ""
+nc_blk = re.search(r"ktits_ally_newcomer = [{][\s\S]*?\n[}]", a_ef)
+nc_blk = nc_blk.group(0) if nc_blk else ""
+ci_clear = ci.find("clr_country_flag = ktits_ally_war_guest")
+ci_alien = ci.find("country_event = { id = ktits_alliance.3 }")
+check("is_faction_leader = yes" in wg and "has_war_with = PREV.PREV" in wg and "has_war_with = PREV\n" in wg and "ktits_ally_war_guest_ok = yes" in ci and 0 <= ci_clear < ci_alien
+      and "NOT = { has_country_flag = ktits_ally_war_guest }" in ci and "set_country_flag = ktits_ally_war_guest" in nc_blk and "ktits_ally_has_foreign_leader = yes" in nc_blk and "is_subject = no" in nc_blk,
+      "alliances: a guest of another ideology that joined by the common-enemy rule (a vanilla invitation; the daily check) gets the flag ktits_ally_war_guest; no event 'Чужая среди своих' while the shared war lasts, the flag is cleared when it ends", "alliances: war guest rule missing or wrongly ordered")
+# the old Iberadia is two countries: Z05 (west, democracy) and Z06 (east, new tag), split by tools/make_iberia_split.py
+sp = INV.SPLIT_OFF
+z5, z6 = l2t.get("Z05"), l2t.get("Z06")
+own5 = sorted(s for s, v in states.items() if v["owner"] == z5)
+own6 = sorted(s for s, v in states.items() if v["owner"] == z6)
+def hist_of(tag):
+    g = glob.glob(str(M / "history/countries" / f"{tag} - *.txt"))
+    return open(g[0], encoding="utf-8", errors="ignore").read() if g else ""
+h5, h6 = hist_of(z5), hist_of(z6)
+split_ok = bool(z5 and z6 and z6 == sp["tag"] and len(own5) == 7 and len(own6) == 10 and not set(own5) & set(own6)) and 145 in own6
+split_ok = split_ok and all(re.search(r"add_core_of = %s\b" % z6, open(states[s]["file"], encoding="utf-8", errors="ignore").read()) and not re.search(r"add_core_of = %s\b" % z5, open(states[s]["file"], encoding="utf-8", errors="ignore").read()) for s in own6)
+split_ok = split_ok and all(re.search(r"add_core_of = %s\b" % z5, open(states[s]["file"], encoding="utf-8", errors="ignore").read()) for s in own5)
+split_ok = split_ok and all((M / p).exists() for p in (f"common/countries/{sp['file']}.txt", f"common/characters/{z6}.txt", f"gfx/flags/{z6}.tga", f"gfx/flags/medium/{z6}.tga", f"gfx/flags/small/{z6}.tga", f"history/units/{z6}_1936.txt"))
+split_ok = split_ok and f'{z6} = "countries/{sp["file"]}.txt"' in (M / "common/country_tags/02_countries.txt").read_text(encoding="utf-8", errors="ignore")
+split_ok = split_ok and "color = { %d %d %d }" % sp["color"] in (M / f"common/countries/{sp['file']}.txt").read_text(encoding="utf-8", errors="ignore")
+split_ok = split_ok and len({tuple(map(int, re.search(r"color\s*=\s*\{\s*(\d+)\s+(\d+)\s+(\d+)", (M / "common/countries" / (f + ".txt")).read_text(encoding="utf-8", errors="ignore")).groups())) for f in info["tags"].values()}) == len(info["tags"])
+c5 = (M / f"common/characters/{z5}.txt").read_text(encoding="utf-8", errors="ignore") if z5 else ""
+c6 = (M / f"common/characters/{z6}.txt").read_text(encoding="utf-8", errors="ignore") if z6 else ""
+split_ok = split_ok and "ruling_party = democratic" in h5 and "ruling_party = fascism" in h6 and INV.INVENTED_RULERS["Z05"][0] in c5 and INV.INVENTED_RULERS["Z06"][0] in c6 and "ideology=liberalism" in c5.split(INV.INVENTED_RULERS["Z05"][0])[1][:200].replace(" ", "")
+pp5 = INV.INVENTED_POLITICS["Z05"]
+split_ok = split_ok and "elections_allowed = yes" in h5 and f'last_election = "{pp5[0]}"' in h5 and all(re.search(r"\b%s = %d\b" % (g, v), h5.split("set_popularities")[1]) for g, v in pp5[2].items())
+split_ok = split_ok and f'oob = "{z6}_1936"' in h6 and (z5 + "_") not in h6
+cn6 = load_loc(M / "localisation/russian/countries_l_russian.yml")
+split_ok = split_ok and all(cn6.get(f"{z6}_{g}") == INV.INVENTED_COUNTRIES["Z06"]["name"] for g in ("democratic", "fascism", "communism", "neutrality", "casuality", "theology")) and cn6.get(f"{z5}_democratic") == INV.INVENTED_COUNTRIES["Z05"]["name"]
+split_ok = split_ok and "EAG" not in __import__("make_splits").SPLITS and not (M / "common/countries/K35.txt").exists() and len(re.findall(r"K\d\d =", (M / "common/country_tags/03_ktits_splits.txt").read_text(encoding="utf-8"))) == 34
+check(split_ok, "iberia: the old Iberadia is two countries: Z05 Иберадия (7 western states, democracy, elections allowed, own ruler) and Z06 Арагония (10 eastern states with 145, own tag, colour, flag, oob, characters, names); no K34 of the old Iberadia, K01-K34 contiguous", "iberia: the split of Iberadia is incomplete or inconsistent")
+rp_ev = (M / "events/rpx_faction_alignment.txt")
+rp_ev = rp_ev.read_text(encoding="utf-8-sig") if rp_ev.exists() else ""
+check("faction_alignment." not in "".join(f.read_text(encoding="utf-8-sig", errors="ignore") for f in (M / "events").glob("*.txt")) and "country_event" not in rp_ev and not list((M / "localisation").glob("*/faction_alignment_*.yml")),
+      "alliances: no RandomParadox faction_alignment events or texts remain in the mod (the raw-key window faction_alignment.6 cannot fire)", "alliances: faction_alignment events or loc files remain")
+
 # puppets: sync from the overlord side (monthly and at the start), puppets cannot leave / be kicked, join / offer join blocked
 sync = re.search(r"ktits_ally_sync_subjects = [{][\s\S]*?\n[}]", a_ef)
 sync = sync.group(0) if sync else ""
@@ -600,17 +666,42 @@ def dblk(k):
     m_ = re.search(r"(?m)^\s*" + k + r" = [{][\s\S]*?\n[}]", dip)
     return m_.group(0) if m_ else ""
 check("every_subject_country" in sync and "add_to_faction" in sync and "leave_faction = yes" in sync and "ktits_ally_sync_subjects = yes" in a_ef.split("ktits_ally_monthly = {")[1] and "ktits_ally_sync_subjects = yes" in st_ef
-      and "always = no" in dblk("DIPLOMACY_JOIN_FACTION_ENABLE_TRIGGER") and "always = no" in dblk("DIPLOMACY_OFFER_JOIN_FACTION_ENABLE_TRIGGER") and "is_subject = yes" in dblk("DIPLOMACY_LEAVE_FACTION_ENABLE_TRIGGER") and "is_subject = yes" in dblk("DIPLOMACY_KICK_FROM_FACTION_ENABLE_TRIGGER")
+      and "always = no" in dblk("DIPLOMACY_JOIN_FACTION_ENABLE_TRIGGER") and "ktits_ally_tension_ok = yes" in dblk("DIPLOMACY_OFFER_JOIN_FACTION_ENABLE_TRIGGER") and "is_subject = yes" in dblk("DIPLOMACY_LEAVE_FACTION_ENABLE_TRIGGER") and "is_subject = yes" in dblk("DIPLOMACY_KICK_FROM_FACTION_ENABLE_TRIGGER")
       and all(al_ru.get(k) for k in ("ktits_ally_diplo_blocked", "ktits_ally_puppet_leave", "ktits_ally_puppet_kick")),
-      "alliances: puppets follow the overlord's alliance (monthly + start), cannot leave or be expelled; vanilla 'join / invite to faction' diplomacy is blocked", "alliances: puppet sync or vanilla diplomacy block missing")
-tpl_vis = [m_.group(0) for p_ in (M / "common/factions/templates").glob("*.txt") for m_ in re.finditer(r"(?m)^[ \t]*visible\s*=\s*[{][^}]*[}]", p_.read_text(encoding="utf-8-sig"))]
-check(tpl_vis and all("always = no" in v_ and "always = yes" not in v_ for v_ in tpl_vis), f"alliances: all {len(tpl_vis)} vanilla faction templates are invisible (no 'create faction' list)", "alliances: a faction template is still visible")
+      "alliances: puppets follow the overlord's alliance (monthly + start), cannot leave or be expelled; vanilla 'join faction' (request) is blocked, 'offer join' has our conditions", "alliances: puppet sync or vanilla diplomacy block missing")
+tpl_vis = [m_.group(0) for p_ in (M / "common/factions/templates").glob("*.txt") if p_.name != "ktits_alliance_templates.txt" for m_ in re.finditer(r"(?m)^[ \t]*visible\s*=\s*[{][^}]*[}]", p_.read_text(encoding="utf-8-sig"))]
+check(tpl_vis and all("always = no" in v_ and "always = yes" not in v_ for v_ in tpl_vis), f"alliances: all {len(tpl_vis)} vanilla faction templates are invisible (the 'create faction' list holds only ours)", "alliances: a faction template is still visible")
 # cooperation scale: monthly sources of the doc (+1 per member, +2 common war, -1 idle, -5 lost member), decisions' deltas
 lm = re.search(r"ktits_ally_leader_monthly = [{][\s\S]*?\n[}]", a_ef)
 lm = lm.group(0) if lm else ""
 check("value = ktits_ally_n" in lm and "value = 2 " in lm and "has_war_together_with" in lm and "value = -1 " in lm and "value = -5" in lm and "ktits_ally_busy" in lm
-      and all(f"ktits_ally_member_coop_{x} = yes" in a_dc for x in ("p5", "p10")) and "ktits_ally_coop_p5 = yes" in a_ev and "ktits_ally_coop_m20 = {\n\tadd_to_variable = { var = ktits_alliance_coop value = -20 }" in a_ef,
+      and all(f"ktits_ally_member_coop_{x} = yes" in a_dc for x in ("p5", "p10")) and "ktits_ally_coop_p5 = yes" in a_ef.split("ktits_ally_newcomer = {")[1].split("\n}\n")[0] and "ktits_ally_coop_m20 = {\n\tadd_to_variable = { var = ktits_alliance_coop value = -20 }" in a_ef,
       "alliances: scale sources (members +1, common war +2, idle -1, lost member -5, join +5, tolerate -20, cooperation decisions +5/+10)", "alliances: scale sources wrong")
+# new alliance, newcomers, dissolving (vanilla founding and joining are detected by the daily check)
+tr_blk = re.search(r"ktits_ally_track = [{][\s\S]*?\n[}]", a_ef); tr_blk = tr_blk.group(0) if tr_blk else ""
+na_blk = re.search(r"ktits_ally_new_alliance = [{][\s\S]*?\n[}]", a_ef); na_blk = na_blk.group(0) if na_blk else ""
+nc_blk = re.search(r"ktits_ally_newcomer = [{][\s\S]*?\n[}]", a_ef); nc_blk = nc_blk.group(0) if nc_blk else ""
+lc_blk = re.search(r"ktits_ally_leader_changed = [{][\s\S]*?\n[}]", a_ef); lc_blk = lc_blk.group(0) if lc_blk else ""
+ds_blk = re.search(r"ktits_ally_dissolve = [{][\s\S]*?\n[}]", a_ef); ds_blk = ds_blk.group(0) if ds_blk else ""
+check("on_daily = {" in a_oa and "ktits_ally_track = yes" in a_oa and AL.START_COOP == 20 and AL.LONE_DAYS == 60
+      and f"value = {AL.START_COOP} }}" in na_blk and "ktits_ally_keeper" in na_blk and f"days = {AL.LONE_DAYS}" in na_blk and "ktits_ally_new_alliance = yes" in tr_blk and "ktits_ally_leader_changed = yes" in tr_blk
+      and "has_country_flag = ktits_ally_member" in tr_blk and "ktits_ally_newcomer = yes" in tr_blk and "ktits_alliance.6" in lc_blk and "value = ktits_ally_view" in lc_blk,
+      "alliances: daily check: a faction without the flag keeper is a NEW alliance (scale 20, lone timer 60 days) unless its members were counted before (then it is a leader change, scale passes); members without the flag ktits_ally_member are newcomers", "alliances: new alliance / leader change detection wrong")
+check("ktits_ally_coop_p5 = yes" in nc_blk and "id = ktits_alliance.14" in nc_blk and "ktits_ally_news_join = yes" in nc_blk and "value = 0 compare = equals" in nc_blk and "id = ktits_alliance.8" in a_ef and "ktits_ally_coop_p5 = yes" not in a_ev.split("id = ktits_alliance.2")[0].split("id = ktits_alliance.1\n")[1],
+      "alliances: a newcomer gives the leader +5, the first one gives the founder 'Альянс основан' (14), the next ones the news 'Новый союзник' (8) to the members", "alliances: newcomer effects wrong")
+check("dismantle_faction = yes" in ds_blk and "ktits_ally_clear_spirits = yes" in ds_blk and "ktits_ally_dissolve_zero = yes" in tr_blk and "ktits_ally_dissolve_lone = yes" in tr_blk
+      and "NOT = { ktits_is_kazualia = yes }" in tr_blk and "value = 1 compare = less_than" in tr_blk and "NOT = { num_faction_members > 1 }" in tr_blk and "id = ktits_alliance.15" in a_ef and "id = ktits_alliance.16" in a_ef
+      and a_ef.count("set_country_flag = ktits_ally_start_leader") == 3 and re.search(r"value = %d \}\n\t\t\tset_variable = \{ var = ktits_ally_size" % AL.START_COOP, st_ef) and "value = 100 }" in st_ef
+      and all(al_ru.get(f"ktits_alliance.{n}.{x}") and al_en.get(f"ktits_alliance.{n}.{x}") for n in (15, 16) for x in ("t", "d", "a")),
+      "alliances: scale 0 -> the alliance dissolves itself (not Kazualia), a lone alliance after 60 days; dismantle_faction; events 15 / 16 with texts", "alliances: dissolving rules wrong")
+# scale bar over the category
+b_gui = (M / "interface/ktits_alliance.gui").read_text(encoding="utf-8") if (M / "interface/ktits_alliance.gui").exists() else ""
+b_sg = (M / "common/scripted_guis/ktits_alliance.txt").read_text(encoding="utf-8") if (M / "common/scripted_guis/ktits_alliance.txt").exists() else ""
+b_gfx = (M / "interface/ktits_alliance.gfx").read_text(encoding="utf-8") if (M / "interface/ktits_alliance.gfx").exists() else ""
+check(b_sg.count("ktits_ally_view") == 20 and re.search(r"ktits_alliance_category = [{][^}]*scripted_gui = ktits_alliance_ui", al_txt["common/decisions/categories/ktits_alliance_categories.txt"]) and 'window_name = "ktits_alliance_ui_window"' in b_sg and 'name = "ktits_alliance_ui_window"' in b_gui
+      and all(f'name = "ktits_ally_seg_{i}"' in b_gui for i in range(1, 21)) and all(f"GFX_ktits_ally_seg_{i}" in b_gfx and (M / f"gfx/interface/ktits/ally_seg_{i}.png").exists() for i in range(1, 5)) and (M / "gfx/interface/ktits/ally_bar_frame.png").exists()
+      and al_ru.get("ktits_ally_bar_label") and al_ru.get("ktits_ally_bar_tt") and all(al_ru.get(f"ktits_ally_bar_thr_{v}") for v in (25, 50, 75)),
+      "alliance bar: scripted GUI over the category 'Альянс', 20 segments by ktits_ally_view, 4 tier colours, marks 25/50/75, sprites and PNGs exist", "alliance bar: gui/scripted gui/sprites wrong")
 # course of a puppet, AI
 course_dec = a_dc.split("ktits_ally_course = {")[1].split("ktits_ally_drills")[0] if "ktits_ally_course = {" in a_dc else ""
 check("ktits_ally_course_needed = yes" in course_dec and "ktits_is_kazualia" in course_dec and "has_focus_tree = generic_focus" in a_ef and "uncomplete_national_focus" in a_ef and "uncomplete_children = yes" in a_ef

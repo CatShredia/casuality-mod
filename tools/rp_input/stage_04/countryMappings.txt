@@ -25,5 +25,6 @@
 232;201;216;Z03;Zagotovka3;Zagotovkin3
 214;232;201;Z04;Zagotovka4;Zagotovkin4
 217;201;232;Z05;Zagotovka5;Zagotovkin5
+140;40;60;Z06;Zagotovka6;Zagotovkin6
 120;110;90;FIG;Figariya;Figarsky
 200;215;235;LED;Ledyshka;Ledyshkin

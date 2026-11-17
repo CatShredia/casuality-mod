@@ -11,7 +11,7 @@
 | Climate Tabs, Climate Input | Режим «Use Climate Input Map», цвета распознаются сами | `stage_02/climate.png` |
 | Climate Tabs, River | Открыть подвкладку River и перетащить файл. Кнопки Generate не нажимать | `stage_03/rivers.png` |
 | Civilisation | Topography, Development, Population. Culture и Locations загрузить нельзя | `stage_03b/topography.png`, `development.png`, `population.png` |
-| Areas | Density: Generate Density from Climate. Segments: Target Land Regions 650, Target Sea Regions 240, Generate Segments. Provinces: Land Factor 8 (не влияет), Sea Factor 0.65, Density Effects 0.55, Min Province Size 355, Max Province Count 20000, Generate Provinces. Результат в таблице ниже | нет |
+| Areas | Density: Generate Density from Climate. Segments: Target Land Regions 650, Target Sea Regions 240, Generate Segments. Provinces: значения и результат в таблице ниже, затем Generate Provinces | нет |
 | Strategic Regions | Generate | нет |
 | Countries | Режим solid. Сначала `countryMappings.txt`, затем `countries.png`. Затем Generate state data, Generate country data | `stage_04/countryMappings.txt`, `stage_04/countries.png` |
 | Finalise | Export Complete mod | нет |
