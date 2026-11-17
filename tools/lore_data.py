@@ -76,7 +76,7 @@ STYLES.update(INV.INVENTED_STYLES)
 for _t, _c in INV.INVENTED_COUNTRIES.items():          # Z01..Z05: invented names (docs/lore/Invented-Lore.md), lore cities of docs/lore/Contries-Description.md untouched
     COUNTRY_STYLE[_t] = _c["style"]; LORE[_t] = (_c["capital"], _c["cities"])
 STYLE_DEFAULT = "numbered"     # FIG, Z01..Z05 and other lore countries without data: "<country> <n>" (plan variant 1)
-LORE_RU = {"FIG": "Фигария", "LED": "Ледышка", "Z01": "Заготовка-1", "Z02": "Заготовка-2", "Z03": "Заготовка-3", "Z04": "Заготовка-4", "Z05": "Заготовка-5", "CEY": "Цейлон"}
+LORE_RU = {"FIG": "Фигария", "LED": "Ледышка", "Z01": "Заготовка-1", "Z02": "Заготовка-2", "Z03": "Заготовка-3", "Z04": "Заготовка-4", "Z05": "Заготовка-5", "Z06": "Заготовка-6", "CEY": "Цейлон"}
 
 TR = dict(zip("абвгдеёжзийклмнопрстуфхцчшщъыьэюя", ["a", "b", "v", "g", "d", "e", "yo", "zh", "z", "i", "y", "k", "l", "m", "n", "o", "p", "r", "s", "t", "u", "f", "kh", "ts", "ch", "sh", "shch", "", "y", "", "e", "yu", "ya"]))
 def translit(s):

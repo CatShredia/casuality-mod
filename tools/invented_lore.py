@@ -7,7 +7,7 @@ Review list with reasons: docs/lore/Invented-Lore.md.
 # "самое плотное население у Ирракии, Кытая и Чёрной Республики", "Челяба - промышленный гигант", "Ледышка: населения почти нет"
 INVENTED_POP = {
     "ZLD": 18, "ADL": 5, "SVA": 20, "FDP": 35, "DMK": 25, "CLB": 55, "MGN": 3, "KTY": 450, "CEY": 8,
-    "FIG": 2, "LED": 0.05, "Z01": 12, "Z02": 10, "Z03": 8, "Z04": 14, "Z05": 9,
+    "FIG": 2, "LED": 0.05, "Z01": 12, "Z02": 10, "Z03": 8, "Z04": 14, "Z05": 4, "Z06": 5,   # Z05 + Z06 = 9 (the old Iberadia, split into two)
 }
 
 # rulers: lore tag -> (name, ideology group, text, vanilla sub-ideology). Names follow each country's naming style from docs/lore/Contries-Description.md.
@@ -20,7 +20,19 @@ INVENTED_RULERS = {
     "KTY": ("Маршал Чжао Лун-Тай", "neutrality", "военная диктатура (придумано)", "despotism"),
     "BLK": ("Премьер Фукусава Мацуяма", "neutrality", "милитаризм (придумано)", "japan_militarism_ideology"),
     "CEY": ("Король Нанда Сурия Цейлонский", "neutrality", "марионетка Бриттана (придумано)", "despotism"),
+    "Z05": ("Президент Исабель Монтеверде-Рио", "democratic", "республика с выборным президентом (придумано)", "liberalism"),
+    "Z06": ("Каудильо Эмилиано Бельтран-Арагон", "fascism", "каудильизм (придумано)", "falangism"),
 }
+
+# start politics that replace the exported ones (applied by make_rulers.py after the ruling party is set): lore tag -> (last election, elections allowed, popularities)
+# Z05 became a democracy: sensible democratic start like the other democracies of the mod (docs/lore/Invented-Lore.md)
+INVENTED_POLITICS = {
+    "Z05": ("1934.5.12", "yes", {"democratic": 47, "fascism": 12, "communism": 20, "neutrality": 21}),
+}
+
+# Z06 is the eastern part of the old Iberadia, split off AFTER the RandomParadox export by tools/make_iberia_split.py (docs/lore/Invented-Lore.md)
+# new mod tag, parent mod-tag lore (Z05), colour (also in tools/rp_input/stage_04/countryMappings.txt), states of the eastern landmass are found by adjacency
+SPLIT_OFF = {"lore": "Z06", "tag": "ARA", "parent_lore": "Z05", "color": (140, 40, 60), "file": "Aragonia", "english": "Aragonia"}
 
 # terrain positions (pixel coordinates of the 4608x2816 map; a province is selected by its centroid)
 NASHI_BOLOTA = {"country": "SVS", "x": (2750, 3450), "y": (850, 1200), "from": ("plains", "forest", "hills"), "to": "marsh"}
@@ -41,7 +53,9 @@ INVENTED_COUNTRIES = {
     "Z04": {"name": "Македорея", "style": "z04_hellenic", "capital": "Фессалиополь",
             "cities": ["Афинополь", "Коринф-Хан", "Патрас-Нова", "Лариссград", "Янинакала", "Тривизонд"]},        # греко-кавказско-византийская
     "Z05": {"name": "Иберадия", "style": "z05_iberia", "capital": "Сан-Мадриго",
-            "cities": ["Альсевилья", "Валенсария", "Барселуна", "Толедо-Нова", "Сарагоса-Кала", "Гранадир"]},     # испано-мавро-латиноамериканская
+            "cities": ["Альсевилья", "Валенсария", "Барселуна", "Толедо-Нова", "Гранадир"]},     # испано-мавро-латиноамериканская (западная часть, полуостров южнее Соевой)
+    "Z06": {"name": "Арагония", "style": "z06_aragon", "capital": "Сарагоса-Кала",
+            "cities": ["Уэска-Мар", "Теруэльград", "Калатаюд", "Монсон-Нова", "Тарасона-Кала", "Бельчите"]},    # восточная часть бывшей Иберадии, у Тямовского рейха
 }
 INVENTED_STYLES = {
     "z01_adria": (["Бело", "Сан", "Порто", "Кастель", "Ново", "Лидо", "Мали", "Вело", "Рива", "Бук", "Дубро", "Мар"],
@@ -54,4 +68,6 @@ INVENTED_STYLES = {
                      ["ополь", "ида", "ика", "ини", "ос", "кала", "ианти", "хори", "аки", "ата"]),
     "z05_iberia": (["Аль", "Валь", "Сан", "Санта", "Толе", "Гран", "Кастель", "Вилья", "Монте", "Ла", "Рио", "Пуэр"],
                    ["севилья", "ада", "ария", "уна", "дор", "оса", "брава", "лона", "мора", "кала", "дира"]),
+    "z06_aragon": (["Уэс", "Терув", "Калата", "Бильби", "Таразо", "Монс", "Хака", "Фрага", "Борха", "Альби", "Ла", "Сан"],
+                   ["ка", "юд", "ель", "ара", "он", "оса", "дира", "монте", "вилья", "хар"]),
 }

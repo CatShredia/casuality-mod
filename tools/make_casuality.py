@@ -13,7 +13,7 @@ import argparse, re
 from pathlib import Path
 from PIL import Image
 import lore_data as L
-from make_splits import SPLITS  # parents of releasable countries K01-K35 = "big" countries (docs/countries/Splits.md)
+from make_splits import SPLITS  # parents of releasable countries K01-K34 = "big" countries (docs/countries/Splits.md)
 
 CAS_TT = set()  # scale deltas used in decisions/events -> tooltip loc keys ktits_cas_tt_p10 / ktits_cas_tt_m5
 def tt_key(d):
@@ -99,7 +99,7 @@ w("common/scripted_triggers/ktits_casuality_triggers.txt", f"""ktits_is_kazualia
 	original_tag = {KAZ}
 }}
 
-# big country = has releasable countries K01-K35 (docs/countries/Splits.md)
+# big country = has releasable countries K01-K34 (docs/countries/Splits.md)
 ktits_is_big_country = {{
 	OR = {{
 """ + "".join(f"		original_tag = {b}"+chr(10) for b in BIG) + """	}
@@ -623,7 +623,7 @@ w("common/decisions/ktits_casuality_kaz.txt", """ktits_casuality_kaz_category = 
 
 # ---- return of conquered lands on the fall (author's rule, docs/global_mechanics/Casuality-Mechanic.md) ----
 # tags checked in order: a state that is a core of several countries goes to the first one (deterministic, INVENTED choice).
-# Kazualia and the parts K01-K35 are skipped (the parts are handled by ktits_split_on_fall).
+# Kazualia and the parts K01-K34 are skipped (the parts are handled by ktits_split_on_fall).
 RET_TAGS = [t for t in sorted(info["tags"]) if t != KAZ and not re.fullmatch(r"K\d\d", t)]
 ret = ("# called in the immediate block of ktits_casuality.1 (scope = the falling country): every owned state that is not a core of it\n"
        "# but is a core of another country goes to that country; a non-existing country is released first (release = TAG as in vanilla common/decisions/YUG.txt)\n"
