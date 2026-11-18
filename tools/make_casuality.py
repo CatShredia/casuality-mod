@@ -95,8 +95,10 @@ RULE_START = rule_opt_effects("\t\t", lambda s, m: f"set_variable = {{ var = kti
 RULE_MULT = rule_opt_effects("\t\t", lambda s, m: f"multiply_variable = {{ var = ktits_cas_ai_chance value = {m} }}" if m != 1 else "")
 
 # ---- triggers / effects ----
+# Kazualia stays "Kazualia" until the event "Индустриальное общество" (flag ktits_kaz_industrial); after it the country lives by the scale of the other countries (docs/mechanics/Kazualia.md, 5.1)
 w("common/scripted_triggers/ktits_casuality_triggers.txt", f"""ktits_is_kazualia = {{
 	original_tag = {KAZ}
+	NOT = {{ has_country_flag = ktits_kaz_industrial }}
 }}
 
 # big country = has releasable countries K01-K34 (docs/countries/Splits.md)

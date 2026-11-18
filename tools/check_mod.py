@@ -392,7 +392,7 @@ check(ev_ids == ["ktits_edu.1", "ktits_edu.2", "ktits_edu.3"] and ed_ev.count("{
       "cooperation: events 1-3 (offer with accept/refuse, answers: spirit / refusal flag) with AI conditions (opinion, rival faction) and ru loc", "cooperation: events or their loc wrong")
 # cooperation treaty: spirits per tag, per-pair flags, monthly +2/+1, science bar
 import itertools
-tags_all = sorted(set(re.findall(r"(?m)^(\w{3})\s*=\s*\"countries", "".join(f_.read_text(encoding="utf-8", errors="ignore") for f_ in (M / "common/country_tags").glob("*.txt")))))
+tags_all = sorted(set(re.findall(r"(?m)^(\w{3})\s*=\s*\"countries", "".join(f_.read_text(encoding="utf-8", errors="ignore") for f_ in (M / "common/country_tags").glob("0[23]_*.txt")))))   # 04_ktits_kazualia.txt (K35-K41) is not part of the education cooperation (make_education.py)
 ed_cfx = (M / "common/scripted_effects/ktits_education_coop_effects.txt").read_text(encoding="utf-8") if (M / "common/scripted_effects/ktits_education_coop_effects.txt").exists() else ""
 ed_ideas = (M / "common/ideas/ktits_education.txt").read_text(encoding="utf-8")
 check(len(tags_all) >= 60 and all(f"	ktits_edu_coop_{x} = {{" in ed_ideas and ed_loc.get(f"ktits_edu_coop_{x}", "").strip() and ed_loc.get(f"ktits_edu_coop_{x}_desc", "").strip() for x in tags_all),
@@ -602,12 +602,42 @@ tpl_k = (M / "common/factions/templates/ktits_alliance_templates.txt").read_text
 check("is_major = yes" in can_f and f"num_of_factories > {AL.FOUND_FACTORIES - 1}" in can_f and AL.FOUND_FACTORIES == 30 and "ktits_ally_barred = yes" in can_f and "is_subject = no" in can_f and "is_in_faction = no" in can_f and al_ru.get("ktits_ally_can_found_tt"),
       "alliances: founding is allowed to major powers and to medium ones (30+ factories), outside an alliance, not a subject, no Eternal Neutrality; own tooltip", "alliances: ktits_ally_can_found is wrong")
 check(re.search(r"visible = [{]\s*ktits_ally_can_found = yes\s*[}]", tpl_k) and "name = ktits_alliance_template_name" in tpl_k and al_ru.get("ktits_alliance_template_name")
-      and not (M / "common/scripted_diplomatic_actions/ktits_alliance_actions.txt").exists() and "ktits_ally_create" not in a_ef and "can_create_factions" not in a_ef
+      and not (M / "common/scripted_diplomatic_actions/ktits_alliance_actions.txt").exists() and "ktits_ally_create" not in a_ef
       and "ktits_ally_invite = {" not in a_dc and "ktits_ally_found" not in a_dc and all(f"ktits_alliance.{x}" not in a_ev for x in (13,)) and "ktits_ally_prop_pending" not in a_ef,
       "alliances: founding goes through the vanilla \"create faction\" button (our template visible only for ktits_ally_can_found, the player types the name); the own diplomatic action, event 13, the rule toggling and the decision 'Пригласить' are gone", "alliances: founding through the vanilla button is wrong")
+al_rule = re.search(r"ktits_ally_allow_found = [{][\s\S]*?\n[}]", a_ef)
+al_rule = al_rule.group(0) if al_rule else ""
+al_mon = re.search(r"ktits_ally_monthly = [{][\s\S]*?\n[}]", a_ef)
+al_mon = al_mon.group(0) if al_mon else ""
+check("can_create_factions = yes" in al_rule and "can_create_factions = no" not in a_ef and a_ef.count("ktits_ally_allow_found = yes") >= 2 and "ktits_ally_allow_found = yes" in al_mon
+      and "any_faction_member" not in a_ef,
+      "alliances: every country gets the rule can_create_factions on startup and monthly (off by default in the engine); the template decides who may found; no any_faction_member (not a trigger)",
+      "alliances: the rule can_create_factions is not given or any_faction_member is used")
 
 check("ktits_ally_purge_barred = {" in a_ef and "leave_faction = yes" in a_ef.split("ktits_ally_purge_barred = {")[1].split("\n}\n")[0] and a_ef.count("ktits_ally_purge_barred = yes") >= 2,
       "alliances: a barred country (Eternal Neutrality / Baku Powder Keg) is removed from any alliance on startup and monthly (the engine adds subjects to the overlord faction by itself)", "alliances: ktits_ally_purge_barred is missing")
+# author's rule: a Casuality country is never in an alliance led by a non-Casuality leader (also a puppet; leaves after a change of ideology)
+pk = re.search(r"ktits_ally_purge_kaz = [{][\s\S]*?\n[}]", a_ef)
+pk = pk.group(0) if pk else ""
+kx = re.search(r"ktits_ally_kaz_excluded = [{][\s\S]*?\n[}]", a_tr)
+kx = kx.group(0) if kx else ""
+sy = re.search(r"ktits_ally_sync_subjects = [{][\s\S]*?\n[}]", a_ef)
+sy = sy.group(0) if sy else ""
+check("has_government = casuality" in kx and "is_faction_leader = yes" in kx and "NOT = { has_government = casuality }" in kx and "leave_faction = yes" in pk and "ktits_ally_kaz_excluded = yes" in pk
+      and a_ef.count("ktits_ally_purge_kaz = yes") >= 2 and "ktits_ally_purge_kaz = yes" in al_mon and al_mon.find("ktits_ally_purge_kaz = yes") < al_mon.find("ktits_ally_sync_subjects = yes")
+      and "has_government = casuality" in sy.split("add_to_faction")[0].split("ktits_ally_barred = yes")[-1]
+      and "ktits_ally_kaz_ok = yes" in a_tr.split("ktits_ally_invite_match = {")[1].split("\n}\n")[0] and "ktits_ally_kaz_ok = {" in a_tr,
+      "alliances: Casuality never joins and is not kept in an alliance with a non-Casuality leader (invitation, puppet sync, monthly purge before the sync)", "alliances: Casuality exclusion rule missing")
+# every vanilla faction template is invisible (a template without a visible block is offered to everybody by the vanilla button)
+tpl_bad = []
+for tf in sorted((M / "common/factions/templates").glob("*.txt")):
+    if tf.name == "ktits_alliance_templates.txt": continue
+    tt = tf.read_text(encoding="utf-8-sig")
+    for tm in re.finditer(r"(?m)^([A-Za-z_]\w*)\s*=\s*\{[^\n]*\n", tt):
+        if not re.search(r"(?m)^[ \t]*visible\s*=\s*\{\s*always = no", tt[tm.end():AL.block_end(tt, tm.start())]): tpl_bad.append(tm.group(1))
+tpl_vanilla = {f.name for f in AL.VANILLA_TEMPLATES.glob("*.txt")} if AL.VANILLA_TEMPLATES.exists() else set()
+check(not tpl_bad and tpl_vanilla <= {f.name for f in (M / "common/factions/templates").glob("*.txt")},
+      "alliances: every vanilla faction template (all vanilla files are copied into the mod) has visible = always no, so only ktits_alliance_template is offered by the vanilla button", f"alliances: templates visible to everybody: {tpl_bad[:5]} (run make_alliances.py)")
 # vanilla invitation "Пригласить в альянс" with our conditions (leader, free independent target, same ideology group or common enemy, world tension)
 ce = re.search(r"ktits_ally_common_enemy = [{][\s\S]*?\n[}]", a_tr)
 ce = ce.group(0) if ce else ""
@@ -651,7 +681,7 @@ split_ok = split_ok and "elections_allowed = yes" in h5 and f'last_election = "{
 split_ok = split_ok and f'oob = "{z6}_1936"' in h6 and (z5 + "_") not in h6
 cn6 = load_loc(M / "localisation/russian/countries_l_russian.yml")
 split_ok = split_ok and all(cn6.get(f"{z6}_{g}") == INV.INVENTED_COUNTRIES["Z06"]["name"] for g in ("democratic", "fascism", "communism", "neutrality", "casuality", "theology")) and cn6.get(f"{z5}_democratic") == INV.INVENTED_COUNTRIES["Z05"]["name"]
-split_ok = split_ok and "EAG" not in __import__("make_splits").SPLITS and not (M / "common/countries/K35.txt").exists() and len(re.findall(r"K\d\d =", (M / "common/country_tags/03_ktits_splits.txt").read_text(encoding="utf-8"))) == 34
+split_ok = split_ok and "EAG" not in __import__("make_splits").SPLITS and len(re.findall(r"K\d\d =", (M / "common/country_tags/03_ktits_splits.txt").read_text(encoding="utf-8"))) == 34
 check(split_ok, "iberia: the old Iberadia is two countries: Z05 Иберадия (7 western states, democracy, elections allowed, own ruler) and Z06 Арагония (10 eastern states with 145, own tag, colour, flag, oob, characters, names); no K34 of the old Iberadia, K01-K34 contiguous", "iberia: the split of Iberadia is incomplete or inconsistent")
 rp_ev = (M / "events/rpx_faction_alignment.txt")
 rp_ev = rp_ev.read_text(encoding="utf-8-sig") if rp_ev.exists() else ""
@@ -691,7 +721,7 @@ check("ktits_ally_coop_p5 = yes" in nc_blk and "id = ktits_alliance.14" in nc_bl
       "alliances: a newcomer gives the leader +5, the first one gives the founder 'Альянс основан' (14), the next ones the news 'Новый союзник' (8) to the members", "alliances: newcomer effects wrong")
 check("dismantle_faction = yes" in ds_blk and "ktits_ally_clear_spirits = yes" in ds_blk and "ktits_ally_dissolve_zero = yes" in tr_blk and "ktits_ally_dissolve_lone = yes" in tr_blk
       and "NOT = { ktits_is_kazualia = yes }" in tr_blk and "value = 1 compare = less_than" in tr_blk and "NOT = { num_faction_members > 1 }" in tr_blk and "id = ktits_alliance.15" in a_ef and "id = ktits_alliance.16" in a_ef
-      and a_ef.count("set_country_flag = ktits_ally_start_leader") == 3 and re.search(r"value = %d \}\n\t\t\tset_variable = \{ var = ktits_ally_size" % AL.START_COOP, st_ef) and "value = 100 }" in st_ef
+      and "ktits_ally_start_leader" not in a_ef and "create_faction" not in st_ef and "add_to_faction" not in st_ef
       and all(al_ru.get(f"ktits_alliance.{n}.{x}") and al_en.get(f"ktits_alliance.{n}.{x}") for n in (15, 16) for x in ("t", "d", "a")),
       "alliances: scale 0 -> the alliance dissolves itself (not Kazualia), a lone alliance after 60 days; dismantle_faction; events 15 / 16 with texts", "alliances: dissolving rules wrong")
 # scale bar over the category
@@ -710,6 +740,109 @@ foc_gen = (M / "common/national_focus/generic.txt").read_text(encoding="utf-8-si
 check("ktits_ai_ally_locked = {" in a_tr and foc_gen.count("ktits_ai_ally_locked = yes") >= 1 + 10 + 14, f"alliances: AI weight 0 in the politics branch for other ideology groups and for the change focus while in an alliance with an independent member ({foc_gen.count('ktits_ai_ally_locked = yes')} places)", "alliances: AI lock missing in the generic focus tree")
 
 w = {"PASS": 0, "WARN": 0, "FAIL": 0}
+
+# ---- Kazualia (tools/make_kazualia.py; docs/mechanics/Kazualia.md, docs/focuses/Kazualia-Focus-Tree.md) ----
+def _kz(rel): return (M / rel).read_bytes().decode("utf-8-sig", errors="replace")
+kz_ft, kz_ef, kz_dec = _kz("common/national_focus/ktits_kazualia.txt"), _kz("common/scripted_effects/ktits_kazualia_effects.txt"), _kz("common/decisions/ktits_kazualia_decisions.txt")
+kz_ev, kz_id, kz_dm, kz_cat = _kz("events/ktits_kazualia_events.txt"), _kz("common/ideas/ktits_kazualia_ideas.txt"), _kz("common/dynamic_modifiers/ktits_kazualia_dynamic_modifiers.txt"), _kz("common/decisions/categories/ktits_kazualia_categories.txt")
+kz_loc = load_loc(M / "localisation/russian/ktits_kazualia_l_russian.yml")
+kz_en = load_loc(M / "localisation/english/ktits_kazualia_l_english.yml")
+kz_all = kz_ft + kz_ef + kz_dec + kz_ev + kz_id + kz_dm + kz_cat + _kz("common/scripted_effects/ktits_kazualia_gift_effects.txt")
+check(all(t.count("{") == t.count("}") for t in (kz_ft, kz_ef, kz_dec, kz_ev, kz_id, kz_dm, kz_cat)), "kazualia: braces balanced in all generated files", "kazualia: unbalanced braces in a generated file")
+kz_foc = re.findall(r"\n\tfocus = \{\n\t\tid = (\w+)", kz_ft)
+check(len(kz_foc) == 64 and len(set(kz_foc)) == 64 and all(kz_loc.get(f) and kz_loc.get(f + "_desc") and kz_en.get(f + "_desc") for f in kz_foc) and re.search(r"original_tag = " + {v: k for k, v in tag2lore.items()}["CSL"] + r"\b", kz_ft) and "factor = 0" in kz_ft,
+      "kazualia: the focus tree ktits_kazualia_focus (only for Kazualia) has 64 focuses, each with a name and a lore description in ru and en", "kazualia: focus tree count / texts / tag gate wrong")
+pre_ids = set(re.findall(r"focus = (ktits_kaz_\w+)", kz_ft))
+check(pre_ids <= set(kz_foc), "kazualia: every prerequisite / exclusive focus exists", f"kazualia: unknown focus references {sorted(pre_ids - set(kz_foc))[:5]}")
+# focus bodies: reward (the delayed ones through ktits_kaz_rw_<id>), x / y, ai weight
+_kzb = {}
+for _m in re.finditer(r"\n\tfocus = \{\n\t\tid = ktits_kaz_(\w+)\n(.*?)\n\t\}\n", kz_ft, re.S):
+    _b = _m.group(2)
+    _rw = re.search(r"ktits_kaz_rw_(\w+) = yes", _b)
+    if _rw:
+        _e = re.search(r"\nktits_kaz_rw_" + _rw.group(1) + r" = \{\n(.*?)\n\}\n", kz_ef, re.S)
+        _body = _e.group(1) if _e else ""
+    else:
+        _body = _b.split("completion_reward", 1)[-1]
+    _xy = (int(re.search(r"\n\t\tx = (-?\d+)", _b).group(1)), int(re.search(r"\n\t\ty = (-?\d+)", _b).group(1)))
+    _kzb[_m.group(1)] = (_body, _xy, int(re.search(r"factor = (\d+)", _b.split("ai_will_do", 1)[1]).group(1)))
+def _real(body):
+    lines = [l.strip() for l in body.splitlines() if l.strip() and l.strip() not in ("{", "}")]
+    return [l for l in lines if not re.match(r"(set_country_flag|custom_effect_tooltip|completion_reward|hidden_effect = \{$)", l)]
+kz_stub = [k for k, v in _kzb.items() if not _real(v[0])]
+check(len(_kzb) == 64 and not kz_stub, "kazualia: every focus has a real effect (not only flags / tooltips)", f"kazualia: focuses without a real effect {kz_stub}")
+_xys = [v[1] for v in _kzb.values()]
+_clash = [(a_, b_) for n_, a_ in enumerate(_xys) for b_ in _xys[n_ + 1:] if a_[1] == b_[1] and abs(a_[0] - b_[0]) < 2]
+check(len(_xys) == 64 and not _clash and max(x for x, _y in _xys) <= 70 and max(y for _x, y in _xys) <= 9, "kazualia: focus layout is compact (x <= 70, y <= 9) with no overlaps (no two focuses closer than 2 on one row)", f"kazualia: overlapping focuses {_clash[:3]}")
+_pol = [k for k in _kzb if k.split("_")[0] in ("g", "n", "r", "c", "z") or k in ("wake", "sleep", "hum", "red")]
+_mil = [k for k in _kzb if k.startswith("a_")]
+check(min(_kzb[k][2] for k in _pol) > max(_kzb[k][2] for k in _mil) and _kzb["wake"][2] >= 1000 and _kzb["sleep"][2] > _kzb["hum"][2] > _kzb["red"][2] and _kzb["g_root"][2] > _kzb["n_root"][2],
+      "kazualia: AI weights: the political branches (weight >= 100, the root 1000) are above the army branch (3); Casual path > Reform > Communist; Great Kazualia > Neutrality", "kazualia: AI weights of the politics are not above the army")
+check("ktits_kaz_g_root" in kz_ft and "mutually_exclusive = { focus = ktits_kaz_n_root }" in kz_ft and "mutually_exclusive = { focus = ktits_kaz_g_root }" in kz_ft and "ktits_kaz_f_outer" in _kzb["g_border"][0]
+      and "ktits_kaz_b_crown" in kz_ft and "has_country_flag = ktits_kaz_reformist" in kz_ft.split("id = ktits_kaz_b_crown")[1].split("ai_will_do")[0]
+      and "NOT = { has_government = casuality }" in kz_ft.split("id = ktits_kaz_b_sea")[1].split("ai_will_do")[0] and "create_faction_from_template = ktits_alliance_template" in _kzb["b_sea"][0] and "create_faction = " not in kz_ft,
+      "kazualia: Neutrality and Great Kazualia are mutually exclusive; «Болото не знает границ» opens the outer decisions; «Под крылом короны» only on the Reform path; «Морской союз» only for a non-Casuality government, through the alliance template", "kazualia: Neutrality / Great Kazualia / British branch gating wrong")
+kz_ev_ids = set(re.findall(r"id = (ktits_kazualia\.\d+)", kz_ev))
+kz_refs = set(re.findall(r"id = (ktits_kazualia\.\d+)", kz_ft + kz_ef + kz_dec + _kz("common/scripted_effects/ktits_kazualia_gift_effects.txt") + _kz("common/on_actions/ktits_kazualia_on_actions.txt"))) | set(re.findall(r"id = (ktits_kazualia\.\d+)", kz_ev.split("country_event = {\n\tid = ktits_kazualia.101")[0]))
+check(kz_refs <= kz_ev_ids and all(kz_loc.get(f"ktits_kazualia.{n}.{x}") for n in (1, 2, 3, 4) for x in ("t", "d", "a")) and "Утро в Ставке" in kz_loc.get("ktits_kazualia.1.t", "") and "Ещё пять минут" in kz_loc.get("ktits_kazualia.1.a", ""),
+      "kazualia: start event «Утро в Ставке» (fired on startup only for Kazualia) and the events 2-4 with texts; every event reference exists", "kazualia: events missing or without text")
+kz_vars = re.findall(r"= (ktits_kz_\w+)", kz_dm)
+check(len(kz_vars) == 14 and all(f"set_variable = {{ var = {v} value = ktits_kaz_inner }}" in kz_ef for v in kz_vars) and "ktits_kaz_reformist" in kz_ef and "value = 50" in kz_ef and "ktits_kaz_inner_dm" in kz_ef,
+      "kazualia: dynamic modifier of Internal Casuality (14 modifiers from variables, start 50, stronger debuffs on the Reform path)", "kazualia: Internal Casuality modifier / variables wrong")
+check(all(f"ktits_kaz_gift_{k}" in kz_dec and kz_loc.get(f"ktits_kaz_gift_{k}_desc") for k in ("militia", "guard", "guns", "cannons", "vision", "built", "grace", "mission")) and "ktits_kaz_faith" in kz_ef and "state_population_k" in kz_ef and "clamp_variable = { var = ktits_kaz_faith min = 0 max = 1000 }" in kz_ef,
+      "kazualia: Casual Faith (monthly from the population of core states, 0-1000) and the 8 decisions «Дары болот» with lore texts", "kazualia: Faith / gifts missing")
+check("army_core_attack_factor = 0.4" in kz_id and "army_non_core_attack_factor = -0.2" in kz_id and "army_non_core_defence_factor = -0.1" in kz_id and "swap_ideas" in kz_ft and "ktits_durm_check" in kz_ef and "has_government = casuality" in kz_ef,
+      "kazualia: spirit «Дурманище» (core attack +0.40, foreign -0.20 / -0.10) for casuality governments, three stages removed by the focuses", "kazualia: Dur spirit wrong")
+kz_cores = re.findall(r"\t(\d+) = \{ add_core_of = PREV \}", kz_ef)
+check(len(kz_cores) >= 5 and all((M / f"history/states/{c}.txt").exists() for c in kz_cores),
+      f"kazualia: cores of Kazualia on {len(kz_cores)} swamp states of Наши Болота (start effect)", "kazualia: swamp cores missing")
+check(all(f"ktits_kaz_ref_{k}" in kz_dec for k in ("drain", "workday", "schools", "horn")) and "ktits_kaz_expel" in kz_dec and "ktits_kaz_accept" in kz_dec and "annex_country" in kz_dec
+      and all(f in kz_id for f in ("ktits_kaz_britt_influence", "ktits_kaz_britt_2", "ktits_kaz_britt_3", "ktits_kaz_crown", "ktits_kaz_sobering")),
+      "kazualia: reforms (4 decisions), British influence (3 levels + Crown and Swamp, «Выгнать клерков»), «Принять в Ставку», «Отрезвление»", "kazualia: reforms / Britt / accept missing")
+kz_late = len(re.findall(r"id = ktits_kazualia\.1\d\d\n\thidden = yes", kz_ev))
+check(kz_late >= 40 and "days = 7 random_days = 23" in kz_ft and "greater_than }" in kz_ft, f"kazualia: lateness above 80 % (50 %, 7-30 days) through {kz_late} hidden delayed events", "kazualia: lateness missing")
+kz_keys = set(re.findall(r"\b(ktits_kaz_[a-z0-9_]+(?:_desc)?)\b", kz_ft + kz_dec + kz_cat))
+kz_miss = sorted(k for k in set(re.findall(r"(?:custom_effect_tooltip|tooltip) = (ktits_kaz_\w+)", kz_all)) if k not in kz_loc)
+check(not kz_miss and not [k for k in kz_loc if not kz_en.get(k) and kz_loc[k]], "kazualia: every tooltip key has a ru text; every ru text has an en one", f"kazualia: missing tooltip texts {kz_miss[:5]}")
+
+# ---- External Casuality, rebels, Наши Болота, civil war (tools/make_kazualia_outer.py) ----
+ko_files = {k: _kz(v) for k, v in {"eff": "common/scripted_effects/ktits_kazualia_outer_effects.txt", "trg": "common/scripted_triggers/ktits_kazualia_outer_triggers.txt",
+            "dec": "common/decisions/ktits_kazualia_outer_decisions.txt", "cat": "common/decisions/categories/ktits_kazualia_outer_categories.txt", "ev": "events/ktits_kazualia_outer_events.txt",
+            "id": "common/ideas/ktits_kazualia_outer_ideas.txt", "oa": "common/on_actions/ktits_kazualia_outer_on_actions.txt", "sg": "common/scripted_guis/ktits_kazualia.txt", "gui": "interface/ktits_kazualia.gui"}.items()}
+ko_loc = load_loc(M / "localisation/russian/ktits_kazualia_outer_l_russian.yml")
+ko_en = load_loc(M / "localisation/english/ktits_kazualia_outer_l_english.yml")
+check(all(t.count("{") == t.count("}") for t in ko_files.values()), "kazualia outer: braces balanced in all generated files", "kazualia outer: unbalanced braces")
+slots = ["K36", "K37", "K38", "K39", "K40", "K41"]
+kt_loc = load_loc(M / "localisation/russian/ktits_kazualia_tags_l_russian.yml")
+tag_file = (M / "common/country_tags/04_ktits_kazualia.txt").read_text(encoding="utf-8")
+check(all(f"{t} = " in tag_file and (M / f"common/countries/{t}.txt").exists() and (M / f"common/characters/{t}.txt").exists() and list((M / "history/countries").glob(f"{t} - *.txt")) and (M / f"gfx/flags/{t}.tga").exists()
+          and all(kt_loc.get(f"{t}{s}") for s in ("", "_DEF", "_ADJ", "_casuality")) for t in ["K35"] + slots),
+      "kazualia outer: tags K35 (Наши Болота) and K36-K41 (rebel slots) have country, history, characters, flag and names; K01-K34 stay in 03_ktits_splits.txt", "kazualia outer: new tags incomplete")
+check(all(f"ktits_kz_make_{t} = {{" in ko_files["eff"] and f"ktits_kz_rebel_setup_{t} = {{" in ko_files["eff"] and f"ktits_kz_rebel_won_{t} = {{" in ko_files["eff"] and f"ktits_kz_civ_won_{t} = {{" in ko_files["eff"] and f"owner = {t}" in ko_files["eff"] for t in slots)
+      and "ktits_kz_rebel_raise = {" in ko_files["eff"] and "ktits_kz_make_K35 = {" in ko_files["eff"] and "ktits_kz_civwar_raise = {" in ko_files["eff"] and "ktits_kz_rebel_lost = {" in ko_files["eff"],
+      "kazualia outer: effects of the Casual rebellion (6 slots: states, setup, won, lost), «Наши Болота» and the civil war", "kazualia outer: rebel effects missing")
+check("add_timed_idea = { idea = ktits_kaz_sobering days = 365 }" in ko_files["eff"] and "set_variable = { var = ktits_casuality value = 0 }" in ko_files["eff"] and "ktits_kz_rebel_size" in ko_files["eff"] and "value = 75 compare = greater_than_or_equals" in ko_files["dec"]
+      and "has_idea = ktits_kaz_sobering" in ko_files["dec"] and "ktits_durmanische_3" in ko_files["eff"] and "ktits_kaz_f_rebel_plus" in ko_files["eff"] and "has_stability > 0.6" in ko_files["eff"],
+      "kazualia outer: rebellion rules (threshold 75, strength by scale / stability / Internal Casuality, lost = scale 0 + «Отрезвление» for 365 days and a ban, no Dur debuff for rebels)", "kazualia outer: rebellion rules wrong")
+check(all(k in ko_files["dec"] for k in ("ktits_kaz_rebel =", "ktits_kaz_wait =", "ktits_kaz_unwait =", "ktits_kaz_support =", "ktits_sov_buffer =", "ktits_kaz_em_ambush =", "ktits_kaz_em_fog =", "ktits_kaz_em_call =", "ktits_kaz_in_nap =", "ktits_kaz_in_feast ="))
+      and all(ko_loc.get(f"{d}_desc") for d in ("ktits_kaz_rebel", "ktits_kaz_wait", "ktits_kaz_unwait", "ktits_kaz_support", "ktits_sov_buffer", "ktits_kaz_em_ambush", "ktits_kaz_em_fog", "ktits_kaz_em_call", "ktits_kaz_in_nap", "ktits_kaz_in_feast")),
+      "kazualia outer: decisions (rebellion, wait, unwait, support, «Буфер на болотах», 3 emergency, 2 inner) with lore descriptions", "kazualia outer: decisions / descriptions missing")
+check("scripted_gui = ktits_kin_ui" in ko_files["cat"] and "scripted_gui = ktits_kout_ui" in ko_files["cat"] and "has_country_flag = ktits_kaz_f_outer" in ko_files["cat"]
+      and "check_variable = { var = ktits_kaz_inner value = 100" in ko_files["sg"] and "check_variable = { var = ktits_kaz_outer value = 100" in ko_files["sg"]
+      and all(f"ktits_k{p}_seg_{i}_visible" in ko_files["sg"] and f'name = "ktits_k{p}_seg_{i}"' in ko_files["gui"] for p in ("in", "out") for i in range(1, 21))
+      and "ktits_kin_ui_window" in ko_files["gui"] and "ktits_kout_ui_window" in ko_files["gui"] and "GFX_ktits_cas_seg_4" in ko_files["gui"] and ko_loc.get("ktits_kin_bar_label") and ko_loc.get("ktits_kout_bar_label"),
+      "kazualia outer: separate categories «Внутренняя Казуальность» and «Внешняя Казуальность» (opened by the focus «Болото не знает границ») with graphic scale bars (20 segments each)", "kazualia outer: categories / scale bars wrong")
+ko_ids = set(re.findall(r"id = (ktits_kz_out\.\d+)", ko_files["ev"]))
+ko_ref = set(re.findall(r"id = (ktits_kz_out\.\d+)", ko_files["eff"] + ko_files["dec"]))
+check(ko_ref <= ko_ids and all(ko_loc.get(f"{e}.{x}") for e in ko_ids for x in ("t", "d", "a")) and "ktits_kazualia_outer_on_actions" and "ktits_kz_rebel_monthly = yes" in ko_files["oa"] and "ktits_kaz_outer_update = yes" in ko_files["oa"] and "ktits_kz_civwar_check = yes" in ko_files["oa"],
+      f"kazualia outer: {len(ko_ids)} events with texts, every event reference exists, monthly on_action", "kazualia outer: events missing")
+check("NOT = { has_country_flag = ktits_kaz_industrial }" in (M / "common/scripted_triggers/ktits_casuality_triggers.txt").read_text(encoding="utf-8") and "ktits_casuality_ai_start = yes" in kz_ev,
+      "kazualia: after «Индустриальное общество» ktits_is_kazualia is false, so Kazualia is included in the scale of the other countries (costs and AI start are set by the event)", "kazualia: the scale after the industrial event is not wired")
+check("ktits_kaz_edu_open" in (M / "common/scripted_effects/ktits_education_effects.txt").read_text(encoding="utf-8", errors="ignore") if (M / "common/scripted_effects/ktits_education_effects.txt").exists() else any("ktits_kaz_edu_open" in f.read_text(encoding="utf-8", errors="ignore") for f in (M / "common/scripted_effects").glob("*education*.txt")),
+      "kazualia: after the focus / reform «Школы вместо Ставок» (flag ktits_kaz_edu_open) the education update no longer zeroes the specialists of Kazualia", "kazualia: specialists of Kazualia are still zeroed")
+ko_tt = sorted(k for k in set(re.findall(r"(?:custom_effect_tooltip|tooltip) = (ktits_k\w+)", "".join(ko_files.values()))) if k not in ko_loc and k not in kz_loc)
+check(not ko_tt and not [k for k in ko_loc if not ko_en.get(k) and ko_loc[k]], "kazualia outer: every tooltip key has a ru text; every ru text has an en one", f"kazualia outer: missing texts {ko_tt[:6]}")
+
 for lvl, msg in res:
     w[lvl] += 1
     print(f"[{lvl}] {msg}")
