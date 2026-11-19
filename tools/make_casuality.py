@@ -678,6 +678,9 @@ country_event = {{
 			# conquered lands go back to their original countries (docs/global_mechanics/Casuality-Mechanic.md); must run before the split of big countries
 			ktits_return_lands = yes
 			set_politics = {{ ruling_party = casuality }}
+			# author's rule (docs/mechanics/Kazualia.md 2.0): the casual economy law and the vanilla conscription law
+			add_ideas = ktits_eco_casual_society
+			add_ideas = disarmed_nation
 			add_popularity = {{ ideology = casuality popularity = 0.5 }}
 			# focus «Под крылом Казуалии»: the country keeps its lands (no break-up into Kxx parts)
 			if = {{

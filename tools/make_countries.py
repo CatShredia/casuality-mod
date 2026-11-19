@@ -76,6 +76,18 @@ for tag in sorted(info["tags"]):
     elif lt not in (None, "CEY"):
         nocap.append(tag)
     rows.append((tag, lt or "?", loc_name(lt) or "", sid or ""))
+# start puppets of Brittany (lore: colonies Irrakia, Irakikkistan, Ceylon are Brittany's puppets at the start); vanilla syntax `puppet = TAG` in the overlord's history (ENG - Britain.txt)
+lore2tag_ = {lt: t for t, lt in tag2lore.items()}
+PUP_BEGIN, PUP_END = "# ktits start puppets begin\n", "# ktits start puppets end\n"
+ov = lore2tag_.get("BRT"); pups = [lore2tag_[k] for k in ("IRR", "IRK", "CEY") if k in lore2tag_]
+fo = glob.glob(str(M / "history/countries" / f"{ov} - *.txt")) if ov else []
+if fo and pups:
+    f = Path(fo[0]); raw = f.read_bytes(); bom = raw[:3] == b"\xef\xbb\xbf"
+    t = raw.decode("utf-8-sig")
+    t = re.sub(re.escape(PUP_BEGIN) + r".*?" + re.escape(PUP_END), "", t, flags=re.S)
+    t = t.rstrip("\n") + "\n\n" + PUP_BEGIN + "".join(f"puppet = {x}\n" for x in pups) + PUP_END
+    f.write_bytes((b"\xef\xbb\xbf" if bom else b"") + t.encode("utf-8"))
+    print(f"start puppets of {ov}: {pups}")
 rep = L.REPO / "no_commit/temp/countries_report.csv"
 with open(rep, "w", newline="", encoding="utf-8-sig") as f:
     w = csv.writer(f, delimiter=";")

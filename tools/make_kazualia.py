@@ -73,9 +73,70 @@ _vp = re.findall(r"victory_points\s*=\s*\{\s*(\d+)\s+(\d+)", (M / "history/state
 CAP_PROV = int(max(_vp, key=lambda v: int(v[1]))[0]) if _vp else info["states"][KAZ_CAP_STATE]["provs"][0]
 print(f"kazualia: swamp states of Наши Болота = {swamp_ids}; swamp states of Kazualia = {kaz_swamp}; capital province {CAP_PROV}, capital state {KAZ_CAP_STATE}")
 
+# ---------------- no railways in Kazualia (author): cut out of map/railways.txt, supply nodes removed from map/supply_nodes.txt ----------------
+# The files are written by the RandomParadox export. Row: "level count province..." (railways), "level province" (supply nodes). A copy of the export is kept in
+# no_commit/temp/backup_railways/; if the mod file still has Kazualia rails (fresh export) the copy is refreshed, otherwise the step starts from the copy (idempotent).
+KAZ_PROVS = {p_ for sid in kaz_state_terr for p_ in info["states"][sid]["provs"]}
+RWBK = L.REPO / "no_commit/temp/backup_railways"; RWBK.mkdir(parents=True, exist_ok=True)
+def _rw_has_kaz(txt):
+    return any(set(map(int, l.split()[2:])) & KAZ_PROVS for l in txt.splitlines() if len(l.split()) > 2)
+def _sn_has_kaz(txt):
+    return any(len(l.split()) == 2 and int(l.split()[1]) in KAZ_PROVS and int(l.split()[1]) != CAP_PROV for l in txt.splitlines())
+_rwp, _snp = M / "map/railways.txt", M / "map/supply_nodes.txt"
+for _p in (_rwp, _snp):
+    _b = RWBK / _p.name; _cur = _p.read_text(encoding="utf-8")
+    if not _b.exists() or (_rw_has_kaz(_cur) if _p is _rwp else _sn_has_kaz(_cur)):
+        _b.write_text(_cur, encoding="utf-8", newline="")
+_rw_src = (RWBK / "railways.txt").read_text(encoding="utf-8")
+_out, RW_DROP, RW_CUT, RW_KEEP = [], 0, 0, 0
+for _l in _rw_src.splitlines():
+    _t = _l.split()
+    if len(_t) < 3 or not (set(map(int, _t[2:])) & KAZ_PROVS):
+        _out.append(_l); RW_KEEP += 1; continue
+    _runs, _run = [], []
+    for _pv in _t[2:]:
+        if int(_pv) in KAZ_PROVS:
+            if _run: _runs.append(_run)
+            _run = []
+        else:
+            _run.append(_pv)
+    if _run: _runs.append(_run)
+    _runs = [r_ for r_ in _runs if len(r_) >= 2]
+    for r_ in _runs:
+        _out.append(f"{_t[0]} {len(r_)} " + " ".join(r_) + " ")
+    if _runs: RW_CUT += 1
+    else: RW_DROP += 1
+_rwp.write_text("\n".join(_out) + "\n", encoding="utf-8", newline="")
+_sn_out, SN_DROP, SN_CAP = [], 0, False
+for _l in (RWBK / "supply_nodes.txt").read_text(encoding="utf-8").splitlines():
+    _t = _l.split()
+    if len(_t) == 2 and int(_t[1]) in KAZ_PROVS and int(_t[1]) != CAP_PROV:
+        SN_DROP += 1; continue
+    if len(_t) == 2 and int(_t[1]) == CAP_PROV: SN_CAP = True
+    _sn_out.append(_l)
+_snp.write_text("\n".join(_sn_out) + "\n", encoding="utf-8", newline="")
+print(f"kazualia: railways: rows kept {RW_KEEP}, cut (outer parts kept) {RW_CUT}, dropped entirely {RW_DROP}; supply nodes removed {SN_DROP}, capital node kept: {SN_CAP}")
+
+# ---------------- rail targets for the Reform focuses: nearest land provinces outside Kazualia, by different owners ----------------
+_land = set()
+for _l in open(M / "map/definition.csv", encoding="latin1"):
+    _q = _l.strip().split(";")
+    if len(_q) > 6 and _q[0].isdigit() and _q[4] == "land": _land.add(int(_q[0]))
+_prov_owner = {p_: s_["owner"] for s_ in info["states"].values() for p_ in s_["provs"]}
+def _d(p_):
+    return (cent[p_][0] - cent[CAP_PROV][0]) ** 2 + (cent[p_][1] - cent[CAP_PROV][1]) ** 2
+RAIL_T = []
+for p_ in sorted((x_ for x_ in _land if x_ in _prov_owner and x_ not in KAZ_PROVS and x_ in cent), key=_d):
+    if _prov_owner[p_] not in {o_ for _, o_ in RAIL_T}:
+        RAIL_T.append((p_, _prov_owner[p_]))
+    if len(RAIL_T) == 2: break
+print(f"kazualia: rail targets (province, owner) {RAIL_T}")
+
 # ---------------- constants (documents) ----------------
 DURM_CORE_ATK = 0.40                      # docs/mechanics/Kazualia.md section 1 (the author corrected it to +0.40)
 DURM = [("ktits_durmanische", -0.20, -0.10), ("ktits_durmanische_1", -0.13, -0.07), ("ktits_durmanische_2", -0.06, -0.04), ("ktits_durmanische_3", 0.0, 0.0)]
+# supply buffs of the Durmanische (INVENTED numbers, docs/lore/Invented-Lore.md): compensation for the absence of railways in Kazualia
+DURM_SUP = {"supply_consumption_factor": -0.15, "attrition": -0.10}   # keys: modifiers_documentation.md (army / country)
 DURM_TXT = ("Над болотами стоит сладкий туман. Солдаты, вошедшие в него, сначала замедляют шаг, потом садятся «на минутку», а потом забывают, зачем пришли. "
             "Офицеры кричат, но и их голоса вязнут в тумане. Казуалам он не мешает: для них это просто воздух родины.")
 
@@ -88,8 +149,19 @@ GIFTS = [
     ("vision", "Откровение Архо-Казуала", "Правитель засыпает и во сне видит чертёж. Утром чертёж лежит на столе.", "скидка 100 % на одну исследуемую технологию", 300, 180),
     ("built", "Само построилось", "Утром на пустыре стоит завод. Строителей никто не видел.", "+1 гражданская фабрика в случайном штате", 200, 120),
     ("grace", "Благодать Ставки", "Священный-Архо-Казуал благословляет народ, и всем становится хорошо.", "+100 ПВ, стабильность +5 % на 180 дней", 120, 90),
+    ("trucks", "Грузовики из топи", "Из трясины с чавканьем выезжают грузовики. Они стоят в колонне и ждут, когда кто-нибудь догадается сесть за руль.", "+300 грузовиков (motorized_equipment_1)", 120, 75),
+    ("support", "Походные кухни и палатки", "Над болотом поднимается дымок: кто-то уже варит кашу. Походные кухни пришли раньше, чем армия проголодалась.", "+300 вспомогательной техники (support_equipment_1)", 100, 60),
+    ("atpvo", "Трофейные стволы", "В камышах находят орудия, которые никто не заказывал и никто не терял. Для верности к ним прилагаются и зенитки: небо тоже иногда нужно проспать спокойно.", "+150 ПТ-орудий и +150 ПВО (anti_tank_equipment_1, anti_air_equipment_1)", 150, 90),
+    ("peat", "Болотный газ и руда", "Торф горит, болотный газ шипит, а в тине находят ржавые жилы. Откуда они — спрашивать некогда: пока тепло.", "+15 000 топлива; +10 стали в случайном штате на 365 дней", 130, 120),
     ("mission", "Миссионеры лени", "Проповедники Казуальности уходят в соседние страны.", "шкала Казуальности в выбранной соседней стране +10", 100, 60),
 ]
+# decision groups (colour = icon + colour code of the name): group -> (colour code, ru, en, decision icon)
+GRP = {"army": ("§R", "Армия", "Army", "generic_military"), "equip": ("§Y", "Снаряжение", "Equipment", "generic_army_support"),
+       "econ": ("§G", "Экономика", "Economy", "generic_construction"), "sci": ("§B", "Наука", "Science", "generic_research"),
+       "pol": ("§O", "Политика", "Politics", "generic_political_address")}   # §O (orange) exists in vanilla loc; §P and §M do not
+GIFT_GRP = {"militia": "army", "guard": "army", "guns": "equip", "cannons": "equip", "trucks": "equip", "support": "equip", "atpvo": "equip",
+            "vision": "sci", "built": "econ", "peat": "econ", "grace": "pol", "mission": "pol"}
+GIFT_ICON = {"trucks": "generic_trucks"}
 GIFT_DISC = {"guns": 0.25, "cannons": 0.25}   # focus "Болотные склады" (-25 %)
 
 # Reforms (section 5.1): key, name, lore text, progress, inner, PP (INVENTED inside the range 50-75), stability(-5 % for "work day")
@@ -152,8 +224,8 @@ def src_tt(key, r):
     ttl(key, r); return f"custom_effect_tooltip = {key}\n"
 
 def wargoals_tt():
-    ttl("ktits_kaz_tt_wargoal", "Цели войны (аннексия) против соседей со шкалой Казуальности ≥ 50", "War goals (annexation) against neighbours with the Casuality scale of 50 or more")
-    return ("custom_effect_tooltip = ktits_kaz_tt_wargoal\nhidden_effect = {\n    every_neighbor_country = {\n        limit = { NOT = { ktits_is_kazualia = yes } is_subject = no check_variable = { var = ktits_casuality value = 50 compare = greater_than_or_equals } }\n"
+    ttl("ktits_kaz_tt_wargoal", "Цели войны (аннексия) против слабых соседей (слабее Казуалии по армии) со шкалой Казуальности ≥ 50", "War goals (annexation) against weaker neighbours with the Casuality scale of 50 or more")
+    return ("custom_effect_tooltip = ktits_kaz_tt_wargoal\nhidden_effect = {\n    every_neighbor_country = {\n        limit = { NOT = { ktits_is_kazualia = yes } is_subject = no check_variable = { var = ktits_casuality value = 50 compare = greater_than_or_equals } strength_ratio = { tag = ROOT ratio < 1 } }\n"
             "        ROOT = { create_wargoal = { type = annex_everything target = PREV } }\n    }\n}\n")
 
 # ================= focus tree =================
@@ -172,9 +244,9 @@ fc("wake", "Пробуждение Ставки", 35, "Священный-Арх
 fc("sleep", "Вечный сон", 70, "Ставка постановила: просыпаться было ошибкой. Казуалия остаётся собой и несёт покой всему материку.", 12, 1, [["wake"]], ["hum", "red"], None,
    inner(10) + "set_country_flag = ktits_kaz_casual\n" + src_tt("ktits_kaz_tt_great", "Открывает Казуальный путь: после «Власти Священной Ставки» выбор между Нейтралитетом и Великой Казуалией"), False)
 fc("hum", "Заводской гудок", 70, "Молодые казуалы увидели за горами заводской дым и захотели такого же.", 30, 1, [["wake"]], ["sleep", "red"], None,
-   "set_politics = { ruling_party = democratic elections_allowed = yes }\nset_country_flag = ktits_kaz_reformist\nhidden_effect = { ktits_kaz_inner_update = yes }\n" + src_tt("ktits_kaz_tt_reformist", "Правительство — демократия; открывает Реформистский путь и Реформы; дебаффы Внутренней Казуальности усиливаются и задевают армию"), False)
+   "set_politics = { ruling_party = democratic elections_allowed = yes }\nadd_ideas = civilian_economy\nadd_ideas = volunteer_only\nset_country_flag = ktits_kaz_reformist\nhidden_effect = { ktits_kaz_inner_update = yes }\n" + src_tt("ktits_kaz_tt_reformist", "Правительство — демократия; открывает Реформистский путь и Реформы; дебаффы Внутренней Казуальности усиливаются и задевают армию"), False)
 fc("red", "Красное болото", 70, "Агитаторы объяснили казуалам, что лень — пережиток эксплуатации. Казуалы задумались. Надолго.", 48, 1, [["wake"]], ["sleep", "hum"], None,
-   "set_politics = { ruling_party = communism elections_allowed = yes }\nset_country_flag = ktits_kaz_comm\n" + src_tt("ktits_kaz_tt_comm", "Правительство — коммунизм; открывает Коммунистический путь"), False)
+   "set_politics = { ruling_party = communism elections_allowed = yes }\nadd_ideas = civilian_economy\nadd_ideas = volunteer_only\nset_country_flag = ktits_kaz_comm\n" + src_tt("ktits_kaz_tt_comm", "Правительство — коммунизм; открывает Коммунистический путь"), False)
 # --- Велико-Казуальный
 G = lambda s: [[P + s]]
 fc("g_power", "Власть Священной Ставки", 70, "Все решения теперь принимаются во сне правителя. Сны толкуют жрецы, жрецов назначает Ставка.", 12, 2, [["sleep"]], [], None, stab(0.10) + inner(5))
@@ -189,6 +261,10 @@ fc("g_all", "Казуальность на весь материк", 140, "Ст�
    "set_country_flag = ktits_kaz_f_wargoal\nadd_ideas = ktits_kaz_sp_march\n" + wargoals_tt())
 fc("g_accept", "Принять всех в Ставку", 70, "Новые болота — новые лентяи. Места в тумане хватит всем.", 12, 6, [["g_all"]], [], None,
    pp(50) + "set_country_flag = ktits_kaz_f_accept_cheap\n" + src_tt("ktits_kaz_tt_accept", "Решение «Принять в Ставку» без перезарядки и дешевле на 50 ПВ"))
+fc("g_quiet", "Тихая власть", 70, "Приказы больше не пишут: их шепчут в тумане, и они почему-то исполняются. Канцелярия отдыхает, а власть работает.", 13, 7, [["g_border"]], [], None,
+   inner(5) + "add_ideas = ktits_kaz_sp_pp1\n" +src_tt("ktits_kaz_tt_pp1", "Прирост политической власти +20 %"))
+fc("g_echo", "Эхо в камышах", 70, "Шёпот из тумана доходит до самой дальней деревни. Деревня зевает и соглашается.", 13, 8, [["g_quiet"]], [], None,
+   "add_ideas = ktits_kaz_sp_pp2\n" +src_tt("ktits_kaz_tt_pp2", "Прирост политической власти ещё +30 %"))
 # --- Нейтралитет / Великая Казуалия: после «Власти Священной Ставки» ровно одна из двух веток (взаимоисключающие)
 fc("g_root", "Курс на материк", 70, "Ставка решила: болото слишком хорошо, чтобы держать его при себе. Пусть весь материк узнает, как это — ничего не делать.", 14, 3, [["g_power"]], ["n_root"], None,
    pp(50) + "set_country_flag = ktits_kaz_great\n" + src_tt("ktits_kaz_tt_great2", "Великая Казуалия: ветка экспансии (Внешняя Казуальность, восстания, цели войны, присоединение); закрывает «Нейтралитет»"))
@@ -222,6 +298,17 @@ fc("r_drain", "Осушение болот", 105, "Землемеры с лоп�
 fc("r_crush", "Подавить болотных реакционеров", 70, "Старые казуалы ушли в камыши с плакатами «Верните покой!». Их надо вернуть — или победить.", 26, 4, [["r_decree"]], [], None,
    "set_country_flag = ktits_kaz_f_riot_half\n" + src_tt("ktits_kaz_tt_riot_half", "Риск «Болотного мятежа» −50 %") + divs("militia", 2), icon=I_ARM, flt=ARM)
 fc("r_plants", "Первые заводы", 105, "Над болотом впервые гудит завод. Казуалы приходят посмотреть и почему-то остаются.", 34, 4, [["r_drain"]], [], None, civ(2) + reform(10), icon=I_CIV, flt=IND)
+def rail(level, targets):
+    ttl(f"ktits_kaz_tt_rail{level}_{len(targets)}", f"Железная дорога уровня {level} от столицы к границе: §G{len(targets)}§! ветк.", f"Railway of level {level} from the capital to the border: §G{len(targets)}§! line(s)")
+    return hid(f"ktits_kaz_tt_rail{level}_{len(targets)}", [f"build_railway = {{ level = {level} start_province = {CAP_PROV} target_province = {t_} }}" for t_ in targets])
+_RT = [t_ for t_, _o in RAIL_T]
+assert len(_RT) == 2, RAIL_T
+fc("r_rail1", "Первая узкоколейка", 70, "Землемеры нашли, где у страны выход: рельсы протянули до ближайшей границы. Поезд ходит раз в неделю, но уже ходит — и не опаздывает, потому что расписания нет.", 18, 3, [["r_council"]], [], None,
+   rail(1, _RT[:1]), icon=I_INF, flt=IND)
+fc("r_rail2", "Рельсы к соседям", 70, "Вторая ветка ушла к другому соседу. Казуалы смотрели, как её кладут, и предложили класть лёжа — получилось медленнее, зато основательно.", 18, 4, [["r_rail1"]], [], None,
+   rail(1, _RT[1:]), icon=I_INF, flt=IND)
+fc("r_rail3", "Железная дорога в тумане", 105, "Узкоколейку расширили до настоящей дороги. Туман по-прежнему стелется над шпалами, но составы научились ходить и в нём.", 18, 5, [["r_rail2"]], [], None,
+   rail(2, _RT), icon=I_INF, flt=IND)
 fc("r_comm", "Демократическая община", 70, "Казуалия больше не Ставка, а община свободных граждан. Священный-Архо-Казуал ушёл на покой — ему не привыкать.", 30, 5, [["r_crush"], ["r_plants"]], [], None,
    "set_politics = { ruling_party = democratic elections_allowed = yes }\n" + pop("democratic", 0.6) + inner(-10))
 fc("r_ind", "Индустриальное общество", 140, "Гудок больше никого не удивляет. Туман рассеялся, страна проснулась.", 30, 6, [["r_comm"]], [], "check_variable = { var = ktits_kaz_reform value = 80 compare = greater_than_or_equals }",
@@ -253,7 +340,7 @@ SUB = "is_subject = yes"
 COUP = ("overlord = {\n    end_puppet = ROOT\n    ROOT = { declare_war_on = { target = PREV type = annex_everything } add_timed_idea = { idea = ktits_kaz_coup_t days = 180 } }\n"
         "    if = { limit = { check_variable = { var = ktits_casuality value = 75 compare = greater_than_or_equals } } every_owned_state = { add_claim_by = ROOT } }\n}\n")
 fc("z_new", "Новая Ставка", 35, "Чужие флаги над старой Ставкой. Казуалам выделили болото и велели вести себя тихо.", 76, 0, [], [], SUB,
-   "set_country_flag = ktits_kaz_f_reserve\n" + pp(50) + "add_timed_idea = { idea = ktits_kaz_quiet_t days = 180 }\n" + src_tt("ktits_kaz_tt_capital", "+50 ПВ, дух «Тихая жизнь» на 180 дней (стабильность +10 %); открывает выбор подпути [перенос столицы в 5 провинций не реализован]"), False)
+   "set_country_flag = ktits_kaz_f_reserve\n" + pp(50) + "add_timed_idea = { idea = ktits_kaz_quiet_t days = 180 }\n" + src_tt("ktits_kaz_tt_capital", "+50 ПВ, дух «Тихая жизнь» на 180 дней (стабильность +10 %); открывает выбор подпути (перенос столицы в 5 провинций не реализован)"), False)
 fc("z_obey", "Покорность", 70, "Будем служить. Будем полезны. А когда-нибудь хозяин сдержит слово.", 72, 1, [["z_new"]], ["z_riot"], None,
    "overlord = { add_opinion_modifier = { target = ROOT modifier = ktits_kaz_obey } }\n" + stab(0.05) + pp(25) + src_tt("ktits_kaz_tt_obey", "Отношения сюзерена +50; +25 ПВ; стабильность +5 % (ускорения автономии в игре нет)"), False)
 fc("z_serve", "Верная служба", 105, "Казуальные полки воюют за хозяина. Не быстро, но стоят насмерть.", 72, 2, [["z_obey"]], [], None,
@@ -325,10 +412,10 @@ LAYOUT = {
     "n_siesta": (0, 4), "n_temple": (4, 4), "n_watch": (0, 5), "n_calm": (4, 5), "n_peace": (2, 6), "n_golden": (2, 7),
     "g_preach": (8, 4), "g_border": (12, 4), "g_mission": (8, 5), "g_fog": (12, 5), "g_all": (10, 6), "g_accept": (10, 7), "g_end": (10, 8),
     "d_swamp": (15, 4), "d_fog": (15, 5), "d_home": (15, 6),
-    "r_council": (22, 2), "r_decree": (20, 3), "r_drain": (24, 3), "r_crush": (20, 4), "r_plants": (24, 4), "r_comm": (22, 5), "r_ind": (22, 6),
+    "r_council": (22, 2), "r_decree": (20, 3), "r_drain": (24, 3), "r_crush": (20, 4), "r_plants": (24, 4), "r_rail1": (18, 3), "r_rail2": (18, 4), "r_rail3": (18, 5), "r_comm": (22, 5), "r_ind": (22, 6),
     "s_school": (28, 2), "s_lit": (28, 3), "s_univ": (28, 4),
     "c_sov": (34, 2), "c_help": (32, 3), "c_plan": (36, 3), "c_guard": (32, 4), "c_coll": (36, 4), "c_rep": (34, 5),
-    "e_faith": (42, 1), "e_stock": (40, 2), "e_prophets": (44, 2), "e_miracle": (42, 3),
+    "g_quiet": (14, 7), "g_echo": (14, 8), "e_faith": (42, 1), "e_stock": (40, 2), "e_prophets": (44, 2), "e_miracle": (42, 3),
     "b_friends": (50, 1), "b_advisers": (50, 2), "b_loans": (50, 3), "b_protect": (50, 4), "b_crown": (48, 5), "b_sea": (50, 5), "b_free": (52, 5),
     "a_militia": (58, 1), "a_paths": (56, 2), "a_posts": (60, 2), "a_reeds": (56, 3), "a_hold": (60, 3), "a_slow": (58, 4),
     "z_new": (66, 1), "z_obey": (64, 2), "z_riot": (68, 2), "z_serve": (64, 3), "z_reeds": (68, 3), "z_indep": (64, 4), "z_fog": (68, 4), "z_coup": (68, 5),
@@ -362,6 +449,9 @@ for (i, name, days, desc, x, y, pre, excl, avail, rew, late, icon, flt) in F:
     if excl:
         s += "        mutually_exclusive = { " + " ".join(f"focus = {P + g}" for g in excl) + " }\n"
     s += f"        x = {x}\n        y = {y}\n        cost = {days // 7}\n        search_filters = {{ {flt} }}\n"
+    if i.startswith('b_'):   # the British branch closes after the decision 'Выгнать клерков' (flag ktits_kaz_expelled)
+        avail = (avail + chr(10) + '            ' if avail else '') + 'NOT = { has_country_flag = ktits_kaz_expelled }'
+        s += "        allow_branch = {\n            NOT = { has_country_flag = ktits_kaz_expelled }\n        }\n"
     if avail:
         s += f"        available = {{\n            {avail}\n        }}\n"
     s += "        cancel_if_invalid = no\n        continue_if_invalid = yes\n"
@@ -394,6 +484,7 @@ def idea(name, mods, pic=IDEA_PIC):
 ideas = ""
 for n, ca, cd in DURM:
     mods = {"army_core_attack_factor": DURM_CORE_ATK}
+    mods.update(DURM_SUP)          # supply compensation (no railways in Kazualia)
     if ca: mods["army_non_core_attack_factor"] = ca
     if cd: mods["army_non_core_defence_factor"] = cd
     ideas += idea(n, mods)
@@ -418,6 +509,8 @@ NEWSP = [
     ("ktits_kaz_sp_watch", "Сторожа сна", {"army_defence_factor": 0.10, "max_dig_in_factor": 0.10}, "Вдоль границы выставлены посты. Их задача простая: стоять и никого не пускать будить."),
     ("ktits_kaz_sp_calm", "Тихие границы", {"stability_factor": 0.05, "consumer_goods_factor": -0.05}, "На границе тишина. Контрабандисты тоже спят, а пограничники делают вид, что это порядок. Меньше ввозят, меньше и хотят."),
     ("ktits_kaz_sp_fog", "Туман на границе", {"war_support_factor": 0.10, "army_speed_factor": 0.05}, "Туман ползёт через границу, и по нему казуалы ходят как по собственной кухне."),
+    ("ktits_kaz_sp_pp1", "Тихая власть", {"political_power_gain": 0.20}, "Приказы больше не пишут: их шепчут в тумане, и они почему-то исполняются."),
+    ("ktits_kaz_sp_pp2", "Эхо в камышах", {"political_power_gain": 0.30}, "Шёпот из тумана доходит до самой дальней деревни. Деревня зевает и соглашается."),
     ("ktits_kaz_sp_march", "Поход ленивых", {"war_support_factor": 0.10, "conscription_factor": 0.02}, "Ставка объявила: весь материк должен отдохнуть. Армия идёт на это отдыхать неторопливо, зато с песней."),
     ("ktits_kaz_sp_paths", "Тропы в трясине", {"army_speed_factor": 0.10, "army_attack_factor": 0.05}, "Казуалы знают каждую кочку. Чужаки — ни одной."),
     ("ktits_kaz_sp_posts", "Горные заставы Ставки", {"army_defence_factor": 0.05, "max_dig_in_factor": 0.10}, "Горы стерегут столицу с трёх сторон. Теперь в горах ещё и сторожа."),
@@ -429,6 +522,50 @@ NEWSP = [
 for n_, ru_, md_, ds_ in NEWSP:
     ideas += idea(n_, md_); add(n_, ru_); add(n_ + "_desc", ds_)
 w("common/ideas/ktits_kazualia_ideas.txt", "ideas = {\n    country = {\n" + ideas + "    }\n}\n")
+# economy law "Казуальное общество" (docs/mechanics/Kazualia.md 2.0): 100 % of the factories go to consumer goods.
+# Key consumer_goods_expected_value is what the vanilla economy laws use (common/ideas/_economic.txt); the value 1.0 (all civilian factories) is invented [uncertain: clamping in game]
+LAW = "ktits_eco_casual_society"
+w("common/ideas/ktits_kaz_laws.txt", f"""ideas = {{
+    economy = {{
+        law = yes
+        use_list_view = yes
+
+        {LAW} = {{
+            picture = {IDEA_PIC}
+            allowed = {{ always = no }}
+            allowed_civil_war = {{ always = yes }}
+            removal_cost = -1
+            cancel_if_invalid = no
+            modifier = {{
+                consumer_goods_expected_value = 1.0
+            }}
+        }}
+    }}
+}}
+""")
+add(LAW, "Казуальное общество")
+add(LAW + "_desc", "Всё, что производится, сразу потребляется. Заводы делают гамаки, подушки и чай; на пушки не остаётся ни станка, ни желания.")
+ttl("ktits_casual_law_lock_tt", "Действует закон «Казуальное общество»: сменить экономический закон можно только фокусом «Заводской гудок» или «Красное болото»", "The law 'Casual Society' is in force: it can only be replaced by the focus 'Factory Whistle' or 'Red Swamp'")
+# the vanilla economy laws (a copy in the mod folder) are locked while the casual law stands: insert the check into every law of the economy block
+def _lock_vanilla_economy():
+    p_ = M / "common/ideas/_economic.txt"
+    if not p_.exists(): return
+    t_ = p_.read_text(encoding="utf-8")
+    if "ktits_casual_law_lock_tt" in t_: return
+    i0 = t_.index("\n\teconomy = {"); i1 = t_.index("\n\ttrade_laws = {")
+    blk = t_[i0:i1]
+    chk = "custom_trigger_tooltip = { tooltip = ktits_casual_law_lock_tt NOT = { has_idea = " + LAW + " } }"
+    parts = re.split(r"(?m)^(\t\t\w+ = \{\n)", blk)
+    out = parts[0]
+    for j in range(1, len(parts), 2):
+        head, body = parts[j], parts[j + 1]
+        if re.search(r"(?m)^\t\t\tavailable = \{[ \t]*\n", body):
+            body = re.sub(r"(?m)^(\t\t\tavailable = \{[ \t]*\n)", lambda m: m.group(1) + "\t\t\t\t" + chk + "\n", body, count=1)
+        else:
+            body = "\t\t\tavailable = {\n\t\t\t\t" + chk + "\n\t\t\t}\n" + body
+        out += head + body
+    p_.write_text(t_[:i0] + out + t_[i1:], encoding="utf-8", newline="")
+_lock_vanilla_economy()
 add("ktits_kaz_britt_influence", "Бриттанское влияние: Бриттанские советники"); add("ktits_kaz_britt_influence_desc", "Вежливые люди с острова учат казуалов считать и писать отчёты. Отчёты получаются короткими, но бриттам этого хватает.")
 add("ktits_kaz_britt_2", "Бриттанское влияние: Бриттанские займы"); add("ktits_kaz_britt_2_desc", "Бриттанские банки дают деньги под залог болот. Болота никому не нужны, поэтому и деньги дают охотно. Пока.")
 add("ktits_kaz_britt_3", "Бриттанское влияние: Бриттанский протекторат"); add("ktits_kaz_britt_3_desc", "Ставка подписывает бумаги, которые ей приносят из посольства. Читать их не обязательно: бритты всё уже прочитали за неё.")
@@ -449,7 +586,7 @@ DM = [
     ("industrial_capacity_factory", -0.0025, -0.005), ("production_speed_buildings_factor", -0.0025, -0.005),
     ("army_org_regain", 0.002, 0.002), ("supply_consumption_factor", -0.002, -0.002), ("dig_in_speed_factor", 0.005, 0.005),
     ("conscription_factor", 0.001, 0.001), ("army_speed_factor", -0.001, -0.001),
-    ("research_speed_factor", 0.0, -0.002), ("stability_factor", 0.0, -0.001), ("consumer_goods_factor", 0.0, 0.0005),
+    ("research_speed_factor", -0.006, -0.003), ("stability_factor", 0.0, -0.001), ("consumer_goods_factor", 0.0, 0.0005),
     ("production_factory_efficiency_gain_factor", -0.001, -0.002), ("army_org_factor", 0.0, -0.001),
 ]
 dm = "# generated by tools/make_kazualia.py: docs/mechanics/Kazualia.md section 2; values come from the variables of ktits_kaz_inner_update\nktits_kaz_inner_dm = {\n    icon = GFX_idea_ktits_casuality\n"
@@ -487,6 +624,8 @@ for key, nm, _d, _e, price, cd in GIFTS:
 start += """    ktits_kaz_templates = yes
     add_ideas = ktits_durmanische
     add_ideas = ktits_kaz_britt_influence
+    add_ideas = ktits_eco_casual_society
+    add_ideas = disarmed_nation
     ktits_kaz_inner_update = yes
 """
 for sid in swamp_ids:
@@ -532,24 +671,29 @@ ktits_durm_check = {
 """ + "".join(f"        if = {{ limit = {{ has_idea = {n} }} remove_ideas = {n} }}\n" for n, _a, _d in DURM) + """    }
 }
 
+# scope = Kazualia: monthly Faith gain = population of own core states (thousands) / 1000 x (0.5 + scale / 100) x multiplier; also called at the start so the gain is shown at once
+ktits_kaz_faith_calc = {
+    set_variable = { var = ktits_kaz_pop_k value = 0 }
+    every_owned_state = {
+        limit = { is_core_of = PREV }
+        OWNER = { add_to_variable = { var = ktits_kaz_pop_k value = PREV.state_population_k } }
+    }
+    set_variable = { var = ktits_kaz_faith_gain value = ktits_kaz_pop_k }
+    divide_variable = { var = ktits_kaz_faith_gain value = 1000 }
+    set_temp_variable = { kz_m = ktits_kaz_inner }
+    divide_temp_variable = { kz_m = 100 }
+    add_to_temp_variable = { kz_m = 0.5 }
+    multiply_variable = { var = ktits_kaz_faith_gain value = kz_m }
+    multiply_variable = { var = ktits_kaz_faith_gain value = ktits_kaz_faith_mult }
+    round_variable = ktits_kaz_faith_gain
+}
+
 # scope = Kazualia, every month: Casual Faith, reform decay, the news of puppets, the riot, the end of the reforms
 ktits_kaz_monthly = {
     # Faith: 1 per 1 million of the population of own core states x (0.5 + scale / 100) x multiplier
     if = {
         limit = { NOT = { has_country_flag = ktits_kaz_industrial } }
-        set_variable = { var = ktits_kaz_pop_k value = 0 }
-        every_owned_state = {
-            limit = { is_core_of = PREV }
-            OWNER = { add_to_variable = { var = ktits_kaz_pop_k value = PREV.state_population_k } }
-        }
-        set_variable = { var = ktits_kaz_faith_gain value = ktits_kaz_pop_k }
-        divide_variable = { var = ktits_kaz_faith_gain value = 1000 }
-        set_temp_variable = { kz_m = ktits_kaz_inner }
-        divide_temp_variable = { kz_m = 100 }
-        add_to_temp_variable = { kz_m = 0.5 }
-        multiply_variable = { var = ktits_kaz_faith_gain value = kz_m }
-        multiply_variable = { var = ktits_kaz_faith_gain value = ktits_kaz_faith_mult }
-        round_variable = ktits_kaz_faith_gain
+        ktits_kaz_faith_calc = yes
         add_to_variable = { var = ktits_kaz_faith value = ktits_kaz_faith_gain }
         clamp_variable = { var = ktits_kaz_faith min = 0 max = 1000 }
     }
@@ -634,7 +778,7 @@ cat = ("ktits_kaz_faith_category = {\n    icon = generic_propaganda\n    picture
        "ktits_kaz_accept_category = {\n    icon = generic_propaganda\n    picture = GFX_decision_cat_picture_ktits_casuality\n    visible = {\n        ktits_is_kazualia = yes\n        any_subject_country = { always = yes }\n    }\n}\n")
 w("common/decisions/categories/ktits_kazualia_categories.txt", cat)
 add("ktits_kaz_faith_category", "Экономическая Казуальность")
-add("ktits_kaz_faith_category_desc", "Казуалы не работают, но у них всё есть. Никто не знает, откуда. Казуалы и не спрашивают. Вера в то, что всё случится само: чем больше казуалов верят, тем чаще оно действительно случается. Казуальная Вера: [?ktits_kaz_faith|0] (+[?ktits_kaz_faith_gain|0] в месяц). Внутренняя Казуальность: [?ktits_kaz_inner|0] %. [GetKtitsKazLate]")
+add("ktits_kaz_faith_category_desc", "§YКАЗУАЛЬНАЯ ВЕРА: [?ktits_kaz_faith|0]§! из 1000 (+[?ktits_kaz_faith_gain|0] в месяц)\\n§HЦвет решения — группа: §RАрмия§! §YСнаряжение§! §GЭкономика§! §BНаука§! §OПолитика§!§!\\nКазуалы не работают, но у них всё есть. Никто не знает, откуда. Казуалы и не спрашивают. Вера в то, что всё случится само: чем больше казуалов верят, тем чаще оно действительно случается. Внутренняя Казуальность: [?ktits_kaz_inner|0] %. [GetKtitsKazLate]")
 add("ktits_kaz_reform_category", "Реформы")
 add("ktits_kaz_reform_category_desc", "Переделать казуала в рабочего — всё равно что осушить болото чайной ложкой. Но ложки уже розданы. Прогресс реформ: [?ktits_kaz_reform|0] из 100. Сколько страны уже вытащено из трясины. Отпустишь — и она медленно сползёт обратно.")
 add("ktits_kaz_britt_category", "Бриттанское влияние")
@@ -660,15 +804,30 @@ GIFT_RW = {
     "militia": divs("militia", 2), "guard": divs("guard", 1),
     "guns": "add_equipment_to_stockpile = { type = infantry_equipment_1 amount = 2000 }\n", "cannons": "add_equipment_to_stockpile = { type = artillery_equipment_1 amount = 200 }\n",
     "vision": "add_tech_bonus = { name = ktits_kaz_vision bonus = 1.0 uses = 1 category = infantry_weapons category = artillery category = support_tech }\n",   # [uncertain] categories of the tech bonus
+    "trucks": "add_equipment_to_stockpile = { type = motorized_equipment_1 amount = 300 }\n",
+    "support": "add_equipment_to_stockpile = { type = support_equipment_1 amount = 300 }\n",
+    "atpvo": "add_equipment_to_stockpile = { type = anti_tank_equipment_1 amount = 150 }\nadd_equipment_to_stockpile = { type = anti_air_equipment_1 amount = 150 }\n",
+    "peat": "add_fuel = 15000\nrandom_owned_controlled_state = { limit = { impassable = no } add_resource = { type = steel amount = 10 days = 365 } }\n",
     "built": civ(1), "grace": pp(100) + "add_timed_idea = { idea = ktits_kaz_grace_t days = 180 }\n", "mission": "",
 }
 rw2 = ""
+GIFT_EV = []; GIFT_EV_BASE = 500      # a news event per decision "Дары болот": ktits_kazualia.501 ...
+# what exactly was received (shown in the event; docs/mechanics/Kazualia.md section 4)
+GIFT_GOT = {
+    "militia": "В столице: 2 дивизии «Болотное ополчение».", "guard": "В столице: 1 дивизия «Казуальная гвардия».",
+    "guns": "На складе: +2000 пехотного снаряжения.", "cannons": "На складе: +200 артиллерии.",
+    "vision": "Скидка 100 % на одну исследуемую технологию.", "built": "+1 гражданская фабрика в одном из штатов.",
+    "grace": "+100 политической власти; стабильность +5 % на 180 дней.", "trucks": "На складе: +300 грузовиков.",
+    "support": "На складе: +300 единиц вспомогательной техники.", "atpvo": "На складе: +150 ПТ-орудий и +150 зенитных орудий.",
+    "peat": "+15 000 топлива; +10 стали в одном из штатов на 365 дней.",
+}
 decision_loc = []
 dec = "ktits_kaz_faith_category = {\n\n"
 for key, nm, lore, eff, price, cd in GIFTS:
     did = f"ktits_kaz_gift_{key}"
     cdf = f"ktits_kaz_cd_{key}"
-    add(did, nm); add(did + "_desc", f"{lore} ({eff}; цена — Казуальная Вера: {price}, перезарядка {cd} дн.)")
+    gc, gru, gen, gicon = GRP[GIFT_GRP[key]]
+    add(did, f"{gc}{gru}:§! {nm}", f"{gc}{gen}:§! {L.translit(nm)}"); add(did + "_desc", f"{lore} ({eff}; цена — Казуальная Вера: {price}, перезарядка {cd} дн.)")
     add(f"ktits_kaz_need_{key}", f"Казуальной Веры достаточно: нужно §Y[?ktits_kaz_c_{key}|0]§!, есть [?ktits_kaz_faith|0]", f"Enough Casual Faith: §Y[?ktits_kaz_c_{key}|0]§! needed, [?ktits_kaz_faith|0] available")
     fast = round(cd * 0.75)
     cost_pay = f"        subtract_from_variable = {{ var = ktits_kaz_faith value = ktits_kaz_c_{key} }}\n"
@@ -676,9 +835,10 @@ for key, nm, lore, eff, price, cd in GIFTS:
                 f"        else = {{\n            set_country_flag = {{ flag = {cdf} days = {cd} value = 1 }}\n        }}\n")
     if key == "mission":
         continue                       # the decision itself (category Внешняя Казуальность) is written by make_kazualia_outer.py
-    rw2 += f"ktits_kaz_rw_{key} = {{\n" + "".join("    " + l + "\n" for l in GIFT_RW[key].splitlines()) + "}\n\n"
+    GIFT_EV.append(key)
+    rw2 += f"ktits_kaz_rw_{key} = {{\n" + "".join("    " + l + "\n" for l in GIFT_RW[key].splitlines()) + f"    country_event = {{ id = ktits_kazualia.{GIFT_EV_BASE + len(GIFT_EV)} }}\n" + "}\n\n"
     dec += T(f"""    {did} = {{
-        icon = generic_propaganda
+        icon = {GIFT_ICON.get(key, gicon)}
         visible = {{
             ktits_kaz_faith_economy = yes
         }}
@@ -743,13 +903,25 @@ dec += T(f"""    ktits_kaz_expel = {{
         cost = 0
         fire_only_once = yes
         complete_effect = {{
+            set_country_flag = ktits_kaz_expelled
             if = {{ limit = {{ has_idea = ktits_kaz_britt_influence }} remove_ideas = ktits_kaz_britt_influence }}
             if = {{ limit = {{ has_idea = ktits_kaz_britt_2 }} remove_ideas = ktits_kaz_britt_2 }}
             if = {{ limit = {{ has_idea = ktits_kaz_britt_3 }} remove_ideas = ktits_kaz_britt_3 }}
             {BRT} = {{ add_opinion_modifier = {{ target = ROOT modifier = ktits_kaz_britt_expel }} }}
             ROOT = {{ add_opinion_modifier = {{ target = {BRT} modifier = ktits_kaz_britt_expel }} }}
         }}
-        ai_will_do = {{ base = 0 }}
+        # AI on the Great Casuality path: expels the clerks when the British influence stops paying off
+        # (after 'Курс на материк', or spirit level 2+ and a war with an ally of Britain)
+        ai_will_do = {{
+            base = 0
+            modifier = {{ add = 100 has_completed_focus = ktits_kaz_g_root }}
+            modifier = {{
+                add = 100
+                has_completed_focus = ktits_kaz_g_power
+                OR = {{ has_idea = ktits_kaz_britt_2 has_idea = ktits_kaz_britt_3 }}
+                {BRT} = {{ any_allied_country = {{ has_war_with = ROOT }} }}
+            }}
+        }}
     }}
 }}
 
@@ -928,6 +1100,27 @@ for n, rk in enumerate(LATE_IDS, 1):
 }}
 
 """)
+for n, gk in enumerate(GIFT_EV, 1):
+    gnm, glore = next((g[1], g[2]) for g in GIFTS if g[0] == gk)
+    eid = GIFT_EV_BASE + n
+    ev += T(f"""# news: the gift "{gnm}" has arrived
+country_event = {{
+    id = ktits_kazualia.{eid}
+    title = ktits_kazualia.{eid}.t
+    desc = ktits_kazualia.{eid}.d
+    picture = {PIC}
+    is_triggered_only = yes
+    fire_only_once = no
+
+    option = {{
+        name = ktits_kazualia.{eid}.a
+    }}
+}}
+
+""")
+    add(f"ktits_kazualia.{eid}.t", gnm)
+    add(f"ktits_kazualia.{eid}.d", f"{glore}\\n\\n§YПолучено:§! {GIFT_GOT[gk]}", f"{L.translit(glore)}\\n\\n§YReceived:§! {L.translit(GIFT_GOT[gk])}")
+    add(f"ktits_kazualia.{eid}.a", "Само пришло", "It came by itself")
 w("events/ktits_kazualia_events.txt", "﻿" + ev)
 
 # ================= on_actions, opinion modifiers =================

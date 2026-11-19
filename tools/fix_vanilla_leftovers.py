@@ -15,6 +15,9 @@
    one line, `= { decision = X }`, multi-line activate_targeted_decision / add_days_mission_timeout ...) are removed; has_decision/has_active_mission -> always = no.
 9. Vanilla common/on_actions (state ids of the vanilla map, events and characters of the vanilla game): numeric state-scope blocks `123 = { ... }`,
    calls of events that do not exist (also random_events entries) and `<VANILLATAG>_<char> = { set_unit_leader_flag ... }` blocks are removed.
+10. events/rpx_generic_war.txt (RandomParadox war events: create_wargoal / declare_war_on without a justification) -> only `add_namespace = generic_war`;
+   no other file in the mod fires generic_war.N (only localisation mentions them).
+11. events/rpx_ideological_tension_v2.txt (free wargoals for AI fascists/communists from 1937.4.1) -> only the namespace.
 Usage: python tools/fix_vanilla_leftovers.py [--mod PATH] [--game PATH]
 """
 import argparse, re
@@ -351,6 +354,19 @@ def main():
         t2 = re.sub(r"(?m)^[ \t]*icon\s*=\s*\"[^\"]*\"[ \t]*\r?\n", "", t)
         if t2 != t:
             wr(p, t2, bom=False); stat["icon"] = 1
+    # 5b. RandomParadox war events (create_wargoal / declare_war_on without a justification): only the namespace is left
+    p = M / "events/rpx_generic_war.txt"
+    if p.exists():
+        stub = "# emptied by Ktits (tools/fix_vanilla_leftovers.py): RandomParadox war events attack without a wargoal justification\nadd_namespace = generic_war\n"
+        if rd(p) != stub:
+            wr(p, stub, bom=has_bom(p)); stat["generic_war"] = 1
+    # 5c. RandomParadox "ideological tension" events: MTTH events (fascism/communism, from 1937.4.1) hand out a free annex_everything / take_state wargoal
+    # to the AI without justification; the AI declares war at once. Only the namespace is left.
+    p = M / "events/rpx_ideological_tension_v2.txt"
+    if p.exists():
+        stub = "# emptied by Ktits (tools/fix_vanilla_leftovers.py): RandomParadox events gave AI wargoals without a justification\nadd_namespace = ideological_tension_v2\n"
+        if rd(p) != stub:
+            wr(p, stub, bom=has_bom(p)); stat["ideo_tension"] = 1
     print(f"vanilla leftovers: {stat['tests']} has_game_rule tests replaced in {stat['rewritten']} files, {stat['emptied']} files emptied "
           f"({n_focus} focus trees, {n_ai} ai_strategy country files)")
     print(f"  decision refs removed: {stat.get('dec_blocks', 0)} blocks, {stat.get('dec_lines', 0)} lines, {stat.get('dec_tests', 0)} tests -> always = no")

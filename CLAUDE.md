@@ -18,11 +18,13 @@
 - `lore/Lore-Overview.md` — сводный лор и таблица идеологий.
 - `global_mechanics/Casuality-Mechanic.md` — механика «Казуальность» (числа и решения).
 - `global_mechanics/Casuality-Testing.md` — команды консоли и сценарии проверки «Казуальности» в игре.
+- `global_mechanics/Debug-Log.md` — отладочный журнал механик (флаг `ktits_debug`), отчёт `tools/read_log.py`, сценарии (игра за Казуалию, `observe`).
 - `global_mechanics/Education.md` — образованность населения.
 - `countries/Big-Countries.md` — крупные страны и их части.
 - `focuses/Generic-Focus-Tree.md` — стандартное древо фокусов: ветки «Казуальность» и «Политический курс» (в игре), «Экономика» (только описание).
 - `focuses/Kazualia-Focus-Tree.md` — древо фокусов Казуалии (только описание).
 - `countries/Splits.md` — выделяемые государства `K01`–`K34` больших стран и правила их выделения.
+- `countries/Country-Workup-Rules.md` — правила проработки страны (этапы, требования, ловушки); основа для каждой новой страны.
 
 ## Служебное (`no_commit/`, в git не попадает)
 - `no_commit/guide_for_ai/` — черновик инструкций по моддингу HOI4 (выписки с вики, есть пометки [uncertain]). Сверять с ванильными файлами 1.19.

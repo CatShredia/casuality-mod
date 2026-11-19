@@ -73,6 +73,12 @@ def blocks(text):
         i += 1
     return out
 
+def add_recruit(ht, cid):
+    nl = chr(10)
+    if re.search("^recruit_character", ht, re.M):
+        return re.sub("^(recruit_character[^" + nl + "]*)$", lambda mm: mm.group(1) + nl + "recruit_character = " + cid, ht, count=1, flags=re.M)
+    return ht.rstrip() + nl + nl + "recruit_character = " + cid + nl
+
 info = L.load_mod(M)
 lore2tag = {}
 for tag, lt in info["tag2lore"].items():
@@ -113,6 +119,10 @@ for lt, (name, grp, lore_ideo, sub) in RULERS.items():
             ct = ct[:k] + blk + ct[k:]
         done = cid
     chf.write_text(ct, encoding="utf-8", newline="")
+    if done and re.search(r"^\s*recruit_character\s*=\s*" + done + r"\s*$", ht, re.M) is None and done.endswith("_leader"):
+        # a leader created here (new ideology group) must be recruited, otherwise the game generates a random ruler
+        ht = add_recruit(ht, done)
+        hf.write_text(ht, encoding="utf-8", newline="")
     ruling_note = f"ruling_party {rp}"
     if grp and grp != rp:
         ht = re.sub(r"ruling_party\s*=\s*\w+", f"ruling_party = {grp}", ht, count=1)

@@ -84,6 +84,8 @@ _rd = {sid: i for i, sid in enumerate(sorted(swamp_sov, key=lambda s_: _sc[s_][0
 _rm = {sid: i for i, sid in enumerate(sorted(swamp_sov, key=lambda s_: -_sc[s_][1]))}
 swamp_all = list(swamp_sov)
 swamp_sov = sorted(sorted(swamp_sov, key=lambda s_: (_rd[s_] + _rm[s_], _rd[s_]))[:NB_KEEP], key=lambda s_: _rd[s_])
+NB_EXCLUDE = {102, 125}                   # author: these two states stay with the Soviet Union (cores of Kazualia remain)
+swamp_sov = [s_ for s_ in swamp_sov if s_ not in NB_EXCLUDE]
 NB_CAP = swamp_sov[0]                     # nearest to Kazualia: the capital of K35
 swamp_sov.sort()
 print(f"kazualia outer: swampy states {len(swampy)}; swamp states of Наши Болота {swamp_sov}; Kazualia states {len(kaz_states)}")
@@ -463,9 +465,48 @@ ktits_kaz_outer_update = {{
     }}
     round_variable = ktits_kaz_outer
     clamp_variable = {{ var = ktits_kaz_outer min = 0 max = 100 }}
+    ktits_kaz_ol_calc = yes
 }}
 
 """
+# list of target countries in the category description: top 8 by the scale, "Name: 42 (st. 2, +3)" (docs/mechanics/Kazualia.md, "Внешняя Казуальность")
+# global variables ktits_kaz_ol_{c,v,t,d}N (country / scale / tier / change in a month) are read by scripted localisation; the previous scale is kept in the country variable ktits_kaz_ol_prev
+OL_ROWS = 8
+OL_ELIG = ("NOT = { has_country_flag = ktits_casuality_fallen } NOT = { has_country_flag = ktits_kz_rebel } NOT = { ktits_is_kazualia = yes } "
+           "NOT = { is_subject_of = ROOT } NOT = { original_tag = K35 } NOT = { has_country_flag = ktits_kaz_ol_taken }")
+ol = "# scope = Kazualia, every month (called from ktits_kaz_outer_update): the top 8 countries by the Casuality scale for the description of the category\nktits_kaz_ol_calc = {\n"
+for r_ in range(1, OL_ROWS + 1):
+    ol += (f"    set_variable = {{ global.ktits_kaz_ol_best = 0 }}\n"
+           f"    set_variable = {{ global.ktits_kaz_ol_v{r_} = 0 }}\n"
+           f"    every_other_country = {{\n        limit = {{\n            {OL_ELIG}\n            check_variable = {{ var = ktits_casuality value = global.ktits_kaz_ol_best compare = greater_than }}\n        }}\n"
+           f"        set_variable = {{ global.ktits_kaz_ol_best = ktits_casuality }}\n    }}\n"
+           f"    if = {{\n        limit = {{ check_variable = {{ var = global.ktits_kaz_ol_best value = 0 compare = greater_than }} }}\n"
+           f"        random_other_country = {{\n            limit = {{\n                {OL_ELIG}\n                check_variable = {{ var = ktits_casuality value = global.ktits_kaz_ol_best compare = equals }}\n            }}\n"
+           f"            set_country_flag = ktits_kaz_ol_taken\n"
+           f"            if = {{ limit = {{ NOT = {{ check_variable = {{ var = ktits_kaz_ol_prev value = 0 compare = greater_than }} }} }} set_variable = {{ ktits_kaz_ol_prev = ktits_casuality }} }}\n"
+           f"            set_variable = {{ global.ktits_kaz_ol_c{r_} = THIS }}\n"
+           f"            set_variable = {{ global.ktits_kaz_ol_v{r_} = ktits_casuality }}\n"
+           f"            set_variable = {{ global.ktits_kaz_ol_d{r_} = ktits_casuality }}\n"
+           f"            subtract_from_variable = {{ var = global.ktits_kaz_ol_d{r_} value = ktits_kaz_ol_prev }}\n"
+           f"            set_variable = {{ global.ktits_kaz_ol_t{r_} = 0 }}\n")
+    for thr_, tier_ in ((1, 1), (25, 2), (50, 3), (75, 4), (95, 5)):
+        ol += f"            if = {{ limit = {{ check_variable = {{ var = ktits_casuality value = {thr_} compare = greater_than_or_equals }} }} set_variable = {{ global.ktits_kaz_ol_t{r_} = {tier_} }} }}\n"
+    ol += "        }\n    }\n"
+ol += ("    # the scale of this month becomes the base for the next change; the marks are removed\n"
+       "    every_other_country = {\n        limit = { has_country_flag = ktits_kaz_ol_taken }\n        clr_country_flag = ktits_kaz_ol_taken\n    }\n"
+       "    every_other_country = {\n        set_variable = { ktits_kaz_ol_prev = ktits_casuality }\n    }\n}\n\n")
+sl = ""
+for r_ in range(1, OL_ROWS + 1):
+    sl += (f"defined_text = {{\n    name = GetKtitsKazOlD{r_}\n    text = {{\n        trigger = {{ check_variable = {{ var = global.ktits_kaz_ol_d{r_} value = 0 compare = greater_than }} }}\n        localization_key = ktits_kaz_ol_dp{r_}\n    }}\n"
+           f"    text = {{\n        localization_key = ktits_kaz_ol_dn{r_}\n    }}\n}}\n\n"
+           f"defined_text = {{\n    name = GetKtitsKazOl{r_}\n    text = {{\n        trigger = {{ check_variable = {{ var = global.ktits_kaz_ol_v{r_} value = 0 compare = greater_than }} }}\n        localization_key = ktits_kaz_olrow{r_}\n    }}\n"
+           f"    text = {{\n        localization_key = ktits_kaz_olrow_empty\n    }}\n}}\n\n")
+    add(f"ktits_kaz_ol_dp{r_}", f"+[?global.ktits_kaz_ol_d{r_}|0]")
+    add(f"ktits_kaz_ol_dn{r_}", f"[?global.ktits_kaz_ol_d{r_}|0]")
+    add(f"ktits_kaz_olrow{r_}", f"§Y[?global.ktits_kaz_ol_c{r_}.GetName]§!: [?global.ktits_kaz_ol_v{r_}|0] (ст. [?global.ktits_kaz_ol_t{r_}|0], [GetKtitsKazOlD{r_}])" + chr(92) + "n",
+        f"§Y[?global.ktits_kaz_ol_c{r_}.GetName]§!: [?global.ktits_kaz_ol_v{r_}|0] (tier [?global.ktits_kaz_ol_t{r_}|0], [GetKtitsKazOlD{r_}])" + chr(92) + "n")
+add("ktits_kaz_olrow_empty", "")
+w("common/scripted_localisation/ktits_kazualia_outer_loc.txt", sl)
 # country Наши Болота
 SW_OR = " ".join(f"state = {s}" for s in swamp_sov)
 nbl = f"""# scope = the Soviet Union: the decision "Буфер на болотах" creates the puppet "Наши Болота" (K35) on the swamp states (docs/mechanics/Kazualia.md, section 1)
@@ -487,7 +528,7 @@ ktits_kz_make_K35 = {{
 }}
 
 """
-w("common/scripted_effects/ktits_kazualia_outer_effects.txt", "# generated by tools/make_kazualia_outer.py (docs/mechanics/Kazualia.md)\n" + pick + sizes + setup + make + raise_ + civ + mon + res + civ_chk + outer + nbl)
+w("common/scripted_effects/ktits_kazualia_outer_effects.txt", "# generated by tools/make_kazualia_outer.py (docs/mechanics/Kazualia.md)\n" + pick + sizes + setup + make + raise_ + civ + mon + res + civ_chk + outer + ol + nbl)
 
 # ---------------- ideas (timed spirits of the emergency decisions) ----------------
 def idea(name, mods):
@@ -545,7 +586,7 @@ w("common/decisions/categories/ktits_kazualia_outer_categories.txt", cat)
 add("ktits_kaz_inner_category", "Внутренняя Казуальность")
 add("ktits_kaz_inner_category_desc", "Казуал не ленится — он ждёт. Ждёт урожая, приказа, конца света. Пока он ждёт, ружьё у него всегда под рукой, а болото за спиной знает каждую его тропу. Шкала: [?ktits_kaz_inner|0] %. [GetKtitsKazLate]")
 add("ktits_kaz_outer_category", "Внешняя Казуальность")
-add("ktits_kaz_outer_category_desc", "Лень не знает границ. Она переходит реки вместе с туманом, просачивается в газеты и кабаки, и вот уже соседний чиновник смотрит в окно вместо отчёта. Казуальные страны: [?ktits_kaz_outer|0] % из остальных.")
+add("ktits_kaz_outer_category_desc", "Лень не знает границ. Она переходит реки вместе с туманом, просачивается в газеты и кабаки, и вот уже соседний чиновник смотрит в окно вместо отчёта. Казуальные страны: [?ktits_kaz_outer|0] % из остальных. §YВ очереди на лень (шкала, ступень, изменение за месяц):§!\\n[GetKtitsKazOl1][GetKtitsKazOl2][GetKtitsKazOl3][GetKtitsKazOl4][GetKtitsKazOl5][GetKtitsKazOl6][GetKtitsKazOl7][GetKtitsKazOl8]")
 add("ktits_sov_buffer_category", "Граница с Казуалией")
 add("ktits_sov_buffer_category_desc", "Здесь кончаются советские дороги и начинается туман. Казуалы-переселенцы живут тут веками и не очень понимают, чья это земля.")
 
@@ -697,6 +738,16 @@ CD = lambda f_: f"""            custom_trigger_tooltip = {{
             }}
 """
 OUT_VIS = "visible = {\n            ktits_is_kazualia = yes\n            has_country_flag = ktits_kaz_f_outer\n        }"
+# AI of the Great Casuality path acts on weak bordering countries first (docs/mechanics/Kazualia.md, "ИИ Внешней Казуальности"):
+# neighbour x3; weaker than Kazualia (army strength ratio, [uncertain] direction of strength_ratio) x2; target scale 50+ x2; far or strong x0.2
+AIT = ("\n            modifier = { factor = 3 has_country_flag = ktits_kaz_great FROM = { is_neighbor_of = ROOT } }"
+       "\n            modifier = { factor = 2 has_country_flag = ktits_kaz_great FROM = { strength_ratio = { tag = ROOT ratio < 1 } } }"
+       "\n            modifier = { factor = 2 has_country_flag = ktits_kaz_great FROM = { check_variable = { var = ktits_casuality value = 50 compare = greater_than_or_equals } } }"
+       "\n            modifier = {"
+       "\n                factor = 0.2"
+       "\n                has_country_flag = ktits_kaz_great"
+       "\n                FROM = { OR = { NOT = { is_neighbor_of = ROOT } strength_ratio = { tag = ROOT ratio > 2 } } }"
+       "\n            }")
 def tdec(did, avail, cost, cdflag, cd, effect, ai):
     cost_s = f"        cost = {cost}\n" if cost else ""
     return f"""    {did} = {{
@@ -710,7 +761,7 @@ def tdec(did, avail, cost, cdflag, cd, effect, ai):
 {cost_s}        fire_only_once = no
         complete_effect = {{
 {("            set_country_flag = { flag = " + cdflag + " days = " + str(cd) + " value = 1 }" + chr(10)) if cdflag else ""}{effect}        }}
-        ai_will_do = {{ {ai} }}
+        ai_will_do = {{ {ai}{AIT} }}
     }}
 
 """

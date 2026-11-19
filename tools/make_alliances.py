@@ -173,15 +173,23 @@ def build(M, lore2tag):
     ef += "\t" + own.replace("\n\t\t", "\n\t")
     ef += "\tevery_faction_member = {\n\t\t" + own + "\t}\n}\n\n"
     ef += "# leader scope: scale changes. Every positive change also marks the alliance as active this month (no cooling)\n"
-    for name, d, busy in (("p5", 5, True), ("p10", 10, True), ("m5", -5, False), ("m20", -20, False)):
+    for name, d, busy in (("p1", 1, True), ("p5", 5, True), ("p10", 10, True), ("m5", -5, False), ("m20", -20, False)):
         ef += (f"ktits_ally_coop_{name} = {{\n\tadd_to_variable = {{ var = ktits_alliance_coop value = {d} }}\n"
                + ("\tset_country_flag = ktits_ally_busy\n" if busy else "") + "\tktits_ally_update = yes\n}\n\n")
     ef += "# scope = a member (the leader too): the same changes on the leader of my alliance\n"
-    for name in ("p5", "p10"):
+    for name in ("p1", "p5", "p10"):
         ef += (f"ktits_ally_member_coop_{name} = {{\n\tif = {{\n\t\tlimit = {{ is_faction_leader = yes }}\n\t\tktits_ally_coop_{name} = yes\n\t}}\n"
                f"\telse = {{\n\t\tevery_other_country = {{\n\t\t\tlimit = {{\n\t\t\t\tis_faction_leader = yes\n\t\t\t\tis_in_faction_with = PREV\n\t\t\t}}\n\t\t\tktits_ally_coop_{name} = yes\n\t\t}}\n\t}}\n}}\n\n")
     ef += ("# scope = a member that leaves or is expelled for a change of ideology: the leader forgets one member, so the monthly check does not take the author's -5\n"
            "ktits_ally_forget_member = {\n\tevery_other_country = {\n\t\tlimit = {\n\t\t\tis_faction_leader = yes\n\t\t\tis_in_faction_with = PREV\n\t\t}\n\t\tadd_to_variable = { var = ktits_ally_size value = -1 }\n\t}\n}\n\n")
+    # costs of the cooperation decisions: the decisions read the variables ktits_ally_cost_<tag>; continuous focus "Укрепление альянса" (flag ktits_ally_f_strong, tools/make_continuous.py): 10 % cheaper
+    ef += "# scope = any country: costs of the cooperation decisions (variables ktits_ally_cost_<tag>); flag ktits_ally_f_strong (continuous focus) = -10 %\nktits_ally_costs = {\n"
+    for _k, _n, _t, _c, _cd, _tag in COOP:
+        ef += f"\tset_variable = {{ var = ktits_ally_cost_{_tag} value = {_c} }}\n"
+    ef += "\tif = {\n\t\tlimit = { has_country_flag = ktits_ally_f_strong }\n"
+    for _k, _n, _t, _c, _cd, _tag in COOP:
+        ef += f"\t\tmultiply_variable = {{ var = ktits_ally_cost_{_tag} value = 0.9 }}\n\t\tround_variable = ktits_ally_cost_{_tag}\n"
+    ef += "\t}\n}\n\n"
     ef += "# scope = any country at the start of the game: no alliance exists at the start (author's decision), all are founded with the vanilla button. Here: spirits of neutral and powder-keg countries, subject sync, purge of barred\nktits_ally_start = {\n"
     for lt in NEUTRAL_LORE:
         t = lore2tag.get(lt)
@@ -191,8 +199,8 @@ def build(M, lore2tag):
         t = lore2tag.get(lt)
         if t:
             ef += f"\tif = {{\n\t\tlimit = {{ country_exists = {t} }}\n\t\t{t} = {{\n\t\t\tadd_ideas = ktits_baku_powder_keg\n\t\t}}\n\t}}\n"
-    ef += "\tevery_country = {\n\t\tktits_ally_allow_found = yes\n\t\tktits_ally_purge_barred = yes\n\t\tktits_ally_purge_kaz = yes\n\t\tktits_ally_sync_subjects = yes\n\t}\n}\n\n"
-    ef += "# scope = any country: the engine rule can_create_factions is off by default (vanilla gives it with spirits and focuses removed from the mod); every country gets it, who may found is decided by the template trigger ktits_ally_can_found. Monthly too: released countries appear later\nktits_ally_allow_found = {\n\tset_rule = {\n\t\tcan_create_factions = yes\n\t}\n}\n\n"
+    ef += "\tevery_country = {\n\t\tktits_ally_costs = yes\n\t\tktits_ally_allow_found = yes\n\t\tktits_ally_purge_barred = yes\n\t\tktits_ally_purge_kaz = yes\n\t\tktits_ally_sync_subjects = yes\n\t}\n}\n\n"
+    ef += "# scope = any country: the engine rule can_create_factions is off by default (vanilla gives it with spirits and focuses removed from the mod); the rule is yes only for ktits_ally_can_found, no for the others outside an alliance (a real ban). Members and leaders are not touched (does set_rule no dissolve a faction? [uncertain]). Monthly too: released countries appear later\nktits_ally_allow_found = {\n\tif = {\n\t\tlimit = { ktits_ally_can_found = yes }\n\t\tset_rule = { can_create_factions = yes }\n\t}\n\telse_if = {\n\t\tlimit = { is_in_faction = no }\n\t\tset_rule = { can_create_factions = no }\n\t}\n}\n\n"
     ef += ("# scope = an overlord: its subjects are always in its alliance (author's rule). Scope inside: the subject, PREV = the overlord. Subjects cannot leave (the diplomacy trigger is blocked), the monthly check repairs the rest\n"
            "ktits_ally_sync_subjects = {\n\tevery_subject_country = {\n\t\tif = {\n\t\t\tlimit = {\n\t\t\t\tPREV = { is_in_faction = no }\n\t\t\t\tis_in_faction = yes\n\t\t\t}\n\t\t\tleave_faction = yes\n\t\t}\n"
            "\t\tif = {\n\t\t\tlimit = {\n\t\t\t\tPREV = { is_in_faction = yes }\n\t\t\t\tNOT = { is_in_faction_with = PREV }\n\t\t\t}\n\t\t\tif = {\n\t\t\t\tlimit = { is_in_faction = yes }\n\t\t\t\tleave_faction = yes\n\t\t\t}\n"
@@ -217,7 +225,7 @@ def build(M, lore2tag):
            "\t\tif = {\n\t\t\tlimit = { has_war = yes }\n\t\t\tif = {\n\t\t\t\tlimit = { any_allied_country = { has_war_together_with = PREV } }\n\t\t\t\tadd_to_variable = { var = ktits_alliance_coop value = 2 }\n\t\t\t}\n\t\t}\n"
            "\t\telse = {\n\t\t\tif = {\n\t\t\t\tlimit = { NOT = { has_country_flag = ktits_ally_busy } }\n\t\t\t\tadd_to_variable = { var = ktits_alliance_coop value = -1 }\n\t\t\t}\n\t\t}\n\t}\n"
            "\tclr_country_flag = ktits_ally_busy\n\tset_variable = { var = ktits_ally_size value = ktits_ally_n }\n\tktits_ally_update = yes\n}\n\n")
-    ef += ("# on_monthly, scope = every country\nktits_ally_monthly = {\n\tktits_ally_allow_found = yes\n\tktits_ally_purge_barred = yes\n\tktits_ally_purge_kaz = yes\n\tktits_ally_sync_subjects = yes\n\tktits_ally_check_ideology = yes\n"
+    ef += ("# on_monthly, scope = every country\nktits_ally_monthly = {\n\tktits_ally_costs = yes\n\tktits_ally_allow_found = yes\n\tktits_ally_purge_barred = yes\n\tktits_ally_purge_kaz = yes\n\tktits_ally_sync_subjects = yes\n\tktits_ally_check_ideology = yes\n"
            "\t# a former leader: the scale is not its own any more\n\tif = {\n\t\tlimit = {\n\t\t\thas_country_flag = ktits_ally_keeper\n\t\t\tis_faction_leader = no\n\t\t}\n"
            "\t\tclr_country_flag = ktits_ally_keeper\n\t\tset_variable = { var = ktits_alliance_coop value = 0 }\n\t\tset_variable = { var = ktits_ally_size value = 0 }\n\t}\n"
            "\tif = {\n\t\tlimit = {\n\t\t\tis_faction_leader = yes\n\t\t\thas_country_flag = ktits_ally_keeper\n\t\t}\n\t\tktits_ally_leader_monthly = yes\n\t}\n"
@@ -516,7 +524,7 @@ ktits_ally_track = {
     for key, name, txt, cost, cd, tag in COOP:
         delta = "p10" if tag == "fund" else "p5"
         d += (f"\t{key} = {{\n\t\ticon = generic_propaganda\n\t\tvisible = {{\n\t\t\tis_in_faction = yes\n\t\t\tNOT = {{ ktits_ally_in_kaz = yes }}\n\t\t}}\n"
-              f"\t\tavailable = {{\n\t\t\tis_in_faction = yes\n\t\t\tnum_faction_members > 1\n\t\t}}\n\t\tcost = {cost}\n\t\tdays_re_enable = {cd}\n\t\tfire_only_once = no\n\t\tcomplete_effect = {{\n"
+              f"\t\tavailable = {{\n\t\t\tis_in_faction = yes\n\t\t\tnum_faction_members > 1\n\t\t}}\n\t\tcost = ktits_ally_cost_{tag}\n\t\tdays_re_enable = {cd}\n\t\tfire_only_once = no\n\t\tcomplete_effect = {{\n"
               f"\t\t\tcustom_effect_tooltip = ktits_ally_tt_{delta}\n\t\t\thidden_effect = {{ ktits_ally_member_coop_{delta} = yes }}\n{effects[tag]}\t\t}}\n"
               f"\t\tai_will_do = {{\n\t\t\tbase = 3\n\t\t\tmodifier = {{\n\t\t\t\tfactor = 0\n\t\t\t\tcheck_variable = {{ var = ktits_ally_view value = 75 compare = greater_than_or_equals }}\n\t\t\t}}\n"
               f"\t\t\tmodifier = {{\n\t\t\t\tfactor = 0\n\t\t\t\thas_political_power < {cost + 25}\n\t\t\t}}\n\t\t}}\n\t}}\n\n")
@@ -581,6 +589,7 @@ ktits_ally_track = {
         add(f"ktits_ally_{k}", kn); add(f"ktits_ally_{k}_desc", kd)
     for key, (n, dd, mod) in TIMED.items():
         add(key, n); add(key + "_desc", dd)
+    add("DIPLOMACY_CREATE_FACTION_NOT_RULE", "Создать альянс может только великая держава или страна с 30+ фабриками, не состоящая в альянсе и не марионетка", "Only a major power or a country with 30+ factories that is not in an alliance and not a puppet can create an alliance")  # overrides the vanilla key
     add("ktits_ally_can_found_tt", "Страна великая или средняя держава: не менее 30 фабрик (военных и гражданских вместе)", "The country is a major or a medium power: at least 30 factories (military and civilian together)")
     add("ktits_ally_invite_match_tt", "Та же идеологическая группа или общий враг: приглашаемая страна воюет хотя бы с одной страной, которая воюет с лидером альянса", "The same ideology group or a common enemy: the invited country is at war with a country that is at war with the alliance leader")
     add("ktits_ally_request", "Просить о вступлении: [FROM.GetName]", "Request to join: [FROM.GetName]")

@@ -139,9 +139,10 @@ if __name__ == "__main__":
 
     # stale files of tags that no longer exist (the numbering shifted when a parent was removed from SPLITS)
     live = {t for t, *_ in entries}
+    live_hist = {f"{t} - {L.translit(nm).replace(' ', '_')}.txt" for t, _p, nm, *_ in entries}  # the same tag can get another name after renumbering
     for f in list((M / "common/countries").glob("K[0-9][0-9].txt")) + list((M / "common/characters").glob("K[0-9][0-9].txt")) + list((M / "history/countries").glob("K[0-9][0-9] - *.txt")) \
             + [x for d in ("gfx/flags", "gfx/flags/medium", "gfx/flags/small") for x in (M / d).glob("K[0-9][0-9]*.tga")]:
-        if f.name[:3] not in live:
+        if f.name[:3] not in live or (f.parent.name == "countries" and f.parent.parent.name == "history" and f.name not in live_hist):
             f.unlink()
     (M / "common/country_tags/03_ktits_splits.txt").write_text("".join(f'{t} = "countries/{t}.txt"\n' for t, *_ in entries), encoding="utf-8")
     (M / "common/scripted_triggers/ktits_splits_triggers.txt").write_text(
