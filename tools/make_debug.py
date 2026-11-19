@@ -102,13 +102,21 @@ def do_decisions(rel):
         if m: nm = m.group(1)
         m = re.match(r"\t\tcost = (\S+)", l)
         if m and nm: costs[nm] = m.group(1)
+        # Kazualia faith decisions: price is paid in complete_effect through a variable (no `cost` line)
+        m = re.match(r"\s*subtract_from_variable = \{ var = ktits_kaz_faith value = ([A-Za-z_]\w*) \}", l)
+        if m and nm and costs.get(nm, "0") in ("0", None): costs[nm] = m.group(1)
     nm = None
+    # a decision without any price line costs 0 (game default)
+    for l in lines:
+        m = re.match(r"\t([A-Za-z_][\w]*) = \{", l)
+        if m: costs.setdefault(m.group(1), "0")
+    scale_s = "" if "kazualia" in rel else " scale=[?ktits_casuality]"   # Kazualia has no Casuality scale
     for l in lines:
         m = re.match(r"\t([A-Za-z_][\w]*) = \{", l)
         if m: nm = m.group(1)
         out.append(l)
         if re.match(r"\t\tcomplete_effect = \{", l) and nm:
-            out.append(LOG("DEC", f"DONE {nm} cost={cost_text(costs.get(nm))} scale=[?ktits_casuality]", "\t\t\t")); count("decisions")
+            out.append(LOG("DEC", f"DONE {nm} cost={cost_text(costs.get(nm))}{scale_s}", "\t\t\t")); count("decisions")
     wr(p, "".join(out), bom)
 
 # ---------------- focuses: log in completion_reward; the late-delayed events ----------------

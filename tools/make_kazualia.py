@@ -215,8 +215,9 @@ def swamp_slots(n, st):
 def divs(template, n):
     ttl(f"ktits_kaz_tt_div_{template}{n}", f"Дивизий ({'ополчения' if template == 'militia' else 'гвардии'}): §G+{n}§! в столице", f"Divisions: §G+{n}§! in the capital")
     one = (f'create_unit = {{ division = "name = \\"Казуальная дивизия\\" division_template = \\"{"Болотное ополчение" if template == "militia" else "Казуальная гвардия"}\\" start_experience_factor = 0.1 start_equipment_factor = 0.7" '
-           f"owner = ROOT prioritize_location = {CAP_PROV} }}")
-    return hid(f"ktits_kaz_tt_div_{template}{n}", [one] * n)
+           f"owner = PREV prioritize_location = {CAP_PROV} }}")
+    # create_unit needs a STATE scope (vanilla: capital_scope / state = { create_unit ... owner = PREV }); in a country scope it gives "invalid scope state"
+    return hid(f"ktits_kaz_tt_div_{template}{n}", ["capital_scope = { " + " ".join([one] * n) + " }"])
 def scale_nb(d):
     ttl(f"ktits_kaz_tt_nb{d}", f"Шкала Казуальности всех соседей: §Y+{d}§!", f"Casuality scale of all neighbours: §Y+{d}§!")
     return hid(f"ktits_kaz_tt_nb{d}", [f"every_neighbor_country = {{ limit = {{ NOT = {{ has_country_flag = ktits_casuality_fallen }} NOT = {{ ktits_is_kazualia = yes }} }} add_to_variable = {{ var = ktits_casuality value = {d} }} clamp_variable = {{ var = ktits_casuality min = 0 max = 100 }} ktits_casuality_update = yes }}"])

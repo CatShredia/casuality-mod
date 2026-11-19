@@ -555,6 +555,7 @@ al_files = {k: (M / k) for k in ("common/scripted_triggers/ktits_alliance_trigge
 al_txt = {k: (f.read_text(encoding="utf-8") if f.exists() else "") for k, f in al_files.items()}
 check(all(al_txt.values()) and all(t.count("{") == t.count("}") for t in al_txt.values()), f"alliances: {len(al_txt)} script files exist, braces balanced", "alliances: script file missing or unbalanced braces")
 al_ru, al_en = load_loc(M / "localisation/russian/ktits_alliance_l_russian.yml"), load_loc(M / "localisation/english/ktits_alliance_l_english.yml")
+al_ru.update(load_loc(M / "localisation/replace/ktits_alliance_replace_l_russian.yml")); al_en.update(load_loc(M / "localisation/replace/ktits_alliance_replace_l_english.yml"))
 a_tr, a_ef, a_oa, a_id, a_dc, a_ev = (al_txt[k] for k in ("common/scripted_triggers/ktits_alliance_triggers.txt", "common/scripted_effects/ktits_alliance_effects.txt", "common/on_actions/ktits_alliance_on_actions.txt",
                                                           "common/ideas/ktits_alliance_ideas.txt", "common/decisions/ktits_alliance.txt", "events/ktits_alliance_events.txt"))
 # no start alliances (author's decision): the start effect only gives spirits
@@ -748,8 +749,8 @@ for f_ in sorted((M / "common/ideas").glob("ktits_*.txt")):
         _ic[k] = pc
 _own = {k: pc for k, pc in _ic.items() if pc.startswith("ktits_") and pc != "ktits_casuality"}
 _bad = [k for k, pc in _own.items() if pc not in _spr or not (M / _spr[pc]).exists()]
-check(len(_spr) == 24 and len(_own) == 39 and not _bad, f"icons: 24 sprites with existing textures, {len(_own)} spirits use them",
-      f"icons: sprites {len(_spr)} (need 24), spirits with an icon {len(_own)} (need 39), no sprite/texture for {_bad[:5]}")
+check(len(_spr) == 32 and len(_own) == 72 and not _bad, f"icons: 32 sprites with existing textures, {len(_own)} spirits use them",
+      f"icons: sprites {len(_spr)} (need 32), spirits with an icon {len(_own)} (need 72), no sprite/texture for {_bad[:5]}")
 _must = ["ktits_cas_%d" % i for i in range(1, 6)] + ["ktits_edu_%d" % i for i in range(6)] + ["ktits_ally_%s%d" % (c, i) for c in "tk" for i in range(1, 5)] +         ["ktits_eternal_neutrality", "ktits_baku_powder_keg", "ktits_durmanische", "ktits_durmanische_3", "ktits_kaz_britt_influence", "ktits_kaz_britt_2",
          "ktits_kaz_britt_3", "ktits_kaz_crown", "ktits_kaz_grace_t", "ktits_kaz_resist_t", "ktits_kaz_resist5_t"] + ["ktits_cas_ev_stab_%d" % i for i in range(7)]
 check(all(k in _own for k in _must), "icons: all required spirits have their own picture", f"icons: no own picture {[k for k in _must if k not in _own]}")
@@ -1022,6 +1023,31 @@ check("ktits_kaz_ol_calc = {" in _oe and "ktits_kaz_ol_calc = yes" in _oe and _o
       "kazualia: External Casuality lists the top 8 target countries (scale, tier, change in a month) in the category description", "kazualia: target list missing")
 check("ktits_kaz_great FROM = { is_neighbor_of = ROOT }" in _kz("common/decisions/ktits_kazualia_outer_decisions.txt"),
       "kazualia: AI weights of the outer decisions favour weak bordering targets", "kazualia: outer AI weights missing")
+
+# ---- pictures and icons from the image generator (make_pictures.py, make_goals.py, make_icons.py portraits) ----
+import re as _re2
+def _gfx_tex(fn):
+    f = M / fn
+    return _re2.findall(r'texturefile\s*=\s*"([^"]+)"', f.read_text(encoding="utf-8", errors="ignore")) if f.exists() else []
+_pt = [t for t in _gfx_tex("interface/ktits_pictures.gfx") if "ktits" in t]; _gt = [t for t in _gfx_tex("interface/ktits_goals.gfx") if "ktits" in t]   # textures of the vanilla game (shine_overlay.dds) are not in the mod
+check(_pt and all((M / t).exists() for t in _pt), "pictures: every texture of interface/ktits_pictures.gfx exists in the mod", f"pictures: missing textures {[t for t in _pt if not (M / t).exists()][:5]}")
+check(_gt and all((M / t).exists() for t in _gt), "goals: every texture of interface/ktits_goals.gfx exists in the mod", f"goals: missing textures {[t for t in _gt if not (M / t).exists()][:5]}")
+_pg = (M / "interface/ktits_pictures.gfx").read_text(encoding="utf-8", errors="ignore") if (M / "interface/ktits_pictures.gfx").exists() else ""
+_used = set()
+for _f in list((M / "events").glob("ktits_*.txt")) + list((M / "common/decisions/categories").glob("ktits_*.txt")):
+    _used |= set(_re2.findall(r"picture = (GFX_(?:report_event|decision_cat_picture)_ktits_\w+)", _f.read_text(encoding="utf-8-sig", errors="ignore")))
+_allgfx = "".join(g.read_text(encoding="utf-8", errors="ignore") for g in (M / "interface").glob("*.gfx"))
+check(all(f'name = "{u}"' in _allgfx for u in _used), "pictures: every GFX_report_event_ktits_* / GFX_decision_cat_picture_ktits_* used in events and categories is defined", "pictures: undefined sprite used")
+_kf = _kz("common/national_focus/ktits_kazualia.txt"); _gg = (M / "interface/ktits_goals.gfx").read_text(encoding="utf-8", errors="ignore") if (M / "interface/ktits_goals.gfx").exists() else ""
+check(all(f'name = "{i}"' in _gg for i in set(_re2.findall(r"icon = (GFX_goal_ktits_\w+)", _kf))), "goals: every GFX_goal_ktits_* icon of the Kazualia focuses is defined in interface/ktits_goals.gfx", "goals: undefined focus icon")
+_ch = _kz("common/characters/SCU.txt")
+check("SCU_Sabirov" in _ch and "SCU_Bulldog_Kazual" in _ch and "portrait_scu_communism" in _ch and "portrait_scu_democracy" in _ch and (M / "gfx/leaders/ktits/portrait_scu_communism.png").exists() and (M / "gfx/leaders/ktits/portrait_scu_democracy.png").exists(),
+      "scuocolo: rulers «Товарищ Сабиров» and «Лорд Бульдог Казуал» with portraits", "scuocolo: new rulers or portraits missing")
+
+# ---- hand-made flags (apply_flags.py): the mod files equal the sources in gfx_src/flags ----
+_fl = sorted((REPO_FLAGS := Path(__file__).resolve().parent.parent / "gfx_src" / "flags").rglob("*.tga"))
+check(_fl and all((M / "gfx/flags" / f.relative_to(REPO_FLAGS)).exists() and (M / "gfx/flags" / f.relative_to(REPO_FLAGS)).read_bytes() == f.read_bytes() for f in _fl),
+      f"flags: {len(_fl)} hand-made flag files (three sizes each: ARA, SCU and its ideology variants) are in the mod unchanged", "flags: hand-made flags are missing or differ from gfx_src/flags (run tools/apply_flags.py)")
 
 for lvl, msg in res:
     w[lvl] += 1

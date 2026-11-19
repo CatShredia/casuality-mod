@@ -18,6 +18,13 @@
 10. events/rpx_generic_war.txt (RandomParadox war events: create_wargoal / declare_war_on without a justification) -> only `add_namespace = generic_war`;
    no other file in the mod fires generic_war.N (only localisation mentions them).
 11. events/rpx_ideological_tension_v2.txt (free wargoals for AI fascists/communists from 1937.4.1) -> only the namespace.
+12. Ids with a dash (ETH_soviet-ethiopian_trade_agreement): has_completed_focus / focus ids are matched with word-and-dash chars (before, `always = no-...` remained in ethiopia.txt,
+   ETH.txt, ETH_decision_categories.txt, SOV_organization.txt). history/general and music (spain_shared_advisors, generic_advisors, mtg_songs) are processed like common/;
+   AST_scripted_effects.txt: step 3 builds on the step-1 result (it used to overwrite it from vanilla).
+13. load_focus_tree of removed vanilla trees (soviet_focus, italian_focus ...) -> the statement is removed; trees of our ktits_*.txt files are kept (even with a vanilla id).
+14. faction_manifest_* named by templates but missing in the mod's common/factions/goals -> definitions appended from vanilla.
+15. music/*.txt of vanilla music/ and of the DLC packs (DLC/*/music, integrated_dlc/*/music) are written to the mod as music/<name>.txt;
+   has_completed_focus of any focus the mod does not define -> always = no (ids of ktits_* and generic.txt stay).
 Usage: python tools/fix_vanilla_leftovers.py [--mod PATH] [--game PATH]
 """
 import argparse, re
@@ -27,7 +34,7 @@ import make_game_rules as G
 
 EMPTY_NOTE = "# emptied by Ktits (tools/fix_vanilla_leftovers.py): vanilla content for countries that do not exist in the mod\n"
 EMPTY_DECISIONS = re.compile(r"start_border_war|faction_template_|faction_goal_")
-HCF = re.compile(r"has_completed_focus\s*=\s*(\w+)")
+HCF = re.compile(r"has_completed_focus\s*=\s*([\w-]+)")   # ids with a dash (ETH_soviet-ethiopian_trade_agreement): \w+ cut them and left `always = no-ethiopian_...`
 HGR = re.compile(r"has_game_rule\s*=\s*\{([^{}]*)\}")
 
 
@@ -44,14 +51,31 @@ def wr(p, text, bom=False):  # keep the BOM state of the source file: a BOM wher
     p.write_bytes((b"\xef\xbb\xbf" if bom else b"") + text.encode("utf-8"))
 
 
+def music_sources(game, mod):
+    """music/<name>.txt -> source file: vanilla music/ first, then the DLC packs (DLC/<pack>/music, integrated_dlc/<pack>/music), then the mod's own copy.
+    The same name in several packs: the first one wins (identical copies exist for mtg_songs.txt)."""
+    cands = [game / "music"]
+    for top in sorted(game.iterdir()):
+        if top.is_dir() and top.name.lower() in ("dlc", "integrated_dlc"):
+            cands += [p / "music" for p in sorted(top.iterdir()) if p.is_dir()]
+    cands.append(mod / "music")
+    found = {}
+    for d in cands:
+        if d.is_dir():
+            for f in sorted(d.glob("*.txt")):
+                found.setdefault(f"music/{f.name}", f)
+    return found
+
+
 # ---- brace-aware helpers ------------------------------------------------------------------------------------------------
 TOK = re.compile(r"([A-Za-z0-9_.:@$\[\]^|\-]+)\s*(?:=|>=|<=|>|<)\s*\{|\{|\}")
 BLOCK_DEC_KEYS = {"activate_targeted_decision", "remove_targeted_decision", "add_days_mission_timeout", "unlock_decision_tooltip",
                   "activate_mission_tooltip", "activate_decision", "activate_mission", "remove_mission", "force_remove_decision"}
 LINE_DEC = re.compile(r"(?m)^[ \t]*(?:unlock_decision_tooltip|activate_mission_tooltip|activate_mission|activate_decision|remove_mission|activate_targeted_decision)\s*=\s*(\w+)[ \t]*(?:#[^\n]*)?\r?\n")
 INLINE_DEC = re.compile(r"\b(?:unlock_decision_tooltip|activate_mission_tooltip|activate_mission|activate_decision|remove_mission)\s*=\s*(\w+)")
-FOCUS_EFF = re.compile(r"(?m)^[ \t]*(?:complete_national_focus|uncomplete_national_focus|unlock_national_focus)\s*=\s*(\w+)[ \t]*(?:#[^\n]*)?\r?\n|\b(?:complete_national_focus|uncomplete_national_focus|unlock_national_focus)\s*=\s*(\w+)")
+FOCUS_EFF = re.compile(r"(?m)^[ \t]*(?:complete_national_focus|uncomplete_national_focus|unlock_national_focus)\s*=\s*([\w-]+)[ \t]*(?:#[^\n]*)?\r?\n|\b(?:complete_national_focus|uncomplete_national_focus|unlock_national_focus)\s*=\s*([\w-]+)")
 HFTPL = re.compile(r"\bhas_faction_template\s*=\s*(\w+)")
+LOAD_TREE = re.compile(r"(?m)^[ \t]*load_focus_tree\s*=\s*(\w+)[ \t]*(?:#[^\n]*)?\r?\n")
 HFT = re.compile(r"\bhas_focus_tree\s*=\s*(\w+)")
 DEC_TEST = re.compile(r"\b(?:has_active_mission|has_decision)\s*=\s*(\w+)")
 EVENT_KEYS = {"country_event", "state_event", "news_event", "unit_leader_event", "operative_leader_event", "character_event"}
@@ -151,7 +175,7 @@ def clean_decision_refs(t, undefined, stat):
 def clean_focus_refs(t, gone, trees, templates, stat):
     """effects on focuses of removed vanilla trees (complete/uncomplete/unlock_national_focus) are removed, has_focus_tree of a removed tree -> always = no"""
     keys = {"complete_national_focus", "uncomplete_national_focus", "unlock_national_focus"}
-    spans = [(n[1], n[3]) for n in parse(t) if n[0] in keys and (m := re.search(r"\bfocus\s*=\s*(\w+)", t[n[2]:n[3]])) and m.group(1) in gone]
+    spans = [(n[1], n[3]) for n in parse(t) if n[0] in keys and (m := re.search(r"\bfocus\s*=\s*([\w-]+)", t[n[2]:n[3]])) and m.group(1) in gone]
     stat["foc_eff"] = stat.get("foc_eff", 0) + len(spans)
     if spans:
         t = cut(t, spans)
@@ -167,6 +191,16 @@ def clean_focus_refs(t, gone, trees, templates, stat):
             return "always = no"
         return m.group(0)
     t = HFT.sub(tree, t)
+    lspans = [(n[1], n[3]) for n in parse(t) if n[0] == "load_focus_tree" and (m := re.search(r"\btree\s*=\s*(\w+)", t[n[2]:n[3]])) and m.group(1) in trees]
+    stat["foc_load"] = stat.get("foc_load", 0) + len(lspans)
+    if lspans:
+        t = cut(t, lspans)
+    def load1(m):
+        if m.group(1) in trees:
+            stat["foc_load"] = stat.get("foc_load", 0) + 1
+            return ""
+        return m.group(0)
+    t = LOAD_TREE.sub(load1, t)
     def tpl(m):
         if m.group(1) not in templates:
             stat["foc_tpl"] = stat.get("foc_tpl", 0) + 1
@@ -254,8 +288,16 @@ def main():
             tx = rd(f)
             if tree_re.search(tx) and not re.search(r"(?m)^style\s*=\s*\{", tx):
                 emptied.add(f"common/national_focus/{f.name}")
-                focus_ids_v |= set(re.findall(r"(?m)^\s*id\s*=\s*(\w+)", tx))
+                focus_ids_v |= set(re.findall(r"(?m)^\s*id\s*=\s*([\w-]+)", tx))
                 focus_trees_v |= set(re.findall(r"(?m)^\s*focus_tree\s*=\s*\{[^{}]*?\bid\s*=\s*(\w+)", tx))
+    # our own trees (ktits_*.txt) stay even if a vanilla tree has the same id (soviet_focus ...): load_focus_tree / has_focus_tree of them are not touched
+    our_trees, our_focus_ids = set(), set()
+    for f in (M / "common/national_focus").glob("ktits_*.txt"):
+        tx = rd(f)
+        our_trees |= set(re.findall(r"(?m)^\s*focus_tree\s*=\s*\{[^{}]*?\bid\s*=\s*(\w+)", tx))
+        our_focus_ids |= set(re.findall(r"(?m)^\s*id\s*=\s*([\w-]+)", tx))
+    focus_trees_v -= our_trees
+    focus_ids_v -= our_focus_ids
     n_focus = sum(1 for r in emptied if r.startswith("common/national_focus/"))
     # tags: ours (mod country_tags) against the vanilla ones
     our_tags, v_tags = set(), set()
@@ -273,13 +315,17 @@ def main():
         wr(M / rel, EMPTY_NOTE); stat["emptied"] += 1
 
     # focuses of the vanilla generic tree no longer exist (make_focuses.py): has_completed_focus = <such id> can never be true
-    ids_g = set(re.findall(r"(?m)^\s*id\s*=\s*(\w+)", rd(V / "common/national_focus/generic.txt")))
+    ids_g = set(re.findall(r"(?m)^\s*id\s*=\s*([\w-]+)", rd(V / "common/national_focus/generic.txt")))
     ids_o = set()
     for f in (V / "common/national_focus").glob("*.txt"):
         if f.name != "generic.txt":
-            ids_o |= set(re.findall(r"(?m)^\s*id\s*=\s*(\w+)", rd(f)))
-    kept_ids = set(re.findall(r"(?m)^\s*id\s*=\s*(\w+)", rd(M / "common/national_focus/generic.txt")))
+            ids_o |= set(re.findall(r"(?m)^\s*id\s*=\s*([\w-]+)", rd(f)))
+    kept_ids = set(re.findall(r"(?m)^\s*id\s*=\s*([\w-]+)", rd(M / "common/national_focus/generic.txt")))
     gen_only = ((ids_g - ids_o) | focus_ids_v) - kept_ids   # every vanilla focus is gone except ids that our generic.txt still defines
+    # every focus id the mod defines (generic.txt, ktits_*, RandomParadox copies); music keeps has_completed_focus only for these
+    mod_focus_ids = set()
+    for f in (M / "common/national_focus").glob("*.txt") if (M / "common/national_focus").is_dir() else []:
+        mod_focus_ids |= set(re.findall(r"(?m)^\s*id\s*=\s*([\w-]+)", rd(f)))
 
     # decisions/missions that no longer exist (defined only in emptied vanilla files, or never): references are neutralised below
     # (brace-aware: depth-1 keys of decision files, whatever the indentation)
@@ -309,18 +355,33 @@ def main():
     for f in (M / "events").glob("*.txt"):   # RandomParadox copies of vanilla events (no vanilla file of that name: the mod copy is rewritten, idempotently)
         if not f.name.startswith("ktits_"):
             rels.add(f"events/{f.name}")
+    # vanilla files outside common/ with has_completed_focus of removed focuses (advisors, music): override in the mod
+    for base in (V, M):
+        for f in (base / "history/general").glob("*.txt"):
+            rels.add(f.relative_to(base).as_posix())
+    # music: vanilla music/ and the DLC music packs (DLC/*/music, integrated_dlc/*/music), written to the mod as music/<name>.txt
+    music_src = music_sources(V, M)
+    rels |= set(music_src)
     # folders the mod replaces (descriptor.mod replace_path): vanilla files of them must NOT be copied into the mod, only RandomParadox's copies are rewritten
     replaced = re.findall(r'(?m)^replace_path\s*=\s*"([^"]+)"', rd(M / "descriptor.mod"))
     for rel in sorted(rels):
         if not (M / rel).exists() and any(rel.startswith(rp.rstrip("/") + "/") for rp in replaced):
             continue
-        src = V / rel if (V / rel).exists() else M / rel   # always from vanilla: idempotent, never re-reads our own output
+        src = music_src[rel] if rel in music_src else (V / rel if (V / rel).exists() else M / rel)   # always from vanilla: idempotent, never re-reads our own output
         t = rd(src)
         is_oa = rel.startswith("common/on_actions/")
-        if not is_oa and not any(k in t for k in ("has_game_rule", "has_completed_focus", "has_active_mission", "has_decision", "decision", "mission", "has_faction_template")):
+        if not is_oa and not any(k in t for k in ("has_game_rule", "has_completed_focus", "has_active_mission", "has_decision", "decision", "mission", "has_faction_template", "load_focus_tree")):
             continue
         t2 = HGR.sub(repl, t)
-        t2 = HCF.sub(lambda m: "always = no" if m.group(1) in gen_only else m.group(0), t2)
+        if rel.startswith("music/"):   # music: every focus that the mod does not define (vanilla, DLC) is gone
+            def mhcf(m):
+                if m.group(1) in mod_focus_ids:
+                    return m.group(0)
+                stat["music"] = stat.get("music", 0) + 1
+                return "always = no"
+            t2 = HCF.sub(mhcf, t2)
+        else:
+            t2 = HCF.sub(lambda m: "always = no" if m.group(1) in gen_only else m.group(0), t2)
         t2 = clean_decision_refs(t2, undefined, stat)
         t2 = clean_focus_refs(t2, gen_only, focus_trees_v, templates, stat)
         if is_oa:
@@ -328,13 +389,35 @@ def main():
         if t2 != t:
             wr(M / rel, t2, bom=has_bom(src)); stat["rewritten"] += 1
 
-    # 3. AST scripted effects
+    # 3. AST scripted effects (on top of the step-1 result if it exists: has_completed_focus of removed focuses is already neutralised there)
     p = M / "common/scripted_effects/AST_scripted_effects.txt"
     src = V / "common/scripted_effects/AST_scripted_effects.txt"
-    t = rd(src)
+    t = rd(p if p.exists() else src)
     t2 = re.sub(r"(?m)^[ \t]*create_faction_from_template\s*=\s*faction_template_AST_nations_of_the_empire[ \t]*\r?\n", "", t)
     if t2 != t or not p.exists():
         wr(p, t2, bom=has_bom(src)); stat["AST"] = 1
+
+    # 3b. faction manifests: the mod replaces common/factions/goals, templates (vanilla ones stay, only invisible) still name manifests that its goals file lacks
+    # ("Faction goal not found in the database: faction_manifest_*"): the missing definitions are appended from vanilla (idempotent)
+    gp = M / "common/factions/goals/faction_manifests.txt"
+    vp = V / "common/factions/goals/faction_manifests.txt"
+    if gp.exists() and vp.exists():
+        have = set()
+        for f in (M / "common/factions/goals").glob("*.txt"):
+            have |= {n[0] for n in parse(rd(f)) if n[5] == 0 and n[0]}
+        used = set()
+        for f in (M / "common/factions/templates").glob("*.txt"):
+            used |= set(re.findall(r"\bmanifest\s*=\s*(\w+)", rd(f)))
+        vt = rd(vp)
+        add = ""
+        for n in parse(vt):
+            if n[5] == 0 and n[0] in used and n[0] not in have:
+                add += "\n" + vt[n[1]:n[3]] + "\n"; have.add(n[0]); stat["manifests"] = stat.get("manifests", 0) + 1
+        if add:
+            wr(gp, rd(gp).rstrip("\n") + "\n" + add, bom=has_bom(gp))
+        miss = sorted(used - have)
+        if miss:
+            print(f"  manifests still undefined (not in vanilla either): {miss}")
 
     # 4. event namespaces
     ev = sorted((M / "events").glob("*.txt"))
@@ -371,6 +454,8 @@ def main():
           f"({n_focus} focus trees, {n_ai} ai_strategy country files)")
     print(f"  decision refs removed: {stat.get('dec_blocks', 0)} blocks, {stat.get('dec_lines', 0)} lines, {stat.get('dec_tests', 0)} tests -> always = no")
     print(f"  focus refs: {stat.get('foc_eff', 0)} effects on removed focuses, {stat.get('foc_tree', 0)} has_focus_tree of removed trees and {stat.get('foc_tpl', 0)} has_faction_template of missing templates -> always = no")
+    print(f"  load_focus_tree of removed vanilla trees removed: {stat.get('foc_load', 0)}; manifests appended: {stat.get('manifests', 0)}")
+    print(f"  music: {len(music_src)} files from vanilla/DLC music, {stat.get('music', 0)} has_completed_focus of undefined focuses -> always = no")
     print(f"  on_actions: {stat.get('oa_state', 0)} vanilla state blocks, {stat.get('oa_event', 0)} calls of missing events, {stat.get('oa_char', 0)} vanilla character blocks removed")
 
 

@@ -805,8 +805,12 @@ def main():
     for rel, text in out.items():
         p = M / rel; p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text, encoding="utf-8", newline="\n")
-    L.write_yml(str(M / "localisation/russian/ktits_alliance_l_russian.yml"), "russian", ru)
-    L.write_yml(str(M / "localisation/english/ktits_alliance_l_english.yml"), "english", en)
+    # keys that override vanilla text go to localisation/replace (else the log reports a duplicate key)
+    REPL = {"DIPLOMACY_CREATE_FACTION_NOT_RULE"}
+    L.write_yml(str(M / "localisation/russian/ktits_alliance_l_russian.yml"), "russian", [x for x in ru if x[0] not in REPL])
+    L.write_yml(str(M / "localisation/english/ktits_alliance_l_english.yml"), "english", [x for x in en if x[0] not in REPL])
+    L.write_yml(str(M / "localisation/replace/ktits_alliance_replace_l_russian.yml"), "russian", [x for x in ru if x[0] in REPL])
+    L.write_yml(str(M / "localisation/replace/ktits_alliance_replace_l_english.yml"), "english", [x for x in en if x[0] in REPL])
     for old in ("common/scripted_diplomatic_actions/ktits_alliance_actions.txt", "common/opinion_modifiers/ktits_alliance_opinion.txt"):
         if (M / old).exists(): (M / old).unlink()
     write_bar(M)

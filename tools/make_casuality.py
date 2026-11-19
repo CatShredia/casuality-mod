@@ -240,7 +240,14 @@ ktits_casuality_growth = {{
 		limit = {{ check_variable = {{ var = ktits_cas_g value = 1 compare = greater_than_or_equals }} }}
 		add_to_variable = {{ var = ktits_casuality value = ktits_cas_g }}
 		clamp_variable = {{ var = ktits_casuality min = 0 max = 100 }}
-		ktits_casuality_update = yes
+		# a continuous focus (tools/make_continuous.py) changes the scale in the same monthly tick and calls the update itself: updating here too made the tier flap (growth +1 -> tier 1, focus -1 -> tier 0)
+		if = {{
+			limit = {{
+				NOT = {{ has_country_flag = ktits_cont_f_lazy }}
+				NOT = {{ has_country_flag = ktits_cont_f_swamp }}
+			}}
+			ktits_casuality_update = yes
+		}}
 	}}
 }}
 
@@ -889,10 +896,9 @@ w("interface/ktits_casuality.gfx", "spriteTypes = {\n" + "".join(
 from PIL import ImageDraw
 SEG_N, SEG_W, SEG_H, GAP, BAR_X = 20, 22, 14, 1, 14
 bar_w = SEG_N * (SEG_W + GAP) + 6
-if src is not None:
-    fr = crop((bar_w, SEG_H + 8)).point(lambda v: int(v * 0.35))
-    d = ImageDraw.Draw(fr); d.rectangle([0, 0, fr.width - 1, fr.height - 1], outline=(200, 190, 150))
-    fr.save(art / "bar_frame.png")
+fr = Image.new("RGB", (bar_w, SEG_H + 8), (38, 40, 30))   # plain dark frame (no placeholder photo)
+d = ImageDraw.Draw(fr); d.rectangle([0, 0, fr.width - 1, fr.height - 1], outline=(200, 190, 150))
+fr.save(art / "bar_frame.png")
 SEG_COL = [(60, 180, 75), (170, 190, 50), (230, 150, 40), (200, 50, 40)]       # quarters: green, yellow, orange, red
 for i, col in enumerate(SEG_COL, 1):
     im = Image.new("RGB", (SEG_W, SEG_H), col); ImageDraw.Draw(im).rectangle([0, 0, SEG_W - 1, SEG_H - 1], outline=tuple(int(c * 0.6) for c in col)); im.save(art / f"bar_seg_{i}.png")

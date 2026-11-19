@@ -53,6 +53,8 @@ def w(rel, text):
 pal = M / "common/continuous_focus/generic.txt"
 t = pal.read_text(encoding="utf-8-sig")
 t = re.sub(re.escape(BEGIN) + r".*?" + re.escape(END), "", t, flags=re.S)
+# vanilla leftover: fix_vanilla_leftovers cut the hyphenated id ETH_anti-italian_propaganda to "always = no-italian_propaganda" (invalid); the focus is gone, so it is always = no
+t = re.sub(r"always = no-[\w-]*", "always = no", t)
 i = t.rstrip().rfind("}")
 t = t[:i].rstrip("\n") + "\n\n" + BLOCK + "}\n"
 pal.write_text(t, encoding="utf-8", newline="\n")

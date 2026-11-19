@@ -277,9 +277,9 @@ ktits_kz_rebel_size = {
 
 """
 ladder = "".join(
-    f"    if = {{\n        limit = {{ check_variable = {{ var = ktits_kz_d value = {k} compare = greater_than_or_equals }} }}\n        create_unit = {{\n"
+    f"    if = {{\n        limit = {{ check_variable = {{ var = ktits_kz_d value = {k} compare = greater_than_or_equals }} }}\n        capital_scope = {{\n        create_unit = {{\n"
     f"            division = \"name = \\\"Казуальное ополчение\\\" division_template = \\\"Болотные повстанцы\\\" start_experience_factor = 0.1 start_equipment_factor = 0.7\"\n"
-    f"            owner = THIS\n        }}\n    }}\n" for k in range(1, 21))
+    f"            owner = THIS\n        }}\n        }}\n    }}\n" for k in range(1, 21))
 setup_t = """# scope = the new rebel country, PREV = the country it rises against (target of the rebellion or Kazualia in the civil war); variable ktits_kz_d is passed by the caller
 ktits_kz_rebel_setup_@T@ = {
     clr_country_flag = ktits_kz_rebel_won
@@ -679,7 +679,7 @@ dec += T(f"""    ktits_kaz_em_call = {{
             set_country_flag = {{ flag = ktits_kaz_cd_em_call days = 120 value = 1 }}
             custom_effect_tooltip = ktits_kaz_tt_div_militia3
             hidden_effect = {{
-""" + "".join('                create_unit = { division = "name = \\"Казуальная дивизия\\" division_template = \\"Болотное ополчение\\" start_experience_factor = 0.1 start_equipment_factor = 0.7" owner = ROOT }\n' for _ in range(3)) + """            }
+""" + "                capital_scope = {\n" + "".join('                    create_unit = { division = "name = \\"Казуальная дивизия\\" division_template = \\"Болотное ополчение\\" start_experience_factor = 0.1 start_equipment_factor = 0.7" owner = PREV }\n' for _ in range(3)) + "                }\n" + """            }
         }
         ai_will_do = {
             base = 2

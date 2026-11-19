@@ -7,8 +7,8 @@ from pathlib import Path
 import lore_data as L
 
 ICONS = {  # icon id -> spirits (ids without the ktits_ prefix are written in full)
-    "cas1_lenca": ["ktits_cas_1"], "cas2_rasslabon": ["ktits_cas_2"], "cas3_bolotnaya_len": ["ktits_cas_3"],
-    "cas4_durmanische": ["ktits_cas_4", "ktits_durmanische", "ktits_durmanische_1", "ktits_durmanische_2", "ktits_durmanische_3"],
+    "cas1_lenca": ["ktits_cas_1"], "cas2_rasslabon": ["ktits_cas_2"], "cas3_bolotnaya_len": ["ktits_cas_3", "ktits_eco_casual_society"],
+    "cas4_durmanische": ["ktits_cas_4", "ktits_cas_call_1", "ktits_cas_call_2", "ktits_durmanische", "ktits_durmanische_1", "ktits_durmanische_2", "ktits_durmanische_3"],
     "cas5_idilliya": ["ktits_cas_5"],
     "edu0_stado": ["ktits_edu_0"], "edu1_krestyanskoe": ["ktits_edu_1"], "edu2_elita": ["ktits_edu_2"],
     "edu3_razvivayusheesya": ["ktits_edu_3"], "edu4_obrazovannoe": ["ktits_edu_4"], "edu5_buduschee": ["ktits_edu_5"],
@@ -17,7 +17,14 @@ ICONS = {  # icon id -> spirits (ids without the ktits_ prefix are written in fu
     "neutral_eternal": ["ktits_eternal_neutrality"], "baku_powder": ["ktits_baku_powder_keg"],
     "kaz_britt2": ["ktits_kaz_britt_2", "ktits_kaz_britt_influence"], "kaz_britt3": ["ktits_kaz_britt_3"],
     "kaz_crown": ["ktits_kaz_crown"], "kaz_grace": ["ktits_kaz_grace_t"],
-    "kaz_resist": ["ktits_kaz_resist_t", "ktits_kaz_resist5_t"],
+    "kaz_resist": ["ktits_kaz_resist_t", "ktits_kaz_resist5_t", "ktits_kaz_rebels_t"],
+    "pol_democracy": [f"ktits_pol_sp_{s}" for s in ("liberal", "socdem", "conserv", "techdem")],
+    "pol_communism": ["ktits_pol_sp_lenin", "ktits_pol_sp_totcom"],
+    "pol_nationalism": [f"ktits_pol_sp_{s}" for s in ("natstate", "totfas", "integral")],
+    "pol_authoritarian": [f"ktits_pol_sp_{s}" for s in ("merit", "technoc", "steppe", "despot", "theocr")],
+    "kaz_army": [f"ktits_kaz_sp_{s}" for s in ("army1", "army2", "army3", "levy", "hold", "posts", "paths", "march")],
+    "kaz_siesta": [f"ktits_kaz_sp_{s}" for s in ("siesta", "watch", "calm", "fog")],
+    "kaz_papers": ["ktits_kaz_sp_pp1", "ktits_kaz_sp_pp2"], "kaz_sobering": ["ktits_kaz_sobering"],
     "event_rise": [], "event_fall": [],   # filled below from the sign of stability_factor of ktits_cas_ev_stab_*
 }
 ap = argparse.ArgumentParser()
@@ -59,11 +66,11 @@ if miss: print("WARNING: spirits not found in idea files:", ", ".join(miss))
 # ruler portraits (gfx_src/portraits/<name>.png, 156x210 large): copied to gfx/leaders/ktits/, small 38x51 is made from large;
 # the character gets `portraits = { civilian = { large = "..." small = "..." } }` (idempotent). The emperor portrait is only stored (no crown focus yet).
 from PIL import Image
-PORTRAITS = {"SCU_casuality_leader": "portrait_scu_peasant"}
+PORTRAITS = {"SCU_casuality_leader": "portrait_scu_peasant", "SCU_Sabirov": "portrait_scu_communism", "SCU_Bulldog_Kazual": "portrait_scu_democracy"}   # SCU_Sabirov, SCU_Bulldog_Kazual are made by make_rulers.py (must run before)
 PSRC = SRC.parent / "portraits"
 (M / "gfx/leaders/ktits").mkdir(parents=True, exist_ok=True)
 for name in PORTRAITS.values():
-    big = Image.open(PSRC / f"{name}_156x210.png").convert("RGB")
+    big = Image.open(next(q for q in (PSRC / f"{name}_156x210.png", PSRC / f"{name}.png") if q.exists())).convert("RGB")
     big.save(M / f"gfx/leaders/ktits/{name}.png")
     big.resize((38, 51), Image.LANCZOS).save(M / f"gfx/leaders/ktits/{name}_small.png")
 for char, name in PORTRAITS.items():
