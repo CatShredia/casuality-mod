@@ -40,6 +40,12 @@ def nearest(tag, ref, k):
 ASM_ST = nearest(ASM, SOV, 5)
 DMK_ST = nearest(DMK, CSK, 5)
 KYT_ST = sorted(sorted(owned(KYT), key=lambda s: cen(s)[1])[:4])
+_hc = next((M / "history/countries").glob(f"{CSK} - *.txt"))
+_capst = int(re.search(r"capital\s*=\s*(\d+)", _hc.read_text(encoding="utf-8", errors="ignore")).group(1))
+_vp = re.findall(r"victory_points\s*=\s*\{\s*(\d+)\s+(\d+)", (M / "history/states" / f"{_capst}.txt").read_text(encoding="utf-8", errors="ignore"))
+CSK_PROV = int(max(_vp, key=lambda v: int(v[1]))[0]) if _vp else st[_capst]["provs"][0]
+VOL_UNIT = f'create_unit = {{ division = "name = \\"Добровольцы Союза\\" division_template = \\"Добровольцы Союза\\" start_experience_factor = 0.3 start_equipment_factor = 1" owner = PREV prioritize_location = {CSK_PROV} }}'
+VOL_TPL = 'division_template = { name = "Добровольцы Союза" regiments = { infantry = { x = 0 y = 0 } infantry = { x = 0 y = 1 } infantry = { x = 1 y = 0 } infantry = { x = 1 y = 1 } } }'
 print(f"soviet: claims Assembly {ASM_ST}, Dmitrov strip {DMK_ST}, northern Kytai {KYT_ST}")
 
 # ---------------- doc tables: name -> (days, description) ----------------
@@ -206,7 +212,7 @@ fc("ra3", "Освоение окраин", "rub_a", [["ra2"]], [], None, civ(1) 
 fc("rd1", "Взгляд за хребет", "rub_d", RX, [], exists(DMK), OP(DMK, -20) + "add_war_support = 0.03\n", ai=30)
 fc("rd2", "Урок Княжеству", "rub_d", [["rd1"], ["rc2"], ["rc4"]], [], None, wargoal(DMK, DMK_ST, P + "tt_dmk_wg", "Цель войны на прикуштунскую полосу Княжества"), ai=30)
 fc("rc0", "Казачий вопрос", "rub_c", RX, [], exists(CSK), OP(CSK, 10), ai=30)
-fc("rc1", "Помощь без обязательств", "rub_c", [["rc0"]], ["rc3"], None, OP(CSK, 40) + tip(P + "tt_help", "Казачья Земля получает 2000 единиц пехотного снаряжения от Союза, без альянса и гарантий [добровольческие дивизии не реализованы]") + f"hidden_effect = {{ {CSK} = {{ add_equipment_to_stockpile = {{ type = infantry_equipment amount = 2000 producer = {SOV} }} }} }}\n", ai=30)
+fc("rc1", "Помощь без обязательств", "rub_c", [["rc0"]], ["rc3"], None, OP(CSK, 40) + tip(P + "tt_help", "Казачья Земля получает 2000 единиц пехотного снаряжения от Союза, без альянса и гарантий 2 добровольческие дивизии в её столице; Союз получает ванильное действие «Отправить добровольцев»") + f"hidden_effect = {{ {CSK} = {{ add_equipment_to_stockpile = {{ type = infantry_equipment amount = 2000 producer = {SOV} }}\n {VOL_TPL}\n capital_scope = {{ {VOL_UNIT} {VOL_UNIT} }} }} }}\nadd_ideas = {P}sp_volunteers\n", ai=30)
 fc("rc2", "Станичные поставки", "rub_c", [["rc1"]], [], None, tip(P + "tt_supply", "Торговый договор: снабжение Казачьей Земли +15 % [следующая фаза]") + flag(P + "cossack_supply"), ai=30)
 fc("rc3", "Давление на Казачью Землю", "rub_c", [["rc0"]], ["rc1"], None, OP(CSK, -40), ai=30)
 fc("rc4", "Ультиматум присоединения", "rub_c", [["rc3"]], [], None, ev(CSK, 10, P + "tt_ultimatum", "Событие Казачьей Земли: стать марионеткой Союза или получить войну"), ai=30)

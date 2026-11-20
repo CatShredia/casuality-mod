@@ -52,6 +52,10 @@ def idea(key, mods):
             + "".join(f"                {k} = {v}\n" for k, v in mods.items()) + "            }\n        }\n")
 for k, (r_, d_, mods) in SPI.items():
     ideas += idea(P + "sp_" + k, mods); add(P + "sp_" + k, r_); add(P + "sp_" + k + "_desc", d_)
+# vanilla volunteers (diplomacy action «Отправить добровольцев»): the rule can_send_volunteers + the modifiers of the vanilla ideas (afghanistan.txt:686, australia.txt:1681)
+ideas += ("        ktits_sov_sp_volunteers = {\n            picture = generic_volunteer_expedition_bonus\n            allowed = { always = no }\n            removal_cost = -1\n            rule = {\n                can_send_volunteers = yes\n            }\n"
+          "            modifier = {\n                send_volunteer_divisions_required = -1\n                send_volunteer_size = 3\n            }\n        }\n")
+add("ktits_sov_sp_volunteers", "Союзные добровольцы"); add("ktits_sov_sp_volunteers_desc", "Союз разрешил своим добровольцам ездить на чужие войны. Добровольцы едут охотно: там кормят, а дома ещё надо оформлять отпуск.")
 IDEL = ("Союз двух рек", "Две реки сливаются, и никто уже не спорит, какая из них главнее. Татарин и башкир делят один паром и один самовар.", {"stability_factor": 0.05, "production_speed_buildings_factor": 0.1, "consumer_goods_factor": -0.05})
 ideas += idea("ktits_idel_two_rivers", IDEL[2]); add("ktits_idel_two_rivers", IDEL[0]); add("ktits_idel_two_rivers_desc", IDEL[1])
 w("common/ideas/ktits_soviet_mech_ideas.txt", ideas + "    }\n}\n")
@@ -233,7 +237,7 @@ extra = (f"# scope = Soviet Union, every month: builds, count of the countries t
     bcheck +
     f"if = {{\n    limit = {{ has_country_flag = {P}export_on }}\n    set_variable = {{ var = {P}export value = 0 }}\n    every_other_country = {{\n        limit = {{ communism > 0.299 }}\n        ROOT = {{ add_to_variable = {{ var = {P}export value = 1 }} }}\n    }}\n}}\n"
     f"if = {{\n    limit = {{ has_country_flag = {P}collapsed NOT = {{ has_country_flag = {P}rus_started }} }}\n    set_country_flag = {P}rus_started\n    set_country_flag = {{ flag = {P}rus_clock days = 365 value = 1 }}\n}}\n"
-    f"if = {{\n    limit = {{ has_country_flag = {P}rus_started NOT = {{ has_country_flag = {P}rus_clock }} NOT = {{ has_country_flag = {P}rus_done }} }}\n    set_country_flag = {P}rus_done\n" + ind(rus_eff, 4) + "}\n", 4) + "}\n")
+    f"if = {{\n    limit = {{ has_country_flag = {P}rus_started NOT = {{ has_country_flag = {P}rus_clock }} NOT = {{ has_country_flag = {P}rus_done }} }}\n    set_country_flag = {P}rus_done\n" + ind(rus_eff, 4) + ind("".join(f"every_owned_state = {{ limit = {{ is_core_of = {t_} }} remove_core_of = {t_} }}\n" for t_ in TAGS), 4) + "}\n", 4) + "}\n")
 w("common/scripted_effects/ktits_soviet_mech2_effects.txt", extra)
 w("common/on_actions/ktits_soviet_mech_on_actions.txt", f"on_actions = {{\n    on_monthly = {{\n        effect = {{\n            if = {{\n                limit = {{ ktits_is_soviet = yes }}\n                {P}monthly = yes\n                {P}extra_monthly = yes\n            }}\n        }}\n    }}\n}}\n")
 # graphic bars of the scales (the segments and the frame of make_casuality.py): integrity, paranoia (steps of 5), balance (steps of 10 from -100), repentance
