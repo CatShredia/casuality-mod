@@ -83,6 +83,7 @@ info = L.load_mod(M)
 lore2tag = {}
 for tag, lt in info["tag2lore"].items():
     lore2tag[lt] = tag
+START_POPS = {"CSL": {"casuality": 90, "democratic": 5, "neutrality": 5}}   # lore tag -> popularities, percent
 rows, missing = [], []
 for lt, (name, grp, lore_ideo, sub) in RULERS.items():
     tag = lore2tag.get(lt)
@@ -143,6 +144,12 @@ for lt, (name, grp, lore_ideo, sub) in RULERS.items():
         ht = re.sub(r"set_popularities\s*=\s*\{[^}]*\}", nb, ht, count=1)
         hf.write_text(ht, encoding="utf-8", newline="")
         ruling_note += f"; elections {ea}, popularities {pp}"
+    if lt in START_POPS:      # author's start popularities of Kazualia (docs/countries/Scuocolo): all groups not listed are 0
+        ht = hf.read_text(encoding="utf-8", errors="ignore")
+        nb = "set_popularities = {\n" + "".join(f"\t{g} = {START_POPS[lt].get(g, 0)}\n" for g in IDEO.GROUP_ORDER if START_POPS[lt].get(g, 0) or g in ("democratic", "fascism", "communism", "neutrality")) + "}"
+        ht = re.sub(r"set_popularities\s*=\s*\{[^}]*\}", nb, ht, count=1)
+        hf.write_text(ht, encoding="utf-8", newline="")
+        ruling_note += f"; start popularities {START_POPS[lt]}"
     rows.append((tag, lt, name, target, lore_ideo, sub or "", ("INVENTED " if lt in INV.INVENTED_RULERS and lt not in LORE_ONLY else "") + ("placeholder sub-ideology" if PLACEHOLDER.get(lt) else ""), done, ruling_note))
 
 # extra rulers made from scratch (user decision): new characters with their own portrait (wired later by make_icons.py PORTRAITS, so make_icons runs after this step)

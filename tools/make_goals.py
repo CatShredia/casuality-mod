@@ -19,7 +19,8 @@ SRC = {"kazfocus_great": ("kazfocus_great", 2), "kazfocus_reform": ("kazfocus_re
 # focus id prefix (after ktits_kaz_) -> icon. Root focuses (wake, sleep, hum, red), n_* (neutrality), z_* are left as is
 # (kazfocus_root variants are nearly black; z_* = puppet branch; reserv art = gate/fence is used for it)
 PREFIX = {"g_": "kazfocus_great", "r_": "kazfocus_reform", "c_": "kazfocus_commie", "z_": "kazfocus_reserv", "d_": "kazfocus_durman",
-          "e_": "kazfocus_gifts", "s_": "kazfocus_edu", "b_": "kazfocus_britt", "a_": "kazfocus_war"}
+          "e_": "kazfocus_gifts", "s_": "kazfocus_edu", "b_": "kazfocus_britt", "a_": "kazfocus_war",
+          "m_": "kazfocus_reform", "x_": "kazfocus_reform", "xd_": "kazfocus_reform", "xc_": "kazfocus_commie", "reform": "kazfocus_reform"}   # modernization, reformist economy, the reformist path root
 FOCUS_W, FOCUS_H = 94, 76   # vanilla focus icon size (goal_generic_*.dds)
 DECISION_OLD = "generic_political_address"   # decisions of the political group get the common decision icon
 

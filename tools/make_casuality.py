@@ -202,20 +202,34 @@ w("common/scripted_effects/ktits_casuality_monthly_effects.txt", f"""# edu cost 
 ktits_casuality_costs = {{
 {COSTS}}}
 
-# growth of the scale = (neighbour Kazualia +2, neighbours-puppets of Kazualia +1 each (max 3), +1 per full 10 % of the casuality party) x education multiplier, rounded down
+# growth of the scale = (neighbour Kazualia +3 (+1 more while its Inner Casuality >= 75), neighbours-puppets of Kazualia +2 each (max 6), +1 per full 10 % of the casuality party) x education multiplier, rounded down
 ktits_casuality_growth = {{
 	set_variable = {{ var = ktits_cas_g value = 0 }}
 	set_variable = {{ var = ktits_cas_n value = 0 }}
 	if = {{
 		limit = {{ any_neighbor_country = {{ ktits_is_kazualia = yes }} }}
-		add_to_variable = {{ var = ktits_cas_g value = 2 }}
+		add_to_variable = {{ var = ktits_cas_g value = 3 }}
+	}}
+	if = {{
+		limit = {{ any_neighbor_country = {{ ktits_is_kazualia = yes check_variable = {{ var = ktits_kaz_inner value = 75 compare = greater_than_or_equals }} }} }}
+		add_to_variable = {{ var = ktits_cas_g value = 1 }}
 	}}
 	every_neighbor_country = {{
 		limit = {{ is_puppet_of = {KAZ} }}
-		PREV = {{ add_to_variable = {{ var = ktits_cas_n value = 1 }} }}
+		PREV = {{ add_to_variable = {{ var = ktits_cas_n value = 2 }} }}
 	}}
-	clamp_variable = {{ var = ktits_cas_n min = 0 max = 3 }}
+	clamp_variable = {{ var = ktits_cas_n min = 0 max = 6 }}
 	add_to_variable = {{ var = ktits_cas_g value = ktits_cas_n }}
+	# spirit "Болотная лихорадка" (neighbour contagion): +2 to the Neighbours+Ideology sum, before the education multiplier
+	if = {{
+		limit = {{ has_idea = ktits_cas_contagion }}
+		add_to_variable = {{ var = ktits_cas_g value = 2 }}
+	}}
+	# decision "Густой туман" (Kazualia flag ktits_kaz_fog_x15, 60 days): the growth of a neighbour of Kazualia x2
+	if = {{
+		limit = {{ any_neighbor_country = {{ ktits_is_kazualia = yes has_country_flag = ktits_kaz_fog_x15 }} }}
+		multiply_variable = {{ var = ktits_cas_g value = 2 }}
+	}}
 	# focus "Осушение низин": the neighbour component is 1 lower (not below 0)
 	if = {{
 		limit = {{ has_country_flag = ktits_cas_f_drain }}
@@ -252,6 +266,15 @@ ktits_casuality_growth = {{
 }}
 
 # national spirit "Зов болот": war with Kazualia and scale > 80
+# refresh instead of stacking: remove, then add for 180 days
+ktits_cas_contagion_give = {{
+	if = {{
+		limit = {{ has_idea = ktits_cas_contagion }}
+		remove_ideas = ktits_cas_contagion
+	}}
+	add_timed_idea = {{ idea = ktits_cas_contagion days = 180 }}
+}}
+
 ktits_casuality_call = {{
 	if = {{
 		limit = {{
@@ -495,6 +518,21 @@ w("common/ideas/ktits_casuality.txt", "ideas = {\n\tcountry = {\n" + "".join(f""
 		}}
 """ for k, _, _, _, ic, pb, rs, st in TIERS) + "\t}\n}\n")
 
+# "Болотная лихорадка" (Casuality-Mechanic.md, "Заражение соседей"): timed spirit of neighbours of a fallen country; the +2 is read in ktits_casuality_growth, so no modifier
+w("common/ideas/ktits_casuality_contagion.txt", """ideas = {
+	country = {
+		ktits_cas_contagion = {
+			picture = ktits_cas3_bolotnaya_len
+			allowed = { always = no }
+			allowed_civil_war = { always = yes }
+			removal_cost = -1
+			modifier = {
+			}
+		}
+	}
+}
+""")
+
 # "Зов болот" (docs/global_mechanics/Casuality-Mechanic.md): stage 1 given by the monthly check, stage 2 = an extra timed spirit from the Kazualia decision (stacks to -45 % attack / -30 % defence)
 w("common/ideas/ktits_casuality_call.txt", """ideas = {
 	country = {
@@ -682,6 +720,11 @@ country_event = {{
 				limit = {{ is_subject = yes }}
 				overlord = {{ end_puppet = PREV }}
 			}}
+			# the fallen country loses the contagion spirit (it is already at 100)
+			if = {{
+				limit = {{ has_idea = ktits_cas_contagion }}
+				remove_ideas = ktits_cas_contagion
+			}}
 			# conquered lands go back to their original countries (docs/global_mechanics/Casuality-Mechanic.md); must run before the split of big countries
 			ktits_return_lands = yes
 			set_politics = {{ ruling_party = casuality }}
@@ -712,6 +755,15 @@ country_event = {{
 					NOT = {{ has_country_flag = ktits_casuality_fallen }}
 				}}
 				country_event = {{ id = ktits_casuality.32 }}
+			}}
+			# neighbour contagion: temporary spirit "Болотная лихорадка" (180 days, refreshed instead of stacking); land neighbours only [uncertain: no verified trigger for 'neighbour across ONE sea region']
+			every_neighbor_country = {{
+				limit = {{
+					NOT = {{ ktits_is_kazualia = yes }}
+					NOT = {{ has_country_flag = ktits_casuality_fallen }}
+					NOT = {{ is_puppet_of = {KAZ} }}
+				}}
+				ktits_cas_contagion_give = yes
 			}}
 		}}
 	}}
@@ -751,7 +803,7 @@ RAND_EVENTS = [
      [("Бороться!", -5, -25, None, 0), ("Будь что будет", 5, 0, None, 0)]),
     (31, "note", 0, False, "Последний рубеж", "Газеты печатают одно слово: «Почти». На улицах тихо и спокойно, и именно это пугает остатки правительства.",
      [("Последний рывок готов", 0, 0, None, 0), ("Пусть будет", 2, 0, None, 0)]),
-    (32, "note", 0, False, "Сосед пал", "Граница с соседом больше не охраняется: пограничники ушли рыбачить. С той стороны доносятся песни и запах костров.",
+    (32, "note", 0, False, "Сосед пал", "Граница с соседом больше не охраняется: пограничники ушли рыбачить. С той стороны доносятся песни и запах костров. По стране ползёт болотная лихорадка: слухи о том, что можно просто не вставать.",
      [("Укрепить границу", -5, -50, None, 0), ("Ничего не делать", 5, 0, None, 0)]),
     (33, "note", 0, False, "Мы свободны!", "Бывший сюзерен растворился в болоте, и столица вдруг стала столицей настоящего государства. Никто не знает, что делать с этой свободой.",
      [("Строить своё", -10, -25, None, 0), ("Праздновать", 5, 0, (0.05, 60), 0)]),
@@ -824,6 +876,8 @@ for key, n, d, _dl, _c, _cd, side_, *_ in DECISIONS:
     n = MARK[side_] + n
     add(key, n); add(f"{key}_desc", d)
     if key == FREE: add(key + "_free", n); add(key + "_free_desc", d + " (Без перезарядки: действует «Дома Безделья по всей стране».)")
+add("ktits_cas_contagion", "Болотная лихорадка")
+add("ktits_cas_contagion_desc", "Когда за забором соседа вдруг стало тихо и все легли, это сначала кажется странным, потом заманчивым, а потом и вовсе разумным. Слухи о том, что можно просто не вставать, текут через границу быстрее любых таможенников. Чиновники ещё держатся за расписания, но всё чаще поглядывают на часы с тоской.\\n\\n§YРост шкалы Казуальности +2 (до множителя образования). Действует 180 дней; новое падение соседа обновляет срок.§!")
 add("ktits_cas_call_1", "Зов болот")
 add("ktits_cas_call_1_desc", "Солдаты слышат, что за линией фронта не нужно ни стрелять, ни копать окопы. Целые роты уходят в болота «на минутку» и не возвращаются.")
 add("ktits_cas_call_2", "Зов болот: второй голос")
@@ -872,6 +926,26 @@ _r_en = [(RK, "Global Casuality"), (RK + "_DESC", "How often AI countries choose
 for o, nru, nen, s, m in CAS_RULE_OPTS:
     _r_ru += [(f"KTITS_RULE_OPT_{o}", nru), (f"KTITS_RULE_OPT_{o}_DESC", f"Шанс курса «Сближение» у малой страны ИИ при старте: {s} %. Динамический шанс, раз в 180 дней, умножается на {m}.")]
     _r_en += [(f"KTITS_RULE_OPT_{o}", nen), (f"KTITS_RULE_OPT_{o}_DESC", f"Start chance of the AI course \"rapprochement\" for a small country: {s}%. The dynamic chance, rolled every 180 days, is multiplied by {m}.")]
+# ---- game rule "Путь Казуалии" ktits_kaz_paths (docs/global_mechanics/Game-Rules.md, section 4): like vanilla SOV_ai_behavior; read by the AI weights of the Kazualia focuses (make_kazualia.py: has_game_rule) ----
+KP, KPU = "ktits_kaz_paths", "KTITS_RULE_KAZ_PATHS"
+KP_OPTS = [  # (option, ru name, en name, ru desc, en desc); DEFAULT and HISTORICAL keep achievements, the rest turn them off
+    ("DEFAULT", "ИИ выбирает по весам", "AI picks by weights", "ИИ-Казуалия выбирает путь развития по весам фокусов.", "AI Kazualia picks its path by focus weights."),
+    ("HISTORICAL", "Исторический (Нейтралитет)", "Historical (Neutrality)", "ИИ-Казуалия сохраняет казуальность и идёт к Нейтралитету, как задумано лором.", "AI Kazualia keeps casuality and goes to Neutrality, as the lore intends."),
+    ("GREAT", "Великая Казуалия", "Great Kazualia", "ИИ-Казуалия сохраняет казуальность и идёт к Великой Казуалии.", "AI Kazualia keeps casuality and goes to Great Kazualia."),
+    ("COMM_USSR", "Коммунизм: сотрудничество с СССР", "Communism: cooperation with the USSR", "ИИ-Казуалия идёт реформистским путём к коммунизму и сотрудничеству с СССР.", "AI Kazualia takes the reformist road to communism and cooperation with the USSR."),
+    ("COMM_CASUAL", "Казуальный коммунизм", "Casual communism", "ИИ-Казуалия идёт реформистским путём к казуальному коммунизму без Вечного нейтралитета.", "AI Kazualia takes the reformist road to casual communism, without Eternal Neutrality."),
+    ("DEM_SOVEREIGN", "Суверенная демократия", "Sovereign democracy", "ИИ-Казуалия идёт реформистским путём к суверенной демократии.", "AI Kazualia takes the reformist road to sovereign democracy."),
+    ("DEM_BRITT", "Демократия на Бриттах", "Democracy on the Britts", "ИИ-Казуалия идёт реформистским путём к демократии с опорой на Бриттов.", "AI Kazualia takes the reformist road to democracy leaning on the Britts."),
+]
+_kp = ""
+for o, *_ in KP_OPTS:
+    _kp += ("\tdefault = {\n" if o == "DEFAULT" else "\toption = {\n") + f'\t\tname = {o}\n\t\ttext = "KTITS_RULE_OPT_KAZ_PATHS_{o}"\n\t\tdesc = "KTITS_RULE_OPT_KAZ_PATHS_{o}_DESC"\n' + ("\t\tallow_achievements = yes\n" if o == "HISTORICAL" else "\t\tallow_achievements = no\n" if o != "DEFAULT" else "") + "\t}\n"
+w("common/game_rules/ktits_kaz_paths_rules.txt", f'{KP} = {{\n\tname = "{KPU}"\n\tgroup = "RULE_GROUP_AI_BEHAVIOR"\n{_kp}}}\n')
+_r_ru += [(KPU, "Путь Казуалии"), (KPU + "_DESC", "Какой путь развития выбирает Казуалия под управлением ИИ. Игрок всегда выбирает путь сам. Все опции, кроме «по весам» и «Исторический», отключают достижения.")]
+_r_en += [(KPU, "Path of Kazualia"), (KPU + "_DESC", "Which development path Kazualia takes under AI control. The player always chooses the path. All options except \"by weights\" and \"Historical\" disable achievements.")]
+for o, nru, nen, dru, den in KP_OPTS:
+    _r_ru += [(f"KTITS_RULE_OPT_KAZ_PATHS_{o}", nru), (f"KTITS_RULE_OPT_KAZ_PATHS_{o}_DESC", dru)]
+    _r_en += [(f"KTITS_RULE_OPT_KAZ_PATHS_{o}", nen), (f"KTITS_RULE_OPT_KAZ_PATHS_{o}_DESC", den)]
 L.write_yml(str(M / "localisation/russian/ktits_game_rules_l_russian.yml"), "russian", _r_ru)
 L.write_yml(str(M / "localisation/english/ktits_game_rules_l_english.yml"), "english", _r_en)
 

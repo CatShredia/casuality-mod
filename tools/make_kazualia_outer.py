@@ -272,7 +272,9 @@ ktits_kz_rebel_size = {
         add_to_variable = { var = ktits_kz_d value = -2 }
     }
     clamp_variable = { var = ktits_kz_n min = 1 max = 6 }
-    clamp_variable = { var = ktits_kz_d min = 1 max = 20 }
+    # author's rule (docs, section 3): the old table of divisions is dropped; the rebels get half of the army of the original side (transfer_units_fraction)
+    # and 2 militia divisions on top; the number of states is kept as it was [open question 12]
+    set_variable = { var = ktits_kz_d value = 2 }
 }
 
 """
@@ -289,8 +291,9 @@ ktits_kz_rebel_setup_@T@ = {
     set_politics = { ruling_party = casuality }
     add_popularity = { ideology = casuality popularity = 0.8 }
     random_owned_state = { OWNER = { set_capital = { state = PREV } } }
-    # no Dur debuff for the rebels (author's rule): the last stage of the spirit, only the buff on their own land
-    if = { limit = { NOT = { has_idea = ktits_durmanische_3 } } add_ideas = ktits_durmanische_3 }
+    # instead of the Durmanische the rebels get the spirit "Болото Кипит" (temporary buffs while the war lasts, docs section 3)
+    ktits_kz_no_durm = yes
+    if = { limit = { NOT = { has_idea = ktits_kaz_boil } } add_ideas = ktits_kaz_boil }
     set_technology = { infantry_weapons = 1 }
     division_template = {
         name = "Болотные повстанцы"
@@ -306,16 +309,34 @@ ktits_kz_rebel_setup_@T@ = {
 }
 
 """
+nodurm = """# scope = any country: removes the Durmanische (it must not stay beside "Болото Кипит"; ktits_durm_check of make_kazualia.py adds it to every casuality government)
+ktits_kz_no_durm = {
+""" + "".join(f"    if = {{ limit = {{ has_idea = {n} }} remove_ideas = {n} }}\n" for n in ("ktits_durmanische", "ktits_durmanische_1", "ktits_durmanische_2", "ktits_durmanische_3")) + "}\n\n"
 setup = "".join(setup_t.replace("@T@", t).replace("@LADDER@", ladder.replace("owner = THIS", f"owner = {t}")) for t in SLOT_TAGS)
 make = ""
 for t in SLOT_TAGS:
     make += (f"# scope = the target (or Kazualia in the civil war): the marked states go to {t}, the rebels get units and declare war\nktits_kz_make_{t} = {{\n"
              f"    every_owned_state = {{\n        limit = {{ has_state_flag = ktits_kz_pick }}\n        clr_state_flag = ktits_kz_pick\n        add_core_of = {t}\n        transfer_state_to = {t}\n    }}\n"
+             f"    transfer_units_fraction = {{\n        target = {t}\n        size = 0.5\n        army_ratio = 0.5\n        navy_ratio = 0\n        air_ratio = 0\n        stockpile_ratio = 0.5\n    }}\n"
              f"    {t} = {{\n        set_variable = {{ var = ktits_kz_d value = PREV.ktits_kz_d }}\n        ktits_kz_rebel_setup_{t} = yes\n        clear_variable = ktits_kz_d\n    }}\n"
+             f"    if = {{\n        limit = {{ has_country_flag = ktits_kz_ext_raise }}\n        {KAZ} = {{ puppet = {{ target = {t} end_wars = no }} }}\n        {t} = {{ ktits_kz_join_wars = yes }}\n    }}\n"
              f"    set_variable = {{ var = ktits_kz_slot value = {t[1:]} }}\n}}\n\n")
 choose = "".join(f"        {'if' if i == 0 else 'else_if'} = {{\n            limit = {{ {t} = {{ exists = no }} }}\n            ktits_kz_make_{t} = yes\n        }}\n" for i, t in enumerate(SLOT_TAGS))
+join = f"""# scope = the rebel country (puppet of Kazualia): enters the wars of Kazualia on its side [uncertain: add_to_war per enemy]; the war with the target was declared at creation
+ktits_kz_join_wars = {{
+    save_global_event_target_as = ktits_kz_rebel_t
+    {KAZ} = {{
+        every_enemy_country = {{
+            limit = {{ NOT = {{ has_war_with = event_target:ktits_kz_rebel_t }} NOT = {{ has_country_flag = ktits_kz_rebel }} }}
+            event_target:ktits_kz_rebel_t = {{ add_to_war = {{ targeted_alliance = {KAZ} enemy = PREV hostility_reason = asked_to_join single_target_only = yes }} }}
+        }}
+    }}
+}}
+
+"""
 raise_ = f"""# scope = the target country, ROOT = Kazualia (called from the decision): the Casual rebellion
 ktits_kz_rebel_raise = {{
+    set_country_flag = ktits_kz_ext_raise
     clr_country_flag = ktits_kz_borders
     if = {{
         limit = {{
@@ -344,6 +365,7 @@ ktits_kz_rebel_raise = {{
     clear_variable = ktits_kz_d
     clear_variable = ktits_kz_b
     clr_country_flag = ktits_kz_borders
+    clr_country_flag = ktits_kz_ext_raise
 }}
 
 """
@@ -351,10 +373,25 @@ ktits_kz_rebel_raise = {{
 civ = f"""# scope = Kazualia: the civil war against the Casuals (docs/mechanics/Kazualia.md, section 6); reuses the rebel slots
 ktits_kz_civwar_raise = {{
     set_country_flag = ktits_kz_civ_pool
-    set_variable = {{ var = ktits_kz_n value = 6 }}
-    set_variable = {{ var = ktits_kz_d value = 10 }}
-    ktits_kz_pick = yes
-    ktits_kz_pick = yes
+    # INVENTED (docs section 6, "Усиление реформаторов"): the rebels are weaker than the Casual rebellion from outside: 4 states (was 6), 1 militia division on top (was 2);
+    # the government gets the spirit "Власть бодрствует" and 3 militia divisions in the capital
+    set_variable = {{ var = ktits_kz_n value = 4 }}
+    set_variable = {{ var = ktits_kz_d value = 1 }}
+    if = {{ limit = {{ NOT = {{ has_idea = ktits_kaz_gov_war }} }} add_ideas = ktits_kaz_gov_war }}
+    capital_scope = {{
+        create_unit = {{
+            division = "name = \\"Верные бодрствующие\\" division_template = \\"Болотное ополчение\\" start_experience_factor = 0.3 start_equipment_factor = 1"
+            owner = {KAZ}
+        }}
+        create_unit = {{
+            division = "name = \\"Верные бодрствующие\\" division_template = \\"Болотное ополчение\\" start_experience_factor = 0.3 start_equipment_factor = 1"
+            owner = {KAZ}
+        }}
+        create_unit = {{
+            division = "name = \\"Верные бодрствующие\\" division_template = \\"Болотное ополчение\\" start_experience_factor = 0.3 start_equipment_factor = 1"
+            owner = {KAZ}
+        }}
+    }}
     ktits_kz_pick = yes
     ktits_kz_pick = yes
     ktits_kz_pick = yes
@@ -370,10 +407,70 @@ ktits_kz_civwar_raise = {{
 }}
 
 """
+rollback = '''# the rollback of the reforms after the victory of the Casuals (section 6, "Откат реформ"): uncompletes the focus "Реформистский путь" with all children (vanilla effect,
+# frees the exclusive "Сохранение казуальности"), clears the flags of the reformist path, returns the Casual laws, resets the reform progress
+ktits_kz_civ_rollback = {
+    clr_country_flag = ktits_kaz_reformist
+    clr_country_flag = ktits_kaz_comm
+    clr_country_flag = ktits_kaz_reform_path
+    clr_country_flag = ktits_kaz_reform_open
+    clr_country_flag = ktits_kaz_f_lazy
+    clr_country_flag = ktits_kaz_f_civwar_half
+    set_country_flag = ktits_kaz_rolled_back
+    clr_country_flag = ktits_kaz_civwar_done
+    set_politics = { ruling_party = casuality }
+    add_popularity = { ideology = casuality popularity = 0.5 }
+    set_variable = { var = ktits_kaz_reform value = 0 }
+    add_to_variable = { var = ktits_kaz_inner value = 15 }
+    ktits_kaz_inner_update = yes
+    if = { limit = { has_idea = ktits_kaz_red_dep_1 } remove_ideas = ktits_kaz_red_dep_1 }
+    if = { limit = { has_idea = ktits_kaz_red_dep_2 } remove_ideas = ktits_kaz_red_dep_2 }
+    if = { limit = { has_idea = ktits_kaz_red_dep_3 } remove_ideas = ktits_kaz_red_dep_3 }
+    if = { limit = { has_idea = civilian_economy } remove_ideas = civilian_economy }
+    if = { limit = { has_idea = volunteer_only } remove_ideas = volunteer_only }
+    if = { limit = { NOT = { has_idea = ktits_eco_casual_society } } add_ideas = ktits_eco_casual_society }
+    if = { limit = { NOT = { has_idea = disarmed_nation } } add_ideas = disarmed_nation }
+    if = {
+        limit = { has_completed_focus = ktits_kaz_reform }
+        uncomplete_national_focus = { focus = ktits_kaz_reform uncomplete_children = yes refund_political_power = no }
+    }
+}
+
+'''
 # monthly resolution
 mon = ("# scope = any country, every month: the rebellion against it (won / lost), the civil war of Kazualia, waiting for the fall (+1 to the scale)\nktits_kz_rebel_monthly = {\n"
        "    if = {\n        limit = {\n            has_country_flag = ktits_kz_waiting\n            NOT = { has_country_flag = ktits_casuality_fallen }\n            check_variable = { var = ktits_casuality value = 100 compare = less_than }\n        }\n"
-       "        add_to_variable = { var = ktits_casuality value = 1 }\n        clamp_variable = { var = ktits_casuality min = 0 max = 100 }\n        ktits_casuality_update = yes\n    }\n")
+       "        add_to_variable = { var = ktits_casuality value = 1 }\n        if = { limit = { " + KAZ + " = { has_country_flag = ktits_kaz_fog_x15 } } add_to_variable = { var = ktits_casuality value = 0.5 } }\n        clamp_variable = { var = ktits_casuality min = 0 max = 100 }\n        ktits_casuality_update = yes\n    }\n")
+mon += """    # "Болото Кипит" replaces the Durmanische (ktits_durm_check of make_kazualia.py adds it every month)
+    if = { limit = { has_idea = ktits_kaz_boil } ktits_kz_no_durm = yes }
+    # "Болото Утихло" (Kazualia): +10 % to the Faith growth [uncertain: the gain is read after ktits_kaz_monthly of make_kazualia.py, the order of on_monthly blocks is not fixed]
+    if = {
+        limit = { has_idea = ktits_kaz_boil_done check_variable = { var = ktits_kaz_faith_gain value = 0 compare = greater_than } }
+        set_temp_variable = { kz_bd = ktits_kaz_faith_gain }
+        multiply_temp_variable = { kz_bd = 0.1 }
+        add_to_variable = { var = ktits_kaz_faith value = kz_bd }
+        clamp_variable = { var = ktits_kaz_faith min = 0 max = 1000 }
+    }
+    # random event "Туман над границей" for a country that Kazualia influences (scale >= 25 and: neighbour / waiting / rebellion in the country): 10 % a month
+    if = {
+        limit = {
+            ktits_is_kazualia = no
+            NOT = { has_country_flag = ktits_casuality_fallen }
+            NOT = { has_country_flag = ktits_kz_rebel }
+            NOT = { is_subject_of = """ + KAZ + """ }
+            check_variable = { var = ktits_casuality value = 25 compare = greater_than_or_equals }
+            OR = {
+                is_neighbor_of = """ + KAZ + """
+                has_country_flag = ktits_kz_waiting
+                has_country_flag = ktits_kz_rebel_active
+            }
+        }
+        random_list = {
+            10 = { country_event = { id = ktits_kz_out.30 } }
+            90 = { }
+        }
+    }
+"""
 for flag, won, lost in (("ktits_kz_rebel_active", "ktits_kz_rebel_won_", "ktits_kz_rebel_lost"), ("ktits_kz_civ_active", "ktits_kz_civ_won_", "ktits_kz_civ_lost")):
     mon += f"    if = {{\n        limit = {{ has_country_flag = {flag} }}\n"
     for i, t in enumerate(SLOT_TAGS):
@@ -386,12 +483,11 @@ res = ""
 for t in SLOT_TAGS:
     n = int(t[1:]) - 36
     res += (f"# scope = the target: the rebels {t} are alive and the war is over = the rebellion won; Kazualia chooses\nktits_kz_rebel_won_{t} = {{\n    clr_country_flag = ktits_kz_rebel_active\n"
-            f"    set_variable = {{ var = ktits_kz_slot value = 0 }}\n    {t} = {{ set_country_flag = ktits_kz_rebel_won }}\n    {KAZ} = {{ country_event = {{ id = ktits_kz_out.{10 + n} }} }}\n}}\n\n"
+            f"    set_variable = {{ var = ktits_kz_slot value = 0 }}\n    {t} = {{ set_country_flag = ktits_kz_rebel_won remove_ideas = ktits_kaz_boil }}\n    {KAZ} = {{ if = {{ limit = {{ NOT = {{ has_idea = ktits_kaz_boil_done }} }} add_ideas = ktits_kaz_boil_done }} }}\n    {KAZ} = {{ country_event = {{ id = ktits_kz_out.{10 + n} }} }}\n}}\n\n"
             f"# scope = Kazualia: the rebels {t} (civil war) survived the war = the Casuals win\nktits_kz_civ_won_{t} = {{\n    clr_country_flag = ktits_kz_civ_active\n    set_variable = {{ var = ktits_kz_slot value = 0 }}\n"
-            f"    {t} = {{ every_owned_state = {{ add_core_of = {KAZ} }} }}\n    annex_country = {{ target = {t} transfer_troops = yes }}\n"
-            "    clr_country_flag = ktits_kaz_reformist\n    clr_country_flag = ktits_kaz_comm\n    set_politics = { ruling_party = casuality }\n    add_popularity = { ideology = casuality popularity = 0.5 }\n"
-            "    add_to_variable = { var = ktits_kaz_inner value = 15 }\n    add_to_variable = { var = ktits_kaz_reform value = -30 }\n    clamp_variable = { var = ktits_kaz_reform min = 0 max = 100 }\n"
-            "    ktits_kaz_inner_update = yes\n    country_event = { id = ktits_kz_out.22 }\n}\n\n")
+            f"    {t} = {{ remove_ideas = ktits_kaz_boil every_owned_state = {{ add_core_of = {KAZ} }} }}\n    if = {{ limit = {{ NOT = {{ has_idea = ktits_kaz_boil_done }} }} add_ideas = ktits_kaz_boil_done }}\n    annex_country = {{ target = {t} transfer_troops = yes }}\n"
+            "    if = { limit = { has_idea = ktits_kaz_gov_war } remove_ideas = ktits_kaz_gov_war }\n"
+            "    ktits_kz_civ_rollback = yes\n    country_event = { id = ktits_kz_out.22 }\n}\n\n")
 res += """# scope = the target: the rebellion was crushed (rebels gone): the scale falls to 0, the spirit "Отрезвление" for a year forbids a new rebellion
 ktits_kz_rebel_lost = {
     clr_country_flag = ktits_kz_rebel_active
@@ -405,6 +501,7 @@ res += """# scope = Kazualia: the rebels of the civil war are gone = the governm
 ktits_kz_civ_lost = {
     clr_country_flag = ktits_kz_civ_active
     set_variable = { var = ktits_kz_slot value = 0 }
+    if = { limit = { has_idea = ktits_kaz_gov_war } remove_ideas = ktits_kaz_gov_war }
     add_stability = 0.10
     add_to_variable = { var = ktits_kaz_inner value = -10 }
     ktits_kaz_inner_update = yes
@@ -421,6 +518,7 @@ ktits_kz_civwar_check = {
                 has_country_flag = ktits_kaz_reformist
                 has_country_flag = ktits_kaz_comm
             }
+            NOT = { has_country_flag = ktits_kaz_f_lazy }
             NOT = { has_country_flag = ktits_kaz_civwar_done }
             NOT = { has_country_flag = ktits_kz_civ_active }
             is_subject = no
@@ -528,7 +626,7 @@ ktits_kz_make_K35 = {{
 }}
 
 """
-w("common/scripted_effects/ktits_kazualia_outer_effects.txt", "# generated by tools/make_kazualia_outer.py (docs/mechanics/Kazualia.md)\n" + pick + sizes + setup + make + raise_ + civ + mon + res + civ_chk + outer + ol + nbl)
+w("common/scripted_effects/ktits_kazualia_outer_effects.txt", "# generated by tools/make_kazualia_outer.py (docs/mechanics/Kazualia.md)\n" + pick + sizes + nodurm + setup + join + make + raise_ + civ + rollback + mon + res + civ_chk + outer + ol + nbl)
 
 # ---------------- ideas (timed spirits of the emergency decisions) ----------------
 def idea(name, mods):
@@ -542,6 +640,15 @@ EMG = [
 ]
 ideas = "".join(idea(f"ktits_kaz_em_{k}_t", mods) for k, _n, _d, _p, _c, mods, _t in EMG)
 ideas += idea("ktits_kaz_rebels_t", {"army_attack_factor": 0.05})
+# rebels' spirit while the war lasts (numbers INVENTED, docs section 3, "Пожелания автора", item 1); +10 % attack "on the swamp" has no terrain modifier of a country: army_core_attack_factor (own land) [uncertain]
+ideas += idea("ktits_kaz_boil", {"army_org_regain": 0.15, "army_org_factor": 0.15, "army_core_attack_factor": 0.10, "stability_factor": 0.05, "war_support_factor": 0.05, "supply_node_range": -0.10})
+# permanent spirit of Kazualia after the victory (item 2): +0.10 to the Durmanische bonus on own land, -5 % stability; +10 % Faith growth is done by ktits_kz_rebel_monthly
+ideas += idea("ktits_kaz_boil_done", {"army_core_attack_factor": 0.10, "stability_factor": -0.05})
+# INVENTED (docs section 6): the government side of the civil war against the Casuals; removed when the war ends
+ideas += idea("ktits_kaz_gov_war", {"army_org_factor": 0.15, "army_attack_factor": 0.15, "army_defence_factor": 0.10, "stability_factor": 0.10, "war_support_factor": 0.10})
+add("ktits_kaz_gov_war", "Власть бодрствует"); add("ktits_kaz_gov_war_desc", "Впервые за сто лет в Ставке никто не спит: правительство держит глаза открытыми силой воли и крепким чаем, а за спиной у него и заводской гудок, и красные знамёна, и всё, ради чего стоило проснуться. Пока идёт война, бодрствовать не лень. (Придумано.)")
+add("ktits_kaz_boil", "Болото Кипит"); add("ktits_kaz_boil_desc", "Болото кипит, пузырится и не собирается остывать. Пока длится война, ленивые забывают, что ленивы.")
+add("ktits_kaz_boil_done", "Болото Утихло"); add("ktits_kaz_boil_done_desc", "Болото утихло и теперь только булькает довольно. Победа далась тяжело, зато ленивые вспомнили, ради чего лежали, и лежат теперь с удвоенным чувством собственной правоты. (Рост Казуальной Веры +10 %.)")
 w("common/ideas/ktits_kazualia_outer_ideas.txt", "ideas = {\n    country = {\n" + ideas + "    }\n}\n")
 for k, nm, desc, *_ in EMG:
     add(f"ktits_kaz_em_{k}_t", nm); add(f"ktits_kaz_em_{k}_t_desc", desc)
@@ -551,6 +658,11 @@ add("ktits_kaz_rebels_t", "Снабжение повстанцев"); add("ktits
 def tt(k, r):
     add(k, r)
     return k
+def CDX(flag, days, ind=12):
+    """cooldown flag; -25 % if Kazualia has ktits_kaz_cd_fast (focus) or ktits_kaz_cd_nap (decision "Подремать до срока"), pattern of the "Дары болот" of make_kazualia.py"""
+    pad = " " * ind; fast = round(days * 0.75)
+    return (f"{pad}if = {{\n{pad}    limit = {{ OR = {{ has_country_flag = ktits_kaz_cd_fast has_country_flag = ktits_kaz_cd_nap }} }}\n{pad}    set_country_flag = {{ flag = {flag} days = {fast} value = 1 }}\n{pad}}}\n"
+            f"{pad}else = {{\n{pad}    set_country_flag = {{ flag = {flag} days = {days} value = 1 }}\n{pad}}}\n")
 INNER = [
     ("nap", "Тихий час", "Ставка объявляет тихий час. Он длится до вечера, потом до утра, потом до следующей недели.", 25, 30, 3),
     ("feast", "Праздник безделья", "Целый день никто ничего не делает, и это называется праздником. Народ доволен, а чиновники особенно: праздник не надо было готовить.", 50, 90, 6),
@@ -609,8 +721,7 @@ for k, nm, lore, pp_, cd, d in INNER:
         cost = {pp_}
         fire_only_once = no
         complete_effect = {{
-            set_country_flag = {{ flag = ktits_kaz_cd_{k} days = {cd} value = 1 }}
-            custom_effect_tooltip = ktits_kaz_tt_inner_p{d}
+{CDX(f"ktits_kaz_cd_{k}", cd)}            custom_effect_tooltip = ktits_kaz_tt_inner_p{d}
             add_to_variable = {{ var = ktits_kaz_inner value = {d} }}
             hidden_effect = {{ ktits_kaz_inner_update = yes }}
         }}
@@ -644,8 +755,7 @@ for k, nm, desc, pp_, cd, mods, eff in EMG:
         cost = {pp_}
         fire_only_once = no
         complete_effect = {{
-            set_country_flag = {{ flag = ktits_kaz_cd_em_{k} days = {cd} value = 1 }}
-            add_timed_idea = {{ idea = ktits_kaz_em_{k}_t days = 30 }}
+{CDX(f"ktits_kaz_cd_em_{k}", cd)}            add_timed_idea = {{ idea = ktits_kaz_em_{k}_t days = 30 }}
         }}
         ai_will_do = {{
             base = 2
@@ -676,8 +786,7 @@ dec += T(f"""    ktits_kaz_em_call = {{
         cost = 40
         fire_only_once = no
         complete_effect = {{
-            set_country_flag = {{ flag = ktits_kaz_cd_em_call days = 120 value = 1 }}
-            custom_effect_tooltip = ktits_kaz_tt_div_militia3
+{CDX("ktits_kaz_cd_em_call", 120)}            custom_effect_tooltip = ktits_kaz_tt_div_militia3
             hidden_effect = {{
 """ + "                capital_scope = {\n" + "".join('                    create_unit = { division = "name = \\"Казуальная дивизия\\" division_template = \\"Болотное ополчение\\" start_experience_factor = 0.1 start_equipment_factor = 0.7" owner = PREV }\n' for _ in range(3)) + "                }\n" + """            }
         }
@@ -760,7 +869,7 @@ def tdec(did, avail, cost, cdflag, cd, effect, ai):
 {CD(cdflag) if cdflag else ""}{avail}        }}
 {cost_s}        fire_only_once = no
         complete_effect = {{
-{("            set_country_flag = { flag = " + cdflag + " days = " + str(cd) + " value = 1 }" + chr(10)) if cdflag else ""}{effect}        }}
+{CDX(cdflag, cd) if cdflag else ""}{effect}        }}
         ai_will_do = {{ {ai}{AIT} }}
     }}
 
@@ -788,6 +897,9 @@ dec += T(
             FROM = {{
                 exists = yes
                 has_country_flag = ktits_kz_waiting
+                # removed once the target has passed into Casuality (scale 100 / fallen)
+                NOT = {{ has_country_flag = ktits_casuality_fallen }}
+                check_variable = {{ var = ktits_casuality value = 100 compare = less_than }}
             }}
         }}
         cost = 0
@@ -813,7 +925,7 @@ dec += T(
         cost = 30
         fire_only_once = no
         complete_effect = {{
-            set_country_flag = {{ flag = ktits_kaz_cd_support days = 60 value = 1 }}
+{CDX("ktits_kaz_cd_support", 60)}
             FROM = {{
                 add_equipment_to_stockpile = {{ type = infantry_equipment_1 amount = 1000 }}
                 add_timed_idea = {{ idea = ktits_kaz_rebels_t days = 60 }}
@@ -826,10 +938,10 @@ dec += T(
     + tdec("ktits_kaz_gift_mission",
            mission_cost + FR(ctt("ktits_kz_tt_border", ["is_neighbor_of = ROOT"]) + ctt("ktits_kz_tt_scale99", SCALE(0, 100))),
            0, "ktits_kaz_cd_mission", 60,
-           "            subtract_from_variable = { var = ktits_kaz_faith value = ktits_kaz_c_mission }\n            FROM = {\n                add_to_variable = { var = ktits_casuality value = 10 }\n                clamp_variable = { var = ktits_casuality min = 0 max = 100 }\n                ktits_casuality_update = yes\n            }\n",
+           "            subtract_from_variable = { var = ktits_kaz_faith value = ktits_kaz_c_mission }\n            FROM = {\n                add_to_variable = { var = ktits_casuality value = 10 }\n                if = { limit = { ROOT = { has_country_flag = ktits_kaz_fog_x15 } } add_to_variable = { var = ktits_casuality value = 5 } }\n                clamp_variable = { var = ktits_casuality min = 0 max = 100 }\n                ktits_casuality_update = yes\n            }\n",
            "base = 1")
     + tdec("ktits_kaz_prop", FR(ctt("ktits_kz_tt_scale99", SCALE(0, 100))), 40, "ktits_kaz_cd_prop", 45,
-           "            custom_effect_tooltip = ktits_kaz_tt_prop\n            FROM = {\n                add_to_variable = { var = ktits_casuality value = 5 }\n                clamp_variable = { var = ktits_casuality min = 0 max = 100 }\n                ktits_casuality_update = yes\n            }\n",
+           "            custom_effect_tooltip = ktits_kaz_tt_prop\n            FROM = {\n                add_to_variable = { var = ktits_casuality value = 5 }\n                if = { limit = { ROOT = { has_country_flag = ktits_kaz_fog_x15 } } add_to_variable = { var = ktits_casuality value = 2.5 } }\n                clamp_variable = { var = ktits_casuality min = 0 max = 100 }\n                ktits_casuality_update = yes\n            }\n",
            "base = 1")
     + tdec("ktits_kaz_party", FR(ctt("ktits_kz_tt_scale25", ["check_variable = { var = ktits_casuality value = 25 compare = greater_than_or_equals }"])), 50, "ktits_kaz_cd_party", 90,
            "            custom_effect_tooltip = ktits_kaz_tt_party\n            FROM = { add_popularity = { ideology = casuality popularity = 0.05 } }\n", "base = 0.5")
@@ -872,7 +984,7 @@ EVT = [
     (3, "Восстание подавлено", "Повстанцев загнали обратно в камыши, а оттуда — в тишину. Ставка вздыхает: туман придётся сгущать заново. (Внутренняя Казуальность −5 %.)", "Переживём", ""),
     (20, "Старая Казуалия не хочет просыпаться", "Старая Казуалия не захотела просыпаться. Реакционные казуалы ушли в болота, подняли зелёное знамя и объявили новую власть ересью беспокойства. (Часть штатов отделяется и воюет с правительством.)", "Подавить мятеж", "ktits_kz_civwar_raise = yes"),
     (21, "Победа правительства", "Последние реакционеры вышли из тумана сдаваться. Многие честно признались, что просто устали прятаться. (Стабильность +10 %, Внутренняя Казуальность −10 %.)", "Слава бодрствованию", ""),
-    (22, "Победа Казуалов", "Болото поглотило реформы. Ставка снова спит, и всем снова хорошо. (Казуальность вернулась на трон; Внутренняя Казуальность +15 %, прогресс реформ −30.)", "Всё как раньше", ""),
+    (22, "Победа Казуалов", "Болото поглотило реформы. Заводские гудки смолкли, красные флаги выцвели до цвета тины, парламент разошёлся «на минутку» и не вернулся. Ставка снова спит, и всем снова хорошо. Но старая дорога открыта: Священный-Архо-Казуал может заново решить, как именно лежать. (Казуальность вернулась на трон; Реформистский путь откатан: его фокусы снова не пройдены, прогресс реформ обнулён, Внутренняя Казуальность +15 %; открыта ветка «Сохранение казуальности»: Нейтралитет или Великая Казуалия.)", "Всё как раньше", ""),
 ]
 ev = "add_namespace = ktits_kz_out\n\n"
 for eid, ti, de, op, eff in EVT:
@@ -889,6 +1001,35 @@ for eid, ti, de, op, eff in EVT:
         name = ktits_kz_out.{eid}.a
 {('        ' + eff + chr(10)) if eff else ''}    }}
 }}
+
+""")
+# random event for the target of the influence (docs section 3, "Пожелания автора", item 6)
+add("ktits_kz_out.30.t", "Туман над границей")
+add("ktits_kz_out.30.d", "Из приграничных болот тянет сыростью и странной истомой. В газетах пишут о «модных отпусках», на заводах — о массовых «минутках на отдых», а в канцелярии находят листовки без подписи с призывом прилечь. Министры спорят, откуда это, и никто не может толком вспомнить, когда начал спорить.")
+add("ktits_kz_out.30.a", "Усилить границу"); add("ktits_kz_out.30.b", "Не обращать внимания")
+add("ktits_kz_tt_border_cut", "Шкала Казуальности: §G−3§!")
+ev += T("""country_event = {
+    id = ktits_kz_out.30
+    title = ktits_kz_out.30.t
+    desc = ktits_kz_out.30.d
+    picture = GFX_report_event_ktits_casuality
+    is_triggered_only = yes
+    fire_only_once = no
+
+    option = {
+        name = ktits_kz_out.30.a
+        add_stability = 0.02
+        custom_effect_tooltip = ktits_kz_tt_border_cut
+        hidden_effect = {
+            add_to_variable = { var = ktits_casuality value = -3 }
+            clamp_variable = { var = ktits_casuality min = 0 max = 100 }
+            ktits_casuality_update = yes
+        }
+    }
+    option = {
+        name = ktits_kz_out.30.b
+    }
+}
 
 """)
 for i, (t, nm) in enumerate(SLOTS):

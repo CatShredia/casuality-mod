@@ -145,7 +145,7 @@ PBEGIN, PEND = "# KTITS_POLITICS_BRANCH_BEGIN (tools/make_focuses.py, do not edi
 P_ROOT = "ktits_pol_root"
 P_CHANGE = "ktits_pol_change"
 P_CD = "ktits_pol_change_cd"
-POP_NEED = "0.39"   # popularity >= 40 % is written as `> 0.39` (vanilla form: `democratic > 0.39`)
+POP_NEED = "0.499"   # author's rule: ideology-changing focuses need popularity >= 50 %, written as `> 0.499` (vanilla form: `democratic > 0.39`)
 
 # key, ideology group, ru genitive, x of the path column, pop (ru, desc, icon), come (ru, desc, icon),
 # subtypes [(id suffix, ru, desc, ideology key, x, icon, modifiers)]
@@ -180,6 +180,11 @@ PATHS = [
   ("Совет духовенства", "Совет духовенства становится высшей властью.", "GFX_goal_generic_political_pressure"),
   [("theocr", "Теократия", "Закон и вера становятся одним.", "theology_ideology", 64, "GFX_goal_generic_secret_weapon", {"stability_factor": 0.15})]),
 ]
+P2 = {"dem": ("Предвыборная кампания", "Митинги, плакаты и бесплатные пироги: каждый кандидат обещает больше соседа."),
+      "com": ("Всеобщая забастовка", "Станки встают по свистку, и толпа у проходной растёт быстрее, чем очередь за зарплатой."),
+      "fas": ("Факельные шествия", "Колонны с факелами обходят город, и редкий прохожий решается не аплодировать."),
+      "neu": ("Усталость от споров", "Газеты пишут, что пора перестать спорить; все согласны и поэтому спорят об этом."),
+      "the": ("Крестные ходы", "Процессии растягиваются от храма до окраины, а лавочники закрывают двери до конца службы.")}
 BONUS = {"consumer_goods_factor": "товары народного потребления", "stability_factor": "стабильность", "war_support_factor": "поддержка войны",
          "research_speed_factor": "скорость исследований", "industrial_capacity_factory": "выпуск фабрик", "production_speed_arms_factory_factor": "скорость постройки военных фабрик",
          "production_speed_buildings_factor": "скорость строительства", "conscription_factor": "пополнение (призыв)", "political_power_gain": "прирост политической власти"}
@@ -226,16 +231,20 @@ pblk += pfocus(P_ROOT, "GFX_goal_generic_political_pressure", 50, 0, 70, None, N
 pl += [(P_ROOT, "Политический курс"), (P_ROOT + "_desc", "Страна устала от неопределённости: пора решить, по какому пути она пойдёт.")]
 pops = [f"ktits_pol_{p[0]}_pop" for p in PATHS]
 for key, grp, gen, cx, (pn, pd, pic), (cn, cd, cic), subs in PATHS:
-    pid, cid = f"ktits_pol_{key}_pop", f"ktits_pol_{key}_come"
+    pid, cid, p2 = f"ktits_pol_{key}_pop", f"ktits_pol_{key}_come", f"ktits_pol_{key}_pop2"
+    pn2, pd2 = P2[key]
     pblk += pfocus(pid, pic, cx, 1, 70, [P_ROOT], [o for o in pops if o != pid], None,
+                   f"\t\t\tfactor = 3\n\t\t\tmodifier = {{\n\t\t\t\tfactor = 4\n\t\t\t\thas_government = {grp}\n\t\t\t}}\n" + ai_lock(grp),
+                   f"\t\t\tadd_popularity = {{ ideology = {grp} popularity = 0.15 }}\n")
+    pblk += pfocus(p2, pic, cx, 2, 70, [pid], None, None,
                    f"\t\t\tfactor = 3\n\t\t\tmodifier = {{\n\t\t\t\tfactor = 4\n\t\t\t\thas_government = {grp}\n\t\t\t}}\n" + ai_lock(grp),
                    f"\t\t\tadd_popularity = {{ ideology = {grp} popularity = 0.15 }}\n")
     need = f"\t\t\tcustom_trigger_tooltip = {{\n\t\t\t\ttooltip = ktits_pol_req_{grp}\n\t\t\t\t{grp} > {POP_NEED}\n\t\t\t}}\n"
     rew = (f"\t\t\tif = {{\n\t\t\t\tlimit = {{ has_government = {grp} }}\n\t\t\t\tadd_stability = 0.10\n\t\t\t}}\n\t\t\telse = {{\n"
            f"\t\t\t\tset_politics = {{\n\t\t\t\t\truling_party = {grp}\n\t\t\t\t\telections_allowed = yes\n\t\t\t\t}}\n\t\t\t}}\n")
-    pblk += pfocus(cid, cic, cx, 2, 70, [pid], None, need, "\t\t\tfactor = 5\n" + ai_lock(grp), rew)
-    pl += [(pid, pn), (pid + "_desc", pd), (cid, cn), (cid + "_desc", cd), (f"ktits_pol_req_{grp}", f"Популярность {gen} не ниже §Y40 %§!")]
-    pe.append((f"ktits_pol_req_{grp}", f"Popularity of {grp} at least §Y40%§!"))
+    pblk += pfocus(cid, cic, cx, 3, 70, [p2], None, need, "\t\t\tfactor = 5\n" + ai_lock(grp), rew)
+    pl += [(pid, pn), (pid + "_desc", pd), (p2, pn2), (p2 + "_desc", pd2), (cid, cn), (cid + "_desc", cd), (f"ktits_pol_req_{grp}", f"Популярность {gen} не ниже §Y50 %§!")]
+    pe.append((f"ktits_pol_req_{grp}", f"Popularity of {grp} at least §Y50%§!"))
     sids = [f"ktits_pol_{key}_{s[0]}" for s in subs]
     for s, sid in zip(subs, sids):
         _, sn, sd, ide, sx, sic, mods = s
@@ -243,7 +252,7 @@ for key, grp, gen, cx, (pn, pd, pic), (cn, cd, cic), subs in PATHS:
         SUB_IDS.append(sid); SPIRITS.append((sp, sn, mods, ide))
         rew = f"\t\t\thidden_effect = {{ set_country_leader_ideology = {ide} }}\n\t\t\tcustom_effect_tooltip = ktits_pol_tt_{s[0]}\n\t\t\tadd_ideas = {sp}\n"
         if ide == "theology_ideology": rew += scale(-10)
-        pblk += pfocus(sid, sic, sx, 3, 70, [cid], [o for o in sids if o != sid], None, "\t\t\tfactor = 2\n" + ai_lock(grp), rew)
+        pblk += pfocus(sid, sic, sx, 4, 70, [cid], [o for o in sids if o != sid], None, "\t\t\tfactor = 2\n" + ai_lock(grp), rew)
         pl += [(sid, sn), (sid + "_desc", sd), (f"ktits_pol_tt_{s[0]}", f"Правитель страны получает подтип идеологии «{sn}»"),
                (sp, sn), (sp + "_desc", SP_TXT[s[0]])]
         pe += [(f"ktits_pol_tt_{s[0]}", f"The ruler gets the ideology subtype \"{L.translit(sn)}\""),
@@ -256,7 +265,7 @@ rew = (f"\t\t\tadd_political_power = -100\n\t\t\tadd_stability = -0.10\n\t\t\tse
 avail = f"\t\t\thas_war = no\n\t\t\tNOT = {{ has_country_flag = {P_CD} }}\n"
 ai = "\t\t\tfactor = 0\n\t\t\tmodifier = {\n\t\t\t\tadd = 1\n\t\t\t\thas_stability < 0.40\n\t\t\t}\n"
 ai += "\t\t\tmodifier = {\n\t\t\t\tfactor = 0\n\t\t\t\tktits_ai_ally_locked = yes\n\t\t\t}\n"   # author's rule: no change of course in an alliance with independent members (docs/global_mechanics/Alliances.md)
-pblk += pfocus(P_CHANGE, "GFX_goal_generic_dangerous_deal", 50, 5, 70, SUB_IDS, None, avail, ai, rew)
+pblk += pfocus(P_CHANGE, "GFX_goal_generic_dangerous_deal", 50, 6, 70, SUB_IDS, None, avail, ai, rew)
 pl += [(P_CHANGE, "Народ голосует за перемены"), (P_CHANGE + "_desc", "Улицы требуют другого будущего. Правительство объявляет, что прежний курс исчерпан, и страна снова выбирает путь."),
        ("ktits_pol_tt_reset", "Снимает выполнение со всей ветки «Политический курс» и её духи; ветку можно пройти заново. Смена курса закрыта на 365 дней.")]
 pe.append(("ktits_pol_tt_reset", "Resets the whole Political Course branch and removes its spirits; the branch can be taken again. Changing course is locked for 365 days."))
@@ -278,7 +287,7 @@ pl_en = {k: L.translit(v) for k, v in pl}
 pl_en.update(dict(pe))
 L.write_yml(str(M / "localisation/russian/ktits_pol_l_russian.yml"), "russian", pl)
 L.write_yml(str(M / "localisation/english/ktits_pol_l_english.yml"), "english", list(pl_en.items()))
-print(f"politics branch written: {len(SUB_IDS) + 12} focuses, {len(SPIRITS)} spirits")
+print(f"politics branch written: {len(SUB_IDS) + 17} focuses, {len(SPIRITS)} spirits")
 
 # ======================= branch «Образование» (docs/focuses/Generic-Focus-Tree.md) =======================
 # 13 focuses, columns x >= 68 (vanilla <= 22, Casuality 24..30, Politics 34..64). Effects: specialists counters (tools/education_mech.py);
