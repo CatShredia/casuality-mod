@@ -107,7 +107,7 @@ eff += (f"# scope = Soviet Union, every month\n{P}monthly = {{\n"
  f"    else_if = {{ limit = {{ {pb('>', 0.2)} }} set_variable = {{ var = {P}pg value = 2.5 }} }}\n"
  f"    if = {{ limit = {{ has_idea = {P}sp_pcult }} add_to_variable = {{ var = {P}pg value = 1 }} }}\n"
  f"    add_to_variable = {{ var = {P}paranoia value = {P}pg }}\n    clamp_variable = {{ var = {P}paranoia min = 0 max = 100 }}\n"
- f"    random_list = {{\n        25 = {{ add_to_variable = {{ var = {P}p_auto value = 3 }} }}\n        25 = {{ add_to_variable = {{ var = {P}p_soft value = 3 }} }}\n        25 = {{ add_to_variable = {{ var = {P}p_hard value = 3 }} }}\n        25 = {{ add_to_variable = {{ var = {P}p_schizo value = 3 }} }}\n    }}\n"
+ f"    random_list = {{\n        25 = {{ add_to_variable = {{ var = {P}p_auto value = 8 }} }}\n        25 = {{ add_to_variable = {{ var = {P}p_soft value = 8 }} }}\n        25 = {{ add_to_variable = {{ var = {P}p_hard value = 8 }} }}\n        25 = {{ add_to_variable = {{ var = {P}p_schizo value = 8 }} }}\n    }}\n"
  + "".join(f"    clamp_variable = {{ var = {P}p_{k} min = 0 max = 100 }}\n" for k in ("auto", "soft", "hard", "schizo")) +
  f"    if = {{ limit = {{ NOT = {{ has_country_flag = {P}para_clock_set }} }} set_country_flag = {P}para_clock_set set_country_flag = {{ flag = {P}para_clock days = 365 value = 1 }} }}\n}}\n"
  # personality / balance victory (events 30-34)
@@ -154,13 +154,13 @@ for k, (nm, vis) in CATS.items():
     add(f"{P}{k}_category", nm); add(f"{P}{k}_category_desc", CDESC[k])
 w("common/decisions/categories/ktits_soviet_categories.txt", cats)
 dec = {k: "" for k in CATS}
-def D(cat, key, ru_, desc, cost, cd, body, avail="", target=None, vis=None):
+def D(cat, key, ru_, desc, cost, cd, body, avail="", target=None, vis=None, ai="factor = 1"):
     k = P + key
     s = f"    {k} = {{\n        icon = generic_propaganda\n"
     if vis: s += f"        visible = {{\n            {vis}\n        }}\n"
     if target: s += f"        target_trigger = {{\n            FROM = {{\n                {target}\n            }}\n        }}\n"
     s += f"        available = {{\n            NOT = {{ has_country_flag = {P}cd_{key} }}\n" + (f"            {avail}\n" if avail else "") + "        }\n"
-    s += f"        cost = {cost}\n        fire_only_once = no\n        ai_will_do = {{ factor = 1 }}\n        complete_effect = {{\n            if = {{ limit = {{ has_global_flag = ktits_debug }} log = \"KTITS:DEC:[THIS.GetTag]:DONE {k}\" }}\n            set_country_flag = {{ flag = {P}cd_{key} days = {cd} value = 1 }}\n" + ind(body, 12) + "        }\n    }\n\n"
+    s += f"        cost = {cost}\n        fire_only_once = no\n        ai_will_do = {{ {ai} }}\n        complete_effect = {{\n            if = {{ limit = {{ has_global_flag = ktits_debug }} log = \"KTITS:DEC:[THIS.GetTag]:DONE {k}\" }}\n            set_country_flag = {{ flag = {P}cd_{key} days = {cd} value = 1 }}\n" + ind(body, 12) + "        }\n    }\n\n"
     dec[cat] += s
     add(k, ru_); add(k + "_desc", desc)
 def V(var, d, lo=0, hi=100): return f"add_to_variable = {{ var = {P}{var} value = {d} }}\nclamp_variable = {{ var = {P}{var} min = {lo} max = {hi} }}\n"
@@ -177,8 +177,10 @@ D("integrity", "dc_governor", "Прислать наместника", "Наме
 D("integrity", "dc_invest", "Вложиться в республику", "Союз построил республике завод, школу и памятник Союзу. Памятник вышел самым удачным.", 100, 90,
   "FROM = { random_owned_controlled_state = { limit = { impassable = no } add_extra_state_shared_building_slots = 1 add_building_construction = { type = industrial_complex level = 1 instant_build = yes } } }\n" + V("integrity", 2), target=TGT, vis=NP)
 PA = f"has_country_flag = {P}para_on\n            NOT = {{ has_country_flag = {P}pers_won }}"
+AIP = {"soft": ("DEFAULT", "HISTORICAL", "REFORMS"), "hard": ("HARD_COMM",), "auto": ("FASCISM",), "schizo": ("UNTHINKABLE", "CASUAL")}
+def aip(k): return "base = 0 modifier = { add = 30 OR = { " + " ".join(f"has_game_rule = {{ rule = ktits_mak_paths option = {o} }}" for o in AIP[k]) + " } }"
 for k, nm, d_ in (("auto", "Самодержец", "Генсек примеряет корону перед зеркалом."), ("soft", "Мягкий коммунист", "Генсек гладит по голове подчинённых и просит не бояться."), ("hard", "Жёсткий коммунист", "Генсек стучит кулаком по столу, стол скрипит."), ("schizo", "Шиз", "Генсек считает лампочки и ищет среди них заговорщиков.")):
-    D("paranoia", f"dc_p_{k}", f"Усилить личность: {nm}", d_, 50, 30, V("p_" + k, 10) + V("paranoia", 2), PA)
+    D("paranoia", f"dc_p_{k}", f"Усилить личность: {nm}", d_, 50, 30, V("p_" + k, 10) + V("paranoia", 2), PA, ai=aip(k))
 D("paranoia", "dc_calm", "Бессонная ночь без охраны", "Генсек отпускает охрану на одну ночь. Утром охрана аккуратно удивлена.", 60, 90, V("paranoia", -8), PA)
 D("balance", "dc_plenum", "Пленум ЦК", "Пленум собрался и единогласно решил, что Партия мудра. Генсек подписал.", 60, 60, BV(-0.15))
 D("balance", "dc_order", "Личный приказ Генсека", "Генсек написал приказ собственной рукой. Рука дрожала, приказ нет.", 60, 60, BV(0.15))

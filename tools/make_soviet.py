@@ -39,13 +39,16 @@ def nearest(tag, ref, k):
     return sorted(sorted(owned(tag), key=lambda s: min(math.dist(cen(s), r) for r in refc))[:k])
 ASM_ST = nearest(ASM, SOV, 5)
 DMK_ST = nearest(DMK, CSK, 5)
-KYT_ST = sorted(sorted(owned(KYT), key=lambda s: cen(s)[1])[:4])
+KYT_ST = sorted(sorted(owned(KYT), key=lambda s: cen(s)[1])[:6])
+NEW_T = [("fdp", "FDP", "Федерации Депутатов", 5, "f"), ("ara", "Z06", "Арагонии", 5, "g"), ("mgn", "MGN", "Магнолии", 5, "m"), ("clb", "CLB", "Челябе", 4, "h"), ("srk", "SRK", "Сарайкумскому Ханству", 5, "s")]   # (key, lore tag, dative, states, focus letter)
+NT = {k: (lore2tag[lt], nearest(lore2tag[lt], SOV, n), dat, ch) for k, lt, dat, n, ch in NEW_T}
 _hc = next((M / "history/countries").glob(f"{CSK} - *.txt"))
 _capst = int(re.search(r"capital\s*=\s*(\d+)", _hc.read_text(encoding="utf-8", errors="ignore")).group(1))
 _vp = re.findall(r"victory_points\s*=\s*\{\s*(\d+)\s+(\d+)", (M / "history/states" / f"{_capst}.txt").read_text(encoding="utf-8", errors="ignore"))
 CSK_PROV = int(max(_vp, key=lambda v: int(v[1]))[0]) if _vp else st[_capst]["provs"][0]
 VOL_UNIT = f'create_unit = {{ division = "name = \\"Добровольцы Союза\\" division_template = \\"Добровольцы Союза\\" start_experience_factor = 0.3 start_equipment_factor = 1" owner = PREV prioritize_location = {CSK_PROV} }}'
 VOL_TPL = 'division_template = { name = "Добровольцы Союза" regiments = { infantry = { x = 0 y = 0 } infantry = { x = 0 y = 1 } infantry = { x = 1 y = 0 } infantry = { x = 1 y = 1 } } }'
+print("soviet: claims", {k: v[1] for k, v in NT.items()})
 print(f"soviet: claims Assembly {ASM_ST}, Dmitrov strip {DMK_ST}, northern Kytai {KYT_ST}")
 
 # ---------------- doc tables: name -> (days, description) ----------------
@@ -101,9 +104,9 @@ def OP(tag, v):
     m = f"{P}op_{'p' if v > 0 else 'm'}{abs(v)}"
     return f"add_opinion_modifier = {{ target = {tag} modifier = {m} }}\n{tag} = {{ add_opinion_modifier = {{ target = ROOT modifier = {m} }} }}\n"
 OPS = sorted({10, 20, 25, 30, 40, 50})
-def claims(ids, key, r):
+def claims(ids, key, r, cf=()):
     ttl(key, r)
-    return f"custom_effect_tooltip = {key}\nhidden_effect = {{\n" + "".join(f"    {s} = {{ add_claim_by = ROOT }}\n" for s in ids) + "}\n"
+    return f"custom_effect_tooltip = {key}\nhidden_effect = {{\n" + "".join(f"    {s} = {{ add_claim_by = ROOT }}\n" for s in ids) + "}\n" + "".join(flag(P + "cl_" + c) for c in cf)
 def wargoal(tag, ids, key, r):   # [uncertain: take_claimed_state with generator]
     ttl(key, r)
     return f"custom_effect_tooltip = {key}\nhidden_effect = {{\n    create_wargoal = {{ type = take_claimed_state target = {tag} generator = {{ {' '.join(map(str, ids))} }} }}\n}}\n"
@@ -127,15 +130,17 @@ F = []   # (id, doc key, branch, prerequisites [OR groups], exclusive ids, avail
 def fc(i, key, br, pre, excl, avail, rew, flt=POL, icon="GFX_goal_generic_political_pressure", ai=60): F.append((i, key, br, pre, excl, avail, rew, flt, icon, ai))
 CASUAL = f"NOT = {{ has_country_flag = {P}casual_path }}"
 # --- Паранойя
-fc("p0", "Бессонные ночи", "para", [], [], "has_government = communism", flag(P + "para_on") + tip(P + "tt_para_on", "Запускает механику Паранойи (шкала и решения: следующая фаза)"), ai=80)
+fc("p0", "Бессонные ночи", "para", [], [], "has_government = communism", flag(P + "para_on") + tip(P + "tt_para_on", "Запускает механику Паранойи: шкала, личности и решения категории «Паранойя Пименова»"), ai=5000)
 for k, nm in (("pa", "Самодержец"), ("ps", "Мягкий коммунист"), ("ph", "Жёсткий коммунист"), ("pz", "Шиз")):
     key = {"pa": "auto", "ps": "soft", "ph": "hard", "pz": "schizo"}[k]
-    fc(k, nm, "para", [["p0"]], [], None, PERS(key, 20), ai=40)
-fc("pb", "Баланс", "para", [["p0"]], [], None, "".join(PERS(k, -10) for k in ("auto", "soft", "hard", "schizo")) + PAR(-10), ai=40)
+    fc(k, nm, "para", [["p0"]], [x for x in ("pa", "ps", "ph", "pz", "pb") if x != k], None, PERS(key, 20) + flag(P + "pf_" + key), ai=40)
+fc("pb", "Баланс", "para", [["p0"]], ["pa", "ps", "ph", "pz"], None, "".join(PERS(k, -10) for k in ("auto", "soft", "hard", "schizo")) + PAR(-10) + flag(P + "pf_balance"), ai=5)
 # --- корень и пути
+ttl(P + "tt_pers_won", "Одна из личностей Генсека победила (шкала «Паранойя Пименова»)")
+PERS_OK = f"custom_trigger_tooltip = {{\n    tooltip = {P}tt_pers_won\n    has_country_flag = {P}pers_won\n}}"
 fc("cong", "Съезд после войны", "root", [], [], None, pp(50) + flag(P + "congress"), ai=1000, icon="GFX_goal_generic_dangerous_deal")
 ROOTS = ["u1", "r1", "m1", "t1", "k1", "f1"]
-def root(i, key, pre, rew, ai, avail=None): fc(i, key, "p_" + i, [["cong"]], [x for x in ROOTS if x != i], avail, rew, ai=ai)
+def root(i, key, pre, rew, ai, avail=None): fc(i, key, "p_" + i, [["cong"]], [x for x in ROOTS if x != i], avail or PERS_OK, rew, ai=ai)
 root("u1", "Немыслимый вариант", 0, pop("theology", 5) + pop("democratic", 5) + INT(-5), 40)
 fc("u2", "Оружие для недовольных", "p_u1", [["u1"]], [], None, pop("theology", 15), ai=120)
 fc("u3", "Вторая гражданская", "p_u1", [["u2"]], [], needs("theology", 30, P + "tt_need_th30"),
@@ -204,15 +209,15 @@ fc("x3", "Великая Континентальная империя", "ext", 
 fc("x4", "Демократический щит", "ext", [["x0"]], ["x1", "x2", "x3"], "has_government = democratic", OP(BRT, 50) + OP(SOYA, 50), ai=30)
 fc("x5", "Договор с Тямовским рейхом", "ext", [["x2"]], [], exists(REI), ev(REI, 20, P + "tt_reich_ev", "Событие рейха: договор (технологии и торговля) или отказ") + OP(REI, 10), ai=30)
 fc("x6", "Временный союз с рейхом", "ext", [["x3"]], [], exists(REI), ev(REI, 21, P + "tt_reich_ally", "Событие рейха: союз на 2 года"), ai=30)
-fc("x7", "Континент под Союзом", "ext", [["x6"]], [], None, claims(ASM_ST + DMK_ST, P + "tt_cont_claims", "Претензии на соседние штаты Ассамблеи и Княжества"), ai=30)
+fc("x7", "Континент под Союзом", "ext", [["x6"]], [], None, claims(ASM_ST + DMK_ST, P + "tt_cont_claims", "Претензии на соседние штаты Ассамблеи и Княжества", ("asm", "dmk")), ai=30)
 fc("x8", "Союз с Бриттаном и Соевой Республикой", "ext", [["x4"]], [], None, OP(BRT, 40) + OP(SOYA, 40), ai=30)
 fc("x9", "Уничтожение угроз", "ext", [["x8"]], [], None, annex_wg(KAZ, P + "tt_threat_wg", "Цель войны против Казуалии [uncertain: полный список фашистских и казуальных соседей]"), ai=30)
 # --- Рубежи Союза
 RX = [["x2"]]
-fc("ra1", "Претензии на Северную Ассамблею", "rub_a", RX, [], exists(ASM), claims(ASM_ST, P + "tt_asm_claims", "Претензии на 5 ближайших штатов Северной Ассамблеи") + OP(ASM, -30), ai=30)
+fc("ra1", "Претензии на Северную Ассамблею", "rub_a", RX, [], exists(ASM), claims(ASM_ST, P + "tt_asm_claims", "Претензии на 5 ближайших штатов Северной Ассамблеи; открывает решение-ультиматум", ("asm",)) + OP(ASM, -30), ai=30)
 fc("ra2", "Отторжение окраин", "rub_a", [["ra1"]], [], None, wargoal(ASM, ASM_ST, P + "tt_asm_wg", "Цель войны на претензионные штаты Ассамблеи (без аннексии)"), ai=30)
 fc("ra3", "Освоение окраин", "rub_a", [["ra2"]], [], None, civ(1) + infra(1), ai=30)
-fc("rd1", "Взгляд за хребет", "rub_d", RX, [], exists(DMK), OP(DMK, -20) + "add_war_support = 0.03\n", ai=30)
+fc("rd1", "Взгляд за хребет", "rub_d", RX, [], exists(DMK), OP(DMK, -20) + "add_war_support = 0.03\n" + claims(DMK_ST, P + "tt_dmk_claims", "Претензии на 5 прикуштунских штатов Княжества; открывает решение-ультиматум", ("dmk",)), ai=30)
 fc("rd2", "Урок Княжеству", "rub_d", [["rd1"], ["rc2"], ["rc4"]], [], None, wargoal(DMK, DMK_ST, P + "tt_dmk_wg", "Цель войны на прикуштунскую полосу Княжества"), ai=30)
 fc("rc0", "Казачий вопрос", "rub_c", RX, [], exists(CSK), OP(CSK, 10), ai=30)
 fc("rc1", "Помощь без обязательств", "rub_c", [["rc0"]], ["rc3"], None, OP(CSK, 40) + tip(P + "tt_help", "Казачья Земля получает 2000 единиц пехотного снаряжения от Союза, без альянса и гарантий 2 добровольческие дивизии в её столице; Союз получает ванильное действие «Отправить добровольцев»") + f"hidden_effect = {{ {CSK} = {{ add_equipment_to_stockpile = {{ type = infantry_equipment amount = 2000 producer = {SOV} }}\n {VOL_TPL}\n capital_scope = {{ {VOL_UNIT} {VOL_UNIT} }} }} }}\nadd_ideas = {P}sp_volunteers\n", ai=30)
@@ -221,8 +226,10 @@ fc("rc3", "Давление на Казачью Землю", "rub_c", [["rc0"]],
 fc("rc4", "Ультиматум присоединения", "rub_c", [["rc3"]], [], None, ev(CSK, 10, P + "tt_ultimatum", "Событие Казачьей Земли: стать марионеткой Союза или получить войну"), ai=30)
 fc("rk1", "Карантин на юге", "rub_k", RX, [], CASUAL, CAS(-1) + tip(P + "tt_quarantine", "Укрепления на границе с Казуалией +1 [uncertain: массовая стройка укреплений]"), ai=30)
 fc("rk2", "Конец Ставки", "rub_k", [["rk1"]], [], exists(KAZ), annex_wg(KAZ, P + "tt_kaz_wg", "Цель войны (аннексия) против Казуалии"), ai=30)
-fc("ry1", "Претензии на север Кытая", "rub_y", RX, [], exists(KYT), claims(KYT_ST, P + "tt_kyt_claims", "Претензии на 4 самых северных штата Кытая") + OP(KYT, -30), ai=30)
+fc("ry1", "Претензии на север Кытая", "rub_y", RX, [], exists(KYT), claims(KYT_ST, P + "tt_kyt_claims", "Претензии на 6 самых северных штатов Кытая; открывает решение-ультиматум", ("kyt",)) + OP(KYT, -30), ai=30)
 fc("ry2", "Северные провинции", "rub_y", [["ry1"]], [], None, wargoal(KYT, KYT_ST, P + "tt_kyt_wg", "Цель войны на северные штаты Кытая"), ai=30)
+for _k, (_tg, _ids, _dat, _ch) in NT.items():
+    fc("r" + _ch + "1", "Претензии на " + _dat, "rub_" + _ch, RX, [], exists(_tg), claims(_ids, P + f"tt_{_k}_claims", f"Претензии на {len(_ids)} ближайших штатов; открывает решение-ультиматум", (_k,)) + OP(_tg, -20), ai=30)
 fc("ry3", "Северные заставы", "rub_y", [["ry2"]], [], None, spirit("north_posts", "Северные заставы", "Новые границы, новые заставы. Заставы пока пустые, но флаг уже есть.", {"supply_consumption_factor": -0.1}), ai=30)
 # --- Экономика
 IC = "GFX_goal_generic_construct_civ_factory"
@@ -242,9 +249,9 @@ fc("ar4", "Глубокая операция", "army", [["ar2", "ar3"]], [], Non
 fc("ar5", "Танковые корпуса", "army", [["ar4"]], [], None, "add_tech_bonus = { name = ktits_sov_tank bonus = 0.5 uses = 2 category = armor }\n", ARM, AI_, 3)
 fc("ar6", "Воздушный флот Союза", "army", [["ar1"]], [], None, "air_experience = 25\n" + mil(1), ARM, AI_, 3)
 fc("ar7", "Штурмовики", "army", [["ar6"]], [], None, "add_tech_bonus = { name = ktits_sov_cas bonus = 0.5 uses = 1 category = cas_bomber }\n", ARM, AI_, 3)
-fc("ar8", "Дальние бомбардировщики", "army", [["ar7"]], [], None, "add_tech_bonus = { name = ktits_sov_bomb bonus = 0.5 uses = 1 category = strategic_bomber_tech }\n", ARM, AI_, 3)
+fc("ar8", "Дальние бомбардировщики", "army", [["ar7"]], [], None, "add_tech_bonus = { name = ktits_sov_bomb bonus = 0.5 uses = 1 category = cat_strategic_bomber }\n", ARM, AI_, 3)
 fc("ar9", "Флот двух морей", "army", [["ar1"]], [], None, "random_owned_controlled_state = { limit = { is_coastal = yes } add_building_construction = { type = dockyard level = 1 instant_build = yes } }\n", ARM, AI_, 3)
-fc("ar10", "Синее и Кряхтское море", "army", [["ar9"]], [], None, "add_tech_bonus = { name = ktits_sov_dd bonus = 0.5 uses = 1 category = destroyer_tech }\n", ARM, AI_, 3)
+fc("ar10", "Синее и Кряхтское море", "army", [["ar9"]], [], None, "add_tech_bonus = { name = ktits_sov_dd bonus = 0.5 uses = 1 category = dd_tech }\n", ARM, AI_, 3)
 fc("ar11", "Северный флот", "army", [["ar10"]], [], None, "random_owned_controlled_state = { limit = { is_coastal = yes } }\n", ARM, AI_, 3)
 # --- Спасение экономики (Экономический блок)
 KTAGS = "OR = { " + " ".join(f"original_tag = {t}" for t in PARTS) + " }"
@@ -263,12 +270,19 @@ fc("eb4", "Спасательный фонд", "rescue", [["eb2"]], [], None, pp
 fc("eb5", "Выкуп долгов республик", "rescue", [["eb3"]], [], None, OPK(25, P + "tt_debts", "Отношения со всеми республиками: §G+25§!"), ai=80)
 fc("eb6", "Хозяйственная дипломатия", "rescue", [["eb4"], ["eb5"]], [], None, OPK(40, P + "tt_econ_dip", "Отношения со всеми республиками: §G+40§!"), ai=80)
 F = [f for f in F if f]
+# author's rule 2026-11-20: the focus "Бессонные ночи" (p0) is the first and obligatory: every focus without prerequisites needs it
+F = [f if f[0] == "p0" or f[3] else (f[0], f[1], f[2], [["p0"]], f[4], f[5], f[6], f[7], f[8], f[9]) for f in F]
+# mutual exclusivity must be written on both focuses (the game logs an error otherwise)
+_ex = {f[0]: set(f[4]) for f in F}
+for _f in F:
+    for _e in _f[4]: _ex[_e].add(_f[0])
+F = [(f[0], f[1], f[2], f[3], sorted(_ex[f[0]]), f[5], f[6], f[7], f[8], f[9]) for f in F]
 FIDS = {f[0] for f in F}
 assert len(FIDS) == len(F)
 
 # ---------------- layout ----------------
 BASE = {"para": 0, "root": 40, "p_u1": 10, "church": 20, "p_r1": 30, "p_m1": 50, "p_t1": 60, "p_k1": 70, "p_f1": 80, "anti": 90,
-        "ext": 100, "rescue": 152, "rub_a": 110, "rub_d": 115, "rub_c": 120, "rub_k": 126, "rub_y": 130, "eco": 136, "army": 144}
+        "ext": 100, "rescue": 152, "rub_a": 110, "rub_d": 115, "rub_c": 120, "rub_k": 126, "rub_y": 130, "rub_f": 160, "rub_g": 164, "rub_m": 168, "rub_h": 172, "rub_s": 176, "eco": 136, "army": 144}
 byid = {f[0]: f for f in F}
 depth = {}
 def dep(i):
@@ -289,6 +303,7 @@ ROOT_X = POS["cong"][0]
 def fid(i): return P + i
 out = (f"focus_tree = {{\n    id = {P}focus\n    country = {{\n        factor = 0\n        modifier = {{\n            add = 100\n            original_tag = {SOV}\n        }}\n    }}\n"
        f"    default = no\n    reset_on_civilwar = no\n    continuous_focus_position = {{ x = 40 y = 1250 }}\n    initial_show_position = {{\n        focus = {P}cong\n    }}\n\n")
+AIPF = {"ps": ("DEFAULT", "HISTORICAL", "REFORMS"), "ph": ("HARD_COMM",), "pa": ("FASCISM",), "pz": ("UNTHINKABLE", "CASUAL")}   # the AI takes only the personality focus of its path
 RULE = {"m1": "HISTORICAL", "r1": "REFORMS", "t1": "HARD_COMM", "u1": "UNTHINKABLE", "f1": "FASCISM", "k1": "CASUAL"}
 for (i, key, br, pre, excl, avail, rew, flt, icon, aiw) in F:
     nm, (days, desc) = dd(key)
@@ -300,6 +315,9 @@ for (i, key, br, pre, excl, avail, rew, flt, icon, aiw) in F:
     if avail: s += f"        available = {{\n            {avail}\n        }}\n"
     s += "        cancel_if_invalid = no\n        continue_if_invalid = yes\n"
     s += f"        ai_will_do = {{\n            factor = {aiw}\n"
+    if i in AIPF:
+        ok = " ".join(f"has_game_rule = {{ rule = ktits_mak_paths option = {o} }}" for o in AIPF[i])
+        s += f"            modifier = {{\n                factor = 0\n                NOT = {{ OR = {{ {ok} }} }}\n            }}\n"
     if i in RULE:
         ok = " ".join(f"has_game_rule = {{ rule = ktits_mak_paths option = {o} }}" for o in ("DEFAULT", RULE[i]))
         s += f"            modifier = {{\n                factor = 0\n                NOT = {{ OR = {{ {ok} }} }}\n            }}\n"
@@ -391,8 +409,8 @@ for v in OPS:
     add(f"{P}op_p{v}", "Дружеский жест Союза"); add(f"{P}op_m{v}", "Давление Союза")
 w("common/scripted_triggers/ktits_soviet_triggers.txt", f"ktits_is_soviet = {{\n    original_tag = {SOV}\n}}\n")
 w("common/scripted_effects/ktits_soviet_effects.txt",
-  "# scope = Soviet Union at the start of the game: laws (partial mobilisation = early_war_economy [INVENTED: the closest law], limited conscription), variables of the scales\n"
-  f"ktits_sov_start = {{\n    add_ideas = early_war_economy\n    add_ideas = limited_conscription\n"
+  "# scope = Soviet Union at the start of the game: laws (partial mobilisation = partial_economic_mobilisation [INVENTED: the closest law], limited conscription), variables of the scales\n"
+  f"ktits_sov_start = {{\n    add_ideas = partial_economic_mobilisation\n    add_ideas = limited_conscription\n"
   f"    set_variable = {{ var = {P}integrity value = 70 }}\n    set_variable = {{ var = {P}paranoia value = 20 }}\n    set_power_balance = {{ id = ktits_sov_power_balance left_side = ktits_sov_party_side right_side = ktits_sov_pimenov_side set_value = 0.2 }}\n"
   f"    set_variable = {{ var = {P}p_auto value = 20 }}\n    set_variable = {{ var = {P}p_soft value = 20 }}\n    set_variable = {{ var = {P}p_hard value = 20 }}\n    set_variable = {{ var = {P}p_schizo value = 20 }}\n"
   f"    set_variable = {{ var = {P}repent value = 0 }}\n}}\n")
@@ -400,7 +418,7 @@ w("common/on_actions/ktits_soviet_on_actions.txt",
   "on_actions = {\n    on_startup = {\n        effect = {\n            every_country = {\n                limit = { ktits_is_soviet = yes }\n                ktits_sov_start = yes\n                country_event = { id = ktits_soviet.1 }\n            }\n        }\n    }\n}\n")
 
 # ---------------- events ----------------
-ENV = {1: ("Победа в стране без победителей", "Гражданская война закончилась тихо: царисты сдались не врагам, а усталости. Ваньград украсили флагами, которые вчера были тряпками. Генсек Ваня Пименов вышел на балкон, но слов не нашёл, потому что слов больше не было. Республики шепчутся на своих языках, Партия считает потери, а Казуалия на юге зевает так, что слышно на границе. Надо созывать съезд и решать, каким будет Союз.", "Созвать съезд"),
+ENV = {1: ("Десять лет после победы", "Гражданская война закончилась десять лет назад: царисты сдались не врагам, а усталости, и Ваньград давно перестал украшать площади флагами победы. Но Генсек Ваня Пименов так и не поверил в мир. Он до сих пор видит врагов и соперников в каждом коридоре, проверяет подписи под указами и не спит по ночам: за дверью шепчутся, а в протоколах всё сходится слишком гладко. Республики говорят на своих языках, Партия считает потери, а Казуалия на юге зевает так, что слышно на границе. Пока Генсек не успокоится, ни один курс выбрать невозможно.", "Созвать съезд"),
        10: ("Ультиматум из Ваньграда", "Атаману принесли бумагу из Ваньграда. Там вежливо сказано: либо Казачья Земля становится частью Союза, либо остаётся сама по себе, но уже без Союза рядом.", "Принять"),
        20: ("Договор с Ваньградом", "Ваньград предлагает обмен: технологии за сырьё и раздел общей границы. Рейх долго считает, кто выигрывает больше, и выходит, что оба.", "Подписать"),
        21: ("Временный союз", "Ваньград предлагает союз на два года. В рейхе говорят: два года — это немного. В Ваньграде кивают и пишут «до особого распоряжения».", "Согласиться")}
@@ -434,3 +452,12 @@ for k, (r_, e_) in TT.items(): add(k, r_, e_)
 L.write_yml(str(M / "localisation/russian/ktits_soviet_l_russian.yml"), "russian", ru)
 L.write_yml(str(M / "localisation/english/ktits_soviet_l_english.yml"), "english", en)
 print(f"soviet: {len(F)} focuses + {nzone} zone focuses, {len(SP) + len(ZS)} spirits, {len(ENV)} events, rule ktits_mak_paths; x {min(p[0] for p in POS.values())}..{max(p[0] for p in POS.values())}, y max {max(p[1] for p in POS.values())}")
+
+# the casuality ruler of the Union (author's decision 2026-11-20): "Болотный Иоанн"; recruited at the start so that the portrait and the name are used when the Union turns casual
+_cf = M / "common/characters/MAK.txt"; _ct = _cf.read_text(encoding="utf-8")
+_m = re.search(r'(\tMAK_casuality_leader\s*=\s*\{\s*name\s*=\s*)"[^"]*"', _ct)
+if _m: _cf.write_text(_ct[:_m.start()] + _m.group(1) + '"Болотный Иоанн"' + _ct[_m.end():], encoding="utf-8", newline="")
+_hf = next((M / "history/countries").glob("MAK - *.txt")); _ht = _hf.read_text(encoding="utf-8", errors="ignore")
+if not re.search(r"^\s*recruit_character\s*=\s*MAK_casuality_leader\s*$", _ht, re.M):
+    _ht = re.sub(r"^(recruit_character[^\n]*)$", lambda m_: m_.group(1) + "\nrecruit_character = MAK_casuality_leader", _ht, count=1, flags=re.M) if re.search(r"^recruit_character", _ht, re.M) else _ht.rstrip() + "\n\nrecruit_character = MAK_casuality_leader\n"
+    _hf.write_text(_ht, encoding="utf-8", newline="")
