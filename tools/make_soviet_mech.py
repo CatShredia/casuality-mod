@@ -43,11 +43,11 @@ SPI = {"int_hi": ("Единый Союз", "Республики не споря
        "crash": ("Хозяйственный обвал", "Республики разошлись за неделю. Рубль остался в одной, станки в другой, паспорта в третьей. Заводы встали от того, что никто не знал, чья теперь печать.", {"industrial_capacity_factory": -0.15, "stability_factor": -0.1, "production_speed_buildings_factor": -0.15, "consumer_goods_factor": 0.1}),
        "crash_half": ("Хозяйственный обвал (смягчённый)", "Зона держится: печать общая, и обвал бьёт вполсилы. Заводы встали, но ненадолго.", {"industrial_capacity_factory": -0.075, "stability_factor": -0.05, "production_speed_buildings_factor": -0.075, "consumer_goods_factor": 0.05}),
        "crash_soft": ("Распад по плану", "Республики расходились по расписанию, и расписание даже почти соблюдали.", {"industrial_capacity_factory": -0.05, "stability_factor": -0.03, "consumer_goods_factor": 0.03})}
-PIC = {"stability_factor": "generic_stability_bonus", "political_power_gain": "generic_political_pressure", "political_power_factor": "generic_political_pressure",
+PIC = {"stability_factor": "eng_tackle_capitalism", "political_power_gain": "generic_communism_drift_bonus", "political_power_factor": "generic_communism_drift_bonus",
        "industrial_capacity_factory": "generic_production_bonus", "conscription_factor": "generic_manpower_bonus"}
 ideas = "ideas = {\n    country = {\n"
 def idea(key, mods):
-    pic = next((PIC[k] for k in mods if k in PIC), "generic_political_pressure")
+    pic = next((PIC[k] for k in mods if k in PIC), "generic_communism_drift_bonus")
     return (f"        {key} = {{\n            picture = {pic}\n            allowed = {{ always = no }}\n            allowed_civil_war = {{ always = yes }}\n            removal_cost = -1\n            modifier = {{\n"
             + "".join(f"                {k} = {v}\n" for k, v in mods.items()) + "            }\n        }\n")
 for k, (r_, d_, mods) in SPI.items():
@@ -89,7 +89,7 @@ eff += (f"# the collapse: fast (Integrity fell from 40+ to 10 within 180 days, o
 eff += (f"# scope = Soviet Union, every month\n{P}monthly = {{\n"
  + ind(
  # integrity: slow drift, monolith floor, fall clock
- f"if = {{ limit = {{ check_variable = {{ ktits_casuality value = 50 compare = greater_than }} }} add_to_variable = {{ var = {P}integrity value = -1 }} }}\n"
+ f"if = {{ limit = {{ check_variable = {{ var = ktits_casuality value = 50 compare = greater_than }} }} add_to_variable = {{ var = {P}integrity value = -1 }} }}\n"
  f"if = {{ limit = {{ {cv('paranoia', 70, 'greater_than_or_equals')} }} add_to_variable = {{ var = {P}integrity value = -1 }} }}\n"
  f"if = {{ limit = {{ has_country_flag = {P}monolith {cv('integrity', 50, 'less_than')} }} set_variable = {{ var = {P}integrity value = 50 }} }}\n"
  f"clamp_variable = {{ var = {P}integrity min = 0 max = 100 }}\n"
@@ -145,16 +145,17 @@ CDESC = {"integrity": "Целостность Союза: §Y[?ktits_sov_integri
          "paranoia": "Паранойя Генсека: §Y[?ktits_sov_paranoia]§!. Личности: Самодержец §Y[?ktits_sov_p_auto]§!, Мягкий §Y[?ktits_sov_p_soft]§!, Жёсткий §Y[?ktits_sov_p_hard]§!, Шиз §Y[?ktits_sov_p_schizo]§!. Чья личность дойдёт до 100, тот и правит.",
          "balance": "Баланс сил: §Y[?ktits_sov_balance]§! (минус к Партии, плюс к Пименову). Пленум спорит с Генсеком: кто громче, тот и прав.",
          "church": "Покаяние мира: §Y[?ktits_sov_repent]§! из 100. Кости ящеров ждут, когда мир признает вину.",
-         "export": "Красная агитация Союза: книги, кино и комиссары с улыбкой. Страны с вечным нейтралитетом не слушают."}
+         "export": "Стран, где коммунизм не ниже 30 %: §Y[?ktits_sov_export]§!. Красная агитация Союза: книги, кино и комиссары с улыбкой. Страны с вечным нейтралитетом не слушают."}
+BARS_ = {"integrity": "ktits_sint", "paranoia": "ktits_spar", "balance": "ktits_sbal", "church": "ktits_srep"}
 cats = ""
 for k, (nm, vis) in CATS.items():
-    cats += f"{P}{k}_category = {{\n    icon = generic_propaganda\n    picture = GFX_decision_cat_picture_political_actions\n    visible = {{\n        {vis}\n    }}\n}}\n\n"
+    cats += f"{P}{k}_category = {{\n    icon = generic_propaganda\n    picture = GFX_decision_cat_picture_generic_border_conflicts\n" + (f"    scripted_gui = {BARS_[k]}_ui\n" if k in BARS_ else "") + f"    visible = {{\n        {vis}\n    }}\n}}\n\n"
     add(f"{P}{k}_category", nm); add(f"{P}{k}_category_desc", CDESC[k])
 w("common/decisions/categories/ktits_soviet_categories.txt", cats)
 dec = {k: "" for k in CATS}
 def D(cat, key, ru_, desc, cost, cd, body, avail="", target=None, vis=None):
     k = P + key
-    s = f"    {k} = {{\n        icon = generic_political_actions\n"
+    s = f"    {k} = {{\n        icon = generic_propaganda\n"
     if vis: s += f"        visible = {{\n            {vis}\n        }}\n"
     if target: s += f"        target_trigger = {{\n            FROM = {{\n                {target}\n            }}\n        }}\n"
     s += f"        available = {{\n            NOT = {{ has_country_flag = {P}cd_{key} }}\n" + (f"            {avail}\n" if avail else "") + "        }\n"
@@ -195,6 +196,64 @@ D("export", "dc_invite", "Пригласить в Союз", "Союз приг�
   f"FROM = {{ set_politics = {{ ruling_party = communism }} }}\n{SOV} = {{ puppet = FROM }}\n", target=XT + "\n                communism > 0.499", vis=EXP)
 for k, body in dec.items():
     w(f"common/decisions/ktits_soviet_{k}_decisions.txt", f"{P}{k}_category = {{\n\n{body}}}\n")
+# ---------------- extra: Great Socialist Builds (decisions instead of the map), export count, cosmetic names, bars ----------------
+def civ_(n): return f"random_owned_controlled_state = {{ limit = {{ impassable = no }} add_extra_state_shared_building_slots = {n} add_building_construction = {{ type = industrial_complex level = {n} instant_build = yes }} }}\n"
+def mil_(n): return f"random_owned_controlled_state = {{ limit = {{ impassable = no }} add_extra_state_shared_building_slots = {n} add_building_construction = {{ type = arms_factory level = {n} instant_build = yes }} }}\n"
+BUILDS = [("hydro", "Окринская ГЭС", "Плотина на Окре перегородила реку и споры о том, чья она. Свет дали, а споры до сих пор в темноте.", 365, civ_(3) + "add_stability = 0.01\n", ""),
+          ("road", "Магистраль до Желтой Реки", "Дорога дотянулась до дальних краёв. По ней уже едут, а где кончается, спорят.", 540, "every_owned_state = { limit = { is_core_of = ROOT } add_building_construction = { type = infrastructure level = 2 instant_build = yes } }\n", ""),
+          ("bog", "Осушение Наших Болот", "Болота осушили. Казуалы вышли из камышей и растерянно ищут, где теперь лежать.", 450, f"add_to_variable = {{ var = ktits_casuality value = -10 }}\nclamp_variable = {{ var = ktits_casuality min = 0 max = 100 }}\n" + civ_(2), f"has_country_flag = {P}drain_bog"),
+          ("city", "Ваньград-на-Устое: город-завод", "Город построили вокруг завода, а завод вокруг плана. План выполнен, город живёт.", 365, mil_(3), ""),
+          ("steel", "Урурский металлургический комбинат", "Комбинат стоит у гор и дымит так, что горы кажутся дымовой трубой.", 400, mil_(2), ""),
+          ("sea", "Северный морской путь", "Корабли идут по льду, лёд идёт по кораблям. Порты построены, остальное уточняется.", 400, "random_owned_controlled_state = { limit = { is_coastal = yes } add_building_construction = { type = dockyard level = 1 instant_build = yes } }\n", "")]
+ttl_ = {}
+bd = f"{P}builds_category = {{\n\n"
+bcheck = ""
+for k, nm, ds, days, eff_b, avail in BUILDS:
+    bd += (f"    {P}b_{k} = {{\n        icon = generic_construction\n        visible = {{\n            has_country_flag = {P}builds_on\n        }}\n        available = {{\n            NOT = {{ has_country_flag = {P}b_{k}_started }}\n"
+           + (f"            {avail}\n" if avail else "") +
+           f"        }}\n        cost = 150\n        fire_only_once = no\n        ai_will_do = {{ factor = 1 }}\n        complete_effect = {{\n            set_country_flag = {P}b_{k}_started\n            set_country_flag = {{ flag = {P}b_{k}_run days = {days} value = 1 }}\n        }}\n    }}\n\n")
+    add(f"{P}b_{k}", nm); add(f"{P}b_{k}_desc", ds)
+    bcheck += (f"if = {{\n    limit = {{ has_country_flag = {P}b_{k}_started NOT = {{ has_country_flag = {P}b_{k}_run }} NOT = {{ has_country_flag = {P}b_{k}_done }} }}\n    set_country_flag = {P}b_{k}_done\n"
+               f"    add_to_variable = {{ var = {P}builds_done value = 1 }}\n" + ind(eff_b, 4) + "}\n")
+w("common/decisions/ktits_soviet_builds_decisions.txt", bd + "}\n")
+w("common/decisions/categories/ktits_soviet_builds_category.txt", f"{P}builds_category = {{\n    icon = generic_construction\n    picture = GFX_decision_cat_picture_generic_border_conflicts\n    visible = {{\n        ktits_is_soviet = yes\n        has_country_flag = {P}builds_on\n    }}\n}}\n")
+add(f"{P}builds_category", "Великие социалистические стройки"); add(f"{P}builds_category_desc", "Завершено строек: §Y[?ktits_sov_builds_done]§! из 6. Карта строек не нарисована: прогресс показывают решения и их сроки.")
+# cosmetic names: the title of the country after the reforms and the Country of Rusy after the collapse (a year later), by the ruling ideology
+COS = {"pres": ("Президентский Союз Советских Республик", "Президентского Союза Советских Республик", "президентскосоюзный", (180, 60, 60)),
+       "soy": ("Соевый Советский Союз", "Соевого Советского Союза", "соево-советский", (200, 180, 60)),
+       "rus_comm": ("Социалистическая Страна Русов", "Социалистической Страны Русов", "русский", (190, 40, 40)), "rus_dem": ("Республика Русов", "Республики Русов", "русский", (60, 110, 190)),
+       "rus_fas": ("Держава Русов", "Державы Русов", "русский", (110, 70, 40)), "rus_neu": ("Страна Русов", "Страны Русов", "русский", (140, 140, 140)),
+       "rus_cas": ("Сонная Страна Русов", "Сонной Страны Русов", "русский", (60, 180, 75)), "rus_the": ("Святая Русь Русов", "Святой Руси Русов", "русский", (212, 175, 55))}
+w("common/countries/cosmetic.txt", "".join(f"ktits_sov_{k} = {{\n    color = rgb {{ {c[0]} {c[1]} {c[2]} }}\n    color_ui = rgb {{ {c[0]} {c[1]} {c[2]} }}\n}}\n\n" for k, (_, _, _, c) in COS.items()))
+for k, (n_, d_, a_, _) in COS.items():
+    add(f"ktits_sov_{k}", n_); add(f"ktits_sov_{k}_DEF", n_); add(f"ktits_sov_{k}_ADJ", a_)
+RUSMAP = [("communism", "comm"), ("democratic", "dem"), ("fascism", "fas"), ("neutrality", "neu"), ("casuality", "cas"), ("theology", "the")]
+rus_eff = "".join(f"{'if' if n == 0 else 'else_if'} = {{ limit = {{ has_government = {g} }} set_cosmetic_tag = ktits_sov_rus_{c} }}\n" for n, (g, c) in enumerate(RUSMAP))
+extra = (f"# scope = Soviet Union, every month: builds, count of the countries that incline to communism, the Country of Rusy a year after the collapse\n{P}extra_monthly = {{\n" + ind(
+    bcheck +
+    f"if = {{\n    limit = {{ has_country_flag = {P}export_on }}\n    set_variable = {{ var = {P}export value = 0 }}\n    every_other_country = {{\n        limit = {{ communism > 0.299 }}\n        ROOT = {{ add_to_variable = {{ var = {P}export value = 1 }} }}\n    }}\n}}\n"
+    f"if = {{\n    limit = {{ has_country_flag = {P}collapsed NOT = {{ has_country_flag = {P}rus_started }} }}\n    set_country_flag = {P}rus_started\n    set_country_flag = {{ flag = {P}rus_clock days = 365 value = 1 }}\n}}\n"
+    f"if = {{\n    limit = {{ has_country_flag = {P}rus_started NOT = {{ has_country_flag = {P}rus_clock }} NOT = {{ has_country_flag = {P}rus_done }} }}\n    set_country_flag = {P}rus_done\n" + ind(rus_eff, 4) + "}\n", 4) + "}\n")
+w("common/scripted_effects/ktits_soviet_mech2_effects.txt", extra)
+w("common/on_actions/ktits_soviet_mech_on_actions.txt", f"on_actions = {{\n    on_monthly = {{\n        effect = {{\n            if = {{\n                limit = {{ ktits_is_soviet = yes }}\n                {P}monthly = yes\n                {P}extra_monthly = yes\n            }}\n        }}\n    }}\n}}\n")
+# graphic bars of the scales (the segments and the frame of make_casuality.py): integrity, paranoia (steps of 5), balance (steps of 10 from -100), repentance
+SEG_N, SEG_W, GAP, BAR_X = 20, 22, 1, 14
+BARS = {"integrity": ("ktits_sint", "ktits_sov_integrity", 0, 5, "Целостность Союза"), "paranoia": ("ktits_spar", "ktits_sov_paranoia", 0, 5, "Паранойя Пименова"),
+        "balance": ("ktits_sbal", "ktits_sov_balance", -100, 10, "Баланс (минус к Партии)"), "church": ("ktits_srep", "ktits_sov_repent", 0, 5, "Покаяние мира")}
+sg, gg = "", ""
+for k, (pre, var, lo, step, lab) in BARS.items():
+    trg = "".join(f"            {pre}_seg_{i}_visible = {{\n                check_variable = {{ var = {var} value = {lo + i * step} compare = greater_than_or_equals }}\n            }}\n" for i in range(1, SEG_N + 1))
+    sg += f"    {pre}_ui = {{\n        context_type = decision_category\n        window_name = \"{pre}_ui_window\"\n\n        triggers = {{\n{trg}        }}\n    }}\n\n"
+    g = f"    containerWindowType = {{\n        name = \"{pre}_ui_window\"\n        position = {{ x = 0 y = 0 }}\n        size = {{ width = 100% height = 50 }}\n        clipping = no\n\n"
+    g += f"        instantTextBoxType = {{\n            name = \"{pre}_label\"\n            position = {{ x = {BAR_X} y = 2 }}\n            font = \"hoi_16mbs\"\n            text = \"{pre}_bar_label\"\n            format = left\n            maxHeight = 18\n        }}\n\n"
+    g += f"        iconType = {{\n            name = \"{pre}_frame\"\n            spriteType = \"GFX_ktits_cas_bar_frame\"\n            position = {{ x = {BAR_X} y = 22 }}\n            pdx_tooltip = \"{pre}_bar_tt\"\n        }}\n\n"
+    for i in range(1, SEG_N + 1):
+        g += f"        iconType = {{\n            name = \"{pre}_seg_{i}\"\n            spriteType = \"GFX_ktits_cas_seg_{(i - 1) // 5 + 1}\"\n            position = {{ x = {BAR_X + 3 + (i - 1) * (SEG_W + GAP)} y = 25 }}\n        }}\n"
+    gg += g + "    }\n\n"
+    add(f"{pre}_bar_label", f"{lab}: [?{var}|0]"); add(f"{pre}_bar_tt", "Каждое деление — " + (f"{step}" ) + " пунктов шкалы.")
+w("common/scripted_guis/ktits_soviet.txt", "scripted_gui = {\n\n" + sg + "}\n")
+w("interface/ktits_soviet.gui", "guiTypes = {\n\n" + gg + "}\n")
+
 L.write_yml(str(M / "localisation/russian/ktits_soviet_mech_l_russian.yml"), "russian", ru)
 L.write_yml(str(M / "localisation/english/ktits_soviet_mech_l_english.yml"), "english", en)
 print(f"soviet mech: {len(SPI) + 1} spirits, {sum(d.count('complete_effect') for d in dec.values())} decisions in {len(CATS)} categories, {len(EV)} events, release effects for {len(TAGS)} parts")

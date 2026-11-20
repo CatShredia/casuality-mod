@@ -1063,7 +1063,7 @@ _gz = (M / "common/national_focus/generic.txt").read_text(encoding="utf-8-sig", 
 check("KTITS_ZONE_BRANCH_BEGIN" in _gz and "id = ktits_zone_stay" in _gz and "econ_bloc" in _gz and not (M / "common/national_focus/ktits_soviet_zone.txt").exists() and "GetKtitsZoneDesc" in (M / "common/scripted_localisation/ktits_soviet_loc.txt").read_text(encoding="utf-8"), "soviet: the zone branch is in the standard tree (republics keep standard focuses), staying needs a puppet or the Economic Bloc", "soviet: zone branch missing in generic.txt")
 _sm = (M / "common/scripted_effects/ktits_soviet_mech_effects.txt").read_text(encoding="utf-8")
 _smd = sorted((M / "common/decisions").glob("ktits_soviet_*_decisions.txt"))
-check("ktits_sov_collapse = {" in _sm and all(f"ktits_sov_release_{t_} = {{" in _sm for t_ in ("K01", "K02", "K03", "K04", "K05", "K06", "K42")) and len(_smd) == 5 and "ktits_idel_two_rivers" in (M / "common/ideas/ktits_soviet_mech_ideas.txt").read_text(encoding="utf-8"), "soviet mech: monthly effect, collapse and 7 releases, decisions in 5 categories, spirit of Idel-Kama", "soviet mech: files or effects missing")
+check("ktits_sov_collapse = {" in _sm and all(f"ktits_sov_release_{t_} = {{" in _sm for t_ in ("K01", "K02", "K03", "K04", "K05", "K06", "K42")) and len(_smd) == 6 and "ktits_sint_ui" in (M / "common/scripted_guis/ktits_soviet.txt").read_text(encoding="utf-8") and (M / "common/countries/cosmetic.txt").exists() and "ktits_idel_two_rivers" in (M / "common/ideas/ktits_soviet_mech_ideas.txt").read_text(encoding="utf-8"), "soviet mech: monthly effect, collapse and 7 releases, decisions in 5 categories, spirit of Idel-Kama", "soviet mech: files or effects missing")
 
 for lvl, msg in res:
     w[lvl] += 1

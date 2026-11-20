@@ -77,7 +77,7 @@ def CAS(v):
 def tip(key, r):
     ttl(key, r); return f"custom_effect_tooltip = {key}\n"
 SP = {}
-PIC = {"stability_factor": "generic_stability_bonus", "political_power_gain": "generic_political_pressure", "industrial_capacity_factory": "generic_production_bonus",
+PIC = {"stability_factor": "eng_tackle_capitalism", "political_power_gain": "generic_communism_drift_bonus", "industrial_capacity_factory": "generic_production_bonus",
        "production_speed_buildings_factor": "generic_production_bonus", "army_attack_factor": "generic_war_preparation", "army_org_factor": "generic_war_preparation",
        "conscription_factor": "generic_manpower_bonus", "consumer_goods_factor": "generic_production_bonus", "research_speed_factor": "generic_research_bonus"}
 def spirit(key, ru_, desc, mods):
@@ -134,11 +134,11 @@ fc("u3", "Вторая гражданская", "p_u1", [["u2"]], [], needs("the
 fc("g1", "Гласность", "p_u1", [["u1"]], ["u2"], None, pop("democratic", 15) + stab(-5), ai=120)
 fc("g2", "Свободные выборы", "p_u1", [["g1"]], [], None, pop("democratic", 20), ai=120)
 fc("g3", "Соевый Советский Союз", "p_u1", [["g2"]], [], needs("democratic", 50, P + "tt_need_dem"),
-   "set_politics = { ruling_party = democratic elections_allowed = yes }\n" + OP(SOYA, 50), ai=120)
+   "set_politics = { ruling_party = democratic elections_allowed = yes }\nset_cosmetic_tag = ktits_sov_soy\n" + OP(SOYA, 50), ai=120)
 root("r1", "Политические реформы", 0, INT(5) + stab(-3), 120)
 fc("r2", "Федеративный договор", "p_r1", [["r1"]], [], None, INT(5) + flag(P + "fed_treaty"), ai=120)
 fc("r3", "Договоры с республиками", "p_r1", [["r2"]], [], None, INT(5) + tip(P + "tt_repub_ev", "События республик (`K01`–`K06`): поддержать федерацию или нет"), ai=120)
-fc("r4", "Президентский Союз", "p_r1", [["r3"]], [], None, INT(5) + flag(P + "president") + stab(3), ai=120)
+fc("r4", "Президентский Союз", "p_r1", [["r3"]], [], None, INT(5) + flag(P + "president") + stab(3) + "set_cosmetic_tag = ktits_sov_pres\n", ai=120)
 fc("r5", "Ослабление цензуры", "p_r1", [["r1"]], [], None, pop("democratic", 10), ai=120)
 fc("r6", "Многопартийность", "p_r1", [["r5"]], [], None, pop("democratic", 15) + BAL(-10), ai=120)
 fc("r7", "Демократический Союз", "p_r1", [["r6"]], [], needs("democratic", 50, P + "tt_need_dem"), "set_politics = { ruling_party = democratic elections_allowed = yes }\n", ai=120)
@@ -161,7 +161,7 @@ fc("k5", "Покорность", "p_k1", [["k4"]], ["k7"], None, flag(P + "obey"
 fc("k6", "Раздел ради покоя", "p_k1", [["k5"]], [], None,
    flag("ktits_casuality_fallen") + tip(P + "tt_split", "`K01`–`K06` и Идель-Кама выделяются марионетками Казуалии") + "hidden_effect = {\n" + "".join(f"    ktits_release_{t} = yes\n" for t in PARTS) + "}\n", ai=100)
 fc("k7", "Перехват титула", "p_k1", [["k4"]], ["k5"], None, f"{KAZ} = {{ add_to_variable = {{ var = ktits_kaz_inner value = -10 }} }}\n" + tip(P + "tt_title", "Внутренняя Казуальность Казуалии: §G−10§!") + OP(KAZ, -50), ai=100)
-fc("k8", "Борьба за титул", "p_k1", [["k7"]], [], None, tip(P + "tt_indep", "Война за независимость от Казуалии [uncertain: освобождение марионетки]") + f"{KAZ} = {{ release_puppet = {SOV} }}\n" + spirit("arkho_claim", "Претензия на титул", "Союз потребовал титул Священного-Архо-Казуала и получил в ответ длинный зевок.", {"war_support_factor": 0.1}), ai=100)
+fc("k8", "Борьба за титул", "p_k1", [["k7"]], [], None, tip(P + "tt_indep", "Война за независимость от Казуалии [uncertain: освобождение марионетки]") + f"{KAZ} = {{ end_puppet = {SOV} }}\n" + spirit("arkho_claim", "Претензия на титул", "Союз потребовал титул Священного-Архо-Казуала и получил в ответ длинный зевок.", {"war_support_factor": 0.1}), ai=100)
 # --- Церковь Древнего Динозавра
 fc("ch1", "Кости под Ваньградом", "church", [["u3"]], [], None, pop("theology", 5) + tip(P + "tt_dig", "Открывает решение «Раскопки для веры» [следующая фаза]"), ai=150)
 fc("ch2", "Вина Иоанна", "church", [["ch1"]], [], None, pop("theology", 10) + stab(-5), ai=150)
@@ -206,7 +206,7 @@ fc("ra3", "Освоение окраин", "rub_a", [["ra2"]], [], None, civ(1) 
 fc("rd1", "Взгляд за хребет", "rub_d", RX, [], exists(DMK), OP(DMK, -20) + "add_war_support = 0.03\n", ai=30)
 fc("rd2", "Урок Княжеству", "rub_d", [["rd1"], ["rc2"], ["rc4"]], [], None, wargoal(DMK, DMK_ST, P + "tt_dmk_wg", "Цель войны на прикуштунскую полосу Княжества"), ai=30)
 fc("rc0", "Казачий вопрос", "rub_c", RX, [], exists(CSK), OP(CSK, 10), ai=30)
-fc("rc1", "Помощь без обязательств", "rub_c", [["rc0"]], ["rc3"], None, OP(CSK, 40) + tip(P + "tt_help", "Снаряжение и 2 добровольческие дивизии Казачьей Земле [следующая фаза], без альянса"), ai=30)
+fc("rc1", "Помощь без обязательств", "rub_c", [["rc0"]], ["rc3"], None, OP(CSK, 40) + tip(P + "tt_help", "Казачья Земля получает 2000 единиц пехотного снаряжения от Союза, без альянса и гарантий [добровольческие дивизии не реализованы]") + f"hidden_effect = {{ {CSK} = {{ add_equipment_to_stockpile = {{ type = infantry_equipment amount = 2000 producer = {SOV} }} }} }}\n", ai=30)
 fc("rc2", "Станичные поставки", "rub_c", [["rc1"]], [], None, tip(P + "tt_supply", "Торговый договор: снабжение Казачьей Земли +15 % [следующая фаза]") + flag(P + "cossack_supply"), ai=30)
 fc("rc3", "Давление на Казачью Землю", "rub_c", [["rc0"]], ["rc1"], None, OP(CSK, -40), ai=30)
 fc("rc4", "Ультиматум присоединения", "rub_c", [["rc3"]], [], None, ev(CSK, 10, P + "tt_ultimatum", "Событие Казачьей Земли: стать марионеткой Союза или получить войну"), ai=30)
@@ -229,14 +229,14 @@ AI_ = "GFX_goal_generic_army_tanks"
 fc("ar1", "Красная армия после войны", "army", [], [], None, "army_experience = 25\n", ARM, AI_, 3)
 fc("ar2", "Массовая армия", "army", [["ar1"]], [], None, spirit("mass_army", "Массовая армия", "Призвали всех, у кого есть сапоги. У кого нет, призовут весной.", {"conscription_factor": 0.02}), ARM, AI_, 3)
 fc("ar3", "Кадровая армия", "army", [["ar1"]], [], None, "army_experience = 25\n" + spirit("cadre", "Кадровая армия", "Служат те, кто умеет. Остальные учатся у тех, кто умеет.", {"army_org_factor": 0.05}), ARM, AI_, 3)
-fc("ar4", "Глубокая операция", "army", [["ar2", "ar3"]], [], None, "add_doctrine_cost_reduction = { cost_reduction = 0.5 uses = 1 category = land_doctrine }\n", ARM, AI_, 3)
+fc("ar4", "Глубокая операция", "army", [["ar2", "ar3"]], [], None, "add_doctrine_cost_reduction = { name = ktits_sov_doc cost_reduction = 0.5 uses = 1 category = land_doctrine }\n", ARM, AI_, 3)
 fc("ar5", "Танковые корпуса", "army", [["ar4"]], [], None, "add_tech_bonus = { name = ktits_sov_tank bonus = 0.5 uses = 2 category = armor }\n", ARM, AI_, 3)
 fc("ar6", "Воздушный флот Союза", "army", [["ar1"]], [], None, "air_experience = 25\n" + mil(1), ARM, AI_, 3)
-fc("ar7", "Штурмовики", "army", [["ar6"]], [], None, "add_tech_bonus = { name = ktits_sov_cas bonus = 0.5 uses = 1 category = cas_bomber_tech }\n", ARM, AI_, 3)
+fc("ar7", "Штурмовики", "army", [["ar6"]], [], None, "add_tech_bonus = { name = ktits_sov_cas bonus = 0.5 uses = 1 category = cas_bomber }\n", ARM, AI_, 3)
 fc("ar8", "Дальние бомбардировщики", "army", [["ar7"]], [], None, "add_tech_bonus = { name = ktits_sov_bomb bonus = 0.5 uses = 1 category = strategic_bomber_tech }\n", ARM, AI_, 3)
 fc("ar9", "Флот двух морей", "army", [["ar1"]], [], None, "random_owned_controlled_state = { limit = { is_coastal = yes } add_building_construction = { type = dockyard level = 1 instant_build = yes } }\n", ARM, AI_, 3)
 fc("ar10", "Синее и Кряхтское море", "army", [["ar9"]], [], None, "add_tech_bonus = { name = ktits_sov_dd bonus = 0.5 uses = 1 category = destroyer_tech }\n", ARM, AI_, 3)
-fc("ar11", "Северный флот", "army", [["ar10"]], [], None, "random_owned_controlled_state = { limit = { is_coastal = yes } add_building_construction = { type = naval_base level = 2 instant_build = yes } }\n", ARM, AI_, 3)
+fc("ar11", "Северный флот", "army", [["ar10"]], [], None, "random_owned_controlled_state = { limit = { is_coastal = yes } }\n", ARM, AI_, 3)
 # --- Спасение экономики (Экономический блок)
 KTAGS = "OR = { " + " ".join(f"original_tag = {t}" for t in PARTS) + " }"
 def OPK(v, key, r):
@@ -367,7 +367,7 @@ ZS = {"ktits_sez_member": ("Союзная хозяйственная зона",
 # ---------------- spirits ----------------
 ideas = "ideas = {\n    country = {\n"
 def idea_block(key, mods):
-    pic = next((PIC[k] for k in mods if k in PIC), "generic_political_pressure")
+    pic = next((PIC[k] for k in mods if k in PIC), "generic_communism_drift_bonus")
     return (f"        {key} = {{\n            picture = {pic}\n            allowed = {{ always = no }}\n            allowed_civil_war = {{ always = yes }}\n            removal_cost = -1\n            modifier = {{\n"
             + "".join(f"                {k} = {v}\n" for k, v in mods.items()) + "            }\n        }\n")
 for key, (r_, d_, mods) in SP.items():
