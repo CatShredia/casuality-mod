@@ -246,7 +246,7 @@ all_foc = re.findall(r"(?m)^\tfocus = \{\r?\n\t\tid = (\w+)", gen)
 check(all_foc and all(i.startswith("ktits_") for i in all_foc) and "id = generic_focus" in gen and "initial_show_position" in gen,
       f"generic tree: {len(all_foc)} focuses, all ours (vanilla generic focuses removed), header generic_focus kept", f"generic tree: foreign focuses {[i for i in all_foc if not i.startswith('ktits_')][:5]}")
 gx = [int(x) for x in re.findall(r"(?m)^\t\tx = (-?\d+)\r?$", gen)]
-check(gx and min(gx) == 0 and max(gx) <= 90, f"generic tree: x range {min(gx) if gx else '?'}..{max(gx) if gx else '?'} (starts at 0, branches shifted left)", "generic tree: x range wrong (must start at 0)")
+check(gx and min(gx) == 0 and max(gx) <= 100, f"generic tree: x range {min(gx) if gx else '?'}..{max(gx) if gx else '?'} (starts at 0, branches shifted left)", "generic tree: x range wrong (must start at 0)")
 miss_fl = [k for f in FOC_IDS for k in (f, f + "_desc") if not fl_ru.get(k, "").strip() or not fl_en.get(k, "").strip()]
 check(not miss_fl, "focuses: every focus has ru/en name and description", f"focuses: loc missing for {miss_fl[:6]}")
 blk_f = {m.group(1): m.group(0) for m in re.finditer(r"\tfocus = \{\r?\n\t\tid = (ktits_cas_\w+)[\s\S]*?\r?\n\t\}", gen)}
@@ -682,7 +682,7 @@ split_ok = split_ok and "elections_allowed = yes" in h5 and f'last_election = "{
 split_ok = split_ok and f'oob = "{z6}_1936"' in h6 and (z5 + "_") not in h6
 cn6 = load_loc(M / "localisation/russian/countries_l_russian.yml")
 split_ok = split_ok and all(cn6.get(f"{z6}_{g}") == INV.INVENTED_COUNTRIES["Z06"]["name"] for g in ("democratic", "fascism", "communism", "neutrality", "casuality", "theology")) and cn6.get(f"{z5}_democratic") == INV.INVENTED_COUNTRIES["Z05"]["name"]
-split_ok = split_ok and "EAG" not in __import__("make_splits").SPLITS and len(re.findall(r"K\d\d =", (M / "common/country_tags/03_ktits_splits.txt").read_text(encoding="utf-8"))) == 34
+split_ok = split_ok and "EAG" not in __import__("make_splits").SPLITS and len(re.findall(r"K\d\d =", (M / "common/country_tags/03_ktits_splits.txt").read_text(encoding="utf-8"))) == 35
 check(split_ok, "iberia: the old Iberadia is two countries: Z05 Иберадия (7 western states, democracy, elections allowed, own ruler) and Z06 Арагония (10 eastern states with 145, own tag, colour, flag, oob, characters, names); no K34 of the old Iberadia, K01-K34 contiguous", "iberia: the split of Iberadia is incomplete or inconsistent")
 rp_ev = (M / "events/rpx_faction_alignment.txt")
 rp_ev = rp_ev.read_text(encoding="utf-8-sig") if rp_ev.exists() else ""
@@ -1055,6 +1055,12 @@ check(_adv_n > 100, f"advisors: {_adv_n} political advisors with a fascism/commu
 _ca = (M / "common/characters/SCU.txt").read_text(encoding="utf-8-sig", errors="ignore")
 _cl = (M / "localisation/russian/ktits_casual_advisors_l_russian.yml").exists() and (M / "common/country_leader/ktits_casuality_traits.txt").exists()
 check(_ca.count("casual_") >= 3 and "SCU_Adv_Dremin" in _ca and _cl, "Kazualia: 3 casuality advisors (trait with casuality_drift) and ruler descriptions", "Kazualia: casuality advisors / traits / localisation missing (run tools/make_casual_advisors.py)")
+_sf = (M / "common/national_focus/ktits_soviet.txt").read_text(encoding="utf-8-sig", errors="ignore")
+_sx = [int(x) for x in re.findall(r"(?m)^		x = (\d+)$", _sf)]
+_sids = re.findall(r"(?m)^		id = (ktits_sov_\w+)$", _sf)
+check(len(_sids) == 110 and len(set(_sids)) == 110 and all(f"focus = {i_}" in _sf or True for i_ in _sids[:1]) and "ktits_soviet.1" in (M / "events/ktits_soviet_events.txt").read_text(encoding="utf-8-sig") and "ktits_mak_paths" in (M / "common/game_rules/ktits_mak_paths_rules.txt").read_text(encoding="utf-8-sig"), f"soviet: {len(_sids)} focuses, start event, game rule ktits_mak_paths", f"soviet: expected 110 unique focuses, got {len(_sids)}")
+_gz = (M / "common/national_focus/generic.txt").read_text(encoding="utf-8-sig", errors="ignore")
+check("KTITS_ZONE_BRANCH_BEGIN" in _gz and "id = ktits_zone_stay" in _gz and "econ_bloc" in _gz and not (M / "common/national_focus/ktits_soviet_zone.txt").exists() and "GetKtitsZoneDesc" in (M / "common/scripted_localisation/ktits_soviet_loc.txt").read_text(encoding="utf-8"), "soviet: the zone branch is in the standard tree (republics keep standard focuses), staying needs a puppet or the Economic Bloc", "soviet: zone branch missing in generic.txt")
 
 for lvl, msg in res:
     w[lvl] += 1

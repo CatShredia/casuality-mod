@@ -83,7 +83,8 @@ info = L.load_mod(M)
 lore2tag = {}
 for tag, lt in info["tag2lore"].items():
     lore2tag[lt] = tag
-START_POPS = {"CSL": {"casuality": 90, "democratic": 5, "neutrality": 5}}   # lore tag -> popularities, percent
+START_POPS = {"CSL": {"casuality": 90, "democratic": 5, "neutrality": 5},
+              "SVS": {"communism": 74, "democratic": 8, "theology": 6, "fascism": 6, "neutrality": 4, "casuality": 2}}   # SVS: docs/mechanics/Soviet-Union.md section 10 (INVENTED)   # lore tag -> popularities, percent
 rows, missing = [], []
 for lt, (name, grp, lore_ideo, sub) in RULERS.items():
     tag = lore2tag.get(lt)
@@ -154,7 +155,8 @@ for lt, (name, grp, lore_ideo, sub) in RULERS.items():
 
 # extra rulers made from scratch (user decision): new characters with their own portrait (wired later by make_icons.py PORTRAITS, so make_icons runs after this step)
 # tag -> [(character id, literal name, ideology)]; each ideology must be a sub-ideology of its group so the leader can rule once that group becomes ruling_party
-EXTRA_LEADERS = {"SCU": [("SCU_Sabirov", "Товарищ Сабиров", "stalinism"), ("SCU_Bulldog_Kazual", "Лорд Бульдог Казуал", "conservatism")]}
+EXTRA_LEADERS = {"MAK": [("MAK_Vanya_Pim", "Великий Кормчий Ваня Пим", "theology_ideology"), ("MAK_Pimestrov", "Ванька Встанька Пиместров", "fascism_ideology"), ("MAK_Ioann_Pimenov", "Президент Иоанн Пименов", "liberalism")],
+                "SCU": [("SCU_Sabirov", "Товарищ Сабиров", "stalinism"), ("SCU_Bulldog_Kazual", "Лорд Бульдог Казуал", "conservatism")]}
 for tag, lst in EXTRA_LEADERS.items():
     hist = glob.glob(str(M / "history/countries" / f"{tag} - *.txt")); chf = M / "common/characters" / f"{tag}.txt"
     if not hist or not chf.exists(): print("extra leaders: no files for", tag); continue
