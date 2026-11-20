@@ -15,7 +15,7 @@ import lore_data as L
 
 # parent tag -> [(russian name, english name)]  INVENTED
 SPLITS = {
-    "MAK": ["Белорубежье", "Заозёрная Республика", "Урало-Сибирская Республика", "Северо-Полярный Край", "Степная Федерация", "Приморье-Тихоокеанск"],
+    "MAK": ["Староградская Республика", "Дальне-Ладожская Республика", "Сибиртатская Республика", "Устойская Республика", "Раздольская Федерация", "Заводьская Республика", "Идель-Кама"],
     "CHE": ["Фигарийская Лига", "Вертоградия", "Нижнее Фигарье", "Горный Кантон", "Приморская Коммуна"],
     "WRM": ["Бобовая Автономия", "Северный Соевый Союз", "Тофу-Республика", "Миндальный Берег"],
     "AHA": ["Западная Палата", "Ледяной Совет", "Приречная Курия", "Восточное Собрание"],
@@ -28,6 +28,15 @@ SPLITS = {
     # EAG (old Iberadia, 17 states on two landmasses) is no longer here: tools/make_iberia_split.py makes two countries of 7 and 10 states, both below the limit of 15
     "AJA": ["Верхняя Муси"],
 }
+# parts with a fixed list of states (docs/countries/Splits.md, rebuilt 2026-11-20 by the author's request): the parent keeps the rest; order = order of SPLITS[parent]
+FIXED = {"MAK": [[40, 83, 101, 150, 166, 408, 418, 422, 458, 463, 661, 670],
+                 [39, 71, 124, 147, 199, 232, 256, 334, 373, 490],
+                 [5, 61, 84, 102, 125, 148, 177, 184, 190, 197, 204, 217, 277, 321, 387, 423, 431, 449, 493, 494],
+                 [19, 54, 93, 178, 206, 298, 304, 309, 363, 404, 426, 435, 437, 465, 481],
+                 [10, 48, 64, 69, 106, 207, 269, 275, 311, 662, 667, 676],
+                 [30, 151, 160, 161, 223, 225, 262, 283, 297, 313, 414, 462, 475, 491],
+                 [13, 165, 310, 326, 424, 425]]}
+TAG_OVERRIDE = {"Идель-Кама": "K42"}   # K35-K41 are taken by Kazualia (Наши Болота and the rebel slots); a fixed tag does not shift the numbering
 GROUPS = ("fascism", "communism", "neutrality", "democratic", "casuality", "theology")
 
 
@@ -96,7 +105,12 @@ if __name__ == "__main__":
         own = {sid for sid, s in states.items() if s["owner"] == parent and sid in cen}
         lt = info["tag2lore"].get(parent)
         capital = info["capital_state"].get(lt) if info["capital_state"].get(lt) in own else max(own, key=lambda s: states[s]["manpower"])
-        parts = partition(own, adj, cen, capital, len(names))
+        if parent in FIXED:
+            fx = [set(x) & own for x in FIXED[parent]]
+            assert all(len(a) == len(b) for a, b in zip(fx, FIXED[parent])), "FIXED states not owned by " + parent
+            parts = [sorted(own - set().union(*fx))] + [sorted(x) for x in fx]
+        else:
+            parts = partition(own, adj, cen, capital, len(names))
         pfile = tags[parent]
         ptxt = (M / "common/countries" / (pfile + ".txt")).read_text(encoding="utf-8", errors="ignore")
         pcol = tuple(map(int, re.search(r"color\s*=\s*\{\s*(\d+)\s+(\d+)\s+(\d+)", ptxt).groups()))
@@ -104,8 +118,9 @@ if __name__ == "__main__":
         h, s_, v = colorsys.rgb_to_hsv(*(c / 255 for c in pcol))
         rows.append((parent, lt or "?", info["country_ru"].get(lt, ""), "(остаётся)", len(parts[0]), ""))
         for i, nm in enumerate(names):
-            n += 1
-            tag = f"K{n:02d}"
+            if nm in TAG_OVERRIDE: tag = TAG_OVERRIDE[nm]
+            else:
+                n += 1; tag = f"K{n:02d}"
             sts = sorted(parts[i + 1])
             cap = max(sts, key=lambda s: (sum(x[1] for x in states[s]["vps"]), states[s]["manpower"]))
             col = tuple(round(c * 255) for c in colorsys.hsv_to_rgb((h + 0.07 * (i + 1)) % 1, min(1, s_ * 0.9 + 0.1), max(0.35, v * (0.85 if i % 2 else 1.0))))
