@@ -35,9 +35,6 @@ SPI = {"int_hi": ("Единый Союз", "Республики не споря
        "pw_hard": ("Железный Генсек", "Генсек стал железным. Скрипят в основном двери.", {"industrial_capacity_factory": 0.1, "stability_factor": -0.1, "conscription_factor": 0.02}),
        "pw_schizo": ("Генсек видит заговоры", "Генсек видит заговор в каждой скрепке. Скрепки, впрочем, тоже что-то замышляют.", {"stability_factor": -0.03, "political_power_gain": 0.1}),
        "pw_balance": ("Генсек в равновесии", "Генсек наконец заснул без охраны и проснулся живым. Удивились оба.", {"stability_factor": 0.05, "political_power_gain": 0.15}),
-       "bal_p2": ("Власть Партии", "Решения принимает пленум, а Генсек подписывает и кивает.", {"stability_factor": 0.05, "political_power_factor": -0.1}),
-       "bal_m1": ("Рука Генсека", "Генсек всё чаще правит лично: быстро, громко и без протоколов.", {"political_power_factor": 0.1}),
-       "bal_m2": ("Личная власть Генсека", "Партия кивает раньше, чем Генсек договорит.", {"political_power_factor": 0.2}),
        "party_dict": ("Партийная диктатура", "На пленуме спорят уже не о политике, а о том, кто будет подписывать повестку. Побеждает тот, кто громче читает вслух.", {"political_power_factor": -0.2, "stability_factor": 0.1}),
        "pcult": ("Культ личности", "Портреты Генсека висят даже в кабинетах, где вешать нечего. Страна улыбается: так велено.", {"political_power_factor": 0.3, "stability_factor": -0.1}),
        "crash": ("Хозяйственный обвал", "Республики разошлись за неделю. Рубль остался в одной, станки в другой, паспорта в третьей. Заводы встали от того, что никто не знал, чья теперь печать.", {"industrial_capacity_factory": -0.15, "stability_factor": -0.1, "production_speed_buildings_factor": -0.15, "consumer_goods_factor": 0.1}),
@@ -66,13 +63,13 @@ def tier(var, rules):   # rules: [(condition, idea)]; removes all the tier ideas
     for n, (cond, i) in enumerate(rules):
         s += ("if" if n == 0 else "else_if") + f" = {{\n    limit = {{ {cond} }}\n    add_ideas = {P}sp_{i}\n}}\n"
     return s
+BOP = "ktits_sov_power_balance"
+def pb(op, v): return f"power_balance_value = {{ id = {BOP} value {op} {v} }}"
+def BV(d): return f"add_power_balance_value = {{ id = {BOP} value = {d} }}\n"
 def cv(v, val, cmp): return f"check_variable = {{ var = {P}{v} value = {val} compare = {cmp} }}"
 eff = ""
 eff += f"ktits_sov_tiers = {{\n" + ind(
-    tier("integrity", [(cv("integrity", 70, "greater_than_or_equals"), "int_hi"), (cv("integrity", 40, "less_than") , "int_lo")]) +
-    tier("balance", [(cv("balance", 50, "greater_than_or_equals"), "bal_m2"), (cv("balance", 20, "greater_than_or_equals"), "bal_m1"), (cv("balance", -50, "less_than_or_equals"), "bal_p2")]) +
-    f"if = {{\n    limit = {{ {cv('balance', -90, 'less_than_or_equals')} }}\n    if = {{ limit = {{ NOT = {{ has_idea = {P}sp_party_dict }} }} add_ideas = {P}sp_party_dict }}\n}}\nelse = {{ if = {{ limit = {{ has_idea = {P}sp_party_dict }} remove_ideas = {P}sp_party_dict }} }}\n"
-    f"if = {{\n    limit = {{ {cv('balance', 90, 'greater_than_or_equals')} }}\n    if = {{ limit = {{ NOT = {{ has_idea = {P}sp_pcult }} }} add_ideas = {P}sp_pcult }}\n}}\nelse = {{ if = {{ limit = {{ has_idea = {P}sp_pcult }} remove_ideas = {P}sp_pcult }} }}\n", 4) + "}\n\n"
+    tier("integrity", [(cv("integrity", 70, "greater_than_or_equals"), "int_hi"), (cv("integrity", 40, "less_than") , "int_lo")]), 4) + "}\n\n"
 # release of one part (the army/navy/air split of make_splits.py: population before the transfer, ratio ladder ktits_split_share)
 for t in TAGS:
     sts = STATES[t]
@@ -104,10 +101,10 @@ eff += (f"# scope = Soviet Union, every month\n{P}monthly = {{\n"
  + "".join(f"    if = {{ limit = {{ country_exists = {t} }} set_autonomy = {{ target = {t} autonomy_state = autonomy_free }} }}\n" for t in TAGS) + "}\n"
  # paranoia: +2 base, balance changes the speed
  f"if = {{\n    limit = {{ has_country_flag = {P}para_on NOT = {{ has_country_flag = {P}pers_won }} NOT = {{ has_idea = {P}sp_party_dict }} }}\n    set_variable = {{ var = {P}pg value = 2 }}\n"
- f"    if = {{ limit = {{ {cv('balance', -50, 'less_than_or_equals')} }} set_variable = {{ var = {P}pg value = 1 }} }}\n"
- f"    else_if = {{ limit = {{ {cv('balance', -20, 'less_than_or_equals')} }} set_variable = {{ var = {P}pg value = 1.5 }} }}\n"
- f"    else_if = {{ limit = {{ {cv('balance', 50, 'greater_than_or_equals')} }} set_variable = {{ var = {P}pg value = 3 }} }}\n"
- f"    else_if = {{ limit = {{ {cv('balance', 20, 'greater_than_or_equals')} }} set_variable = {{ var = {P}pg value = 2.5 }} }}\n"
+ f"    if = {{ limit = {{ {pb('<', -0.5)} }} set_variable = {{ var = {P}pg value = 1 }} }}\n"
+ f"    else_if = {{ limit = {{ {pb('<', -0.2)} }} set_variable = {{ var = {P}pg value = 1.5 }} }}\n"
+ f"    else_if = {{ limit = {{ {pb('>', 0.5)} }} set_variable = {{ var = {P}pg value = 3 }} }}\n"
+ f"    else_if = {{ limit = {{ {pb('>', 0.2)} }} set_variable = {{ var = {P}pg value = 2.5 }} }}\n"
  f"    if = {{ limit = {{ has_idea = {P}sp_pcult }} add_to_variable = {{ var = {P}pg value = 1 }} }}\n"
  f"    add_to_variable = {{ var = {P}paranoia value = {P}pg }}\n    clamp_variable = {{ var = {P}paranoia min = 0 max = 100 }}\n"
  f"    random_list = {{\n        25 = {{ add_to_variable = {{ var = {P}p_auto value = 3 }} }}\n        25 = {{ add_to_variable = {{ var = {P}p_soft value = 3 }} }}\n        25 = {{ add_to_variable = {{ var = {P}p_hard value = 3 }} }}\n        25 = {{ add_to_variable = {{ var = {P}p_schizo value = 3 }} }}\n    }}\n"
@@ -143,14 +140,14 @@ w("events/ktits_soviet_mech_events.txt", evt)
 
 # ---------------- decisions ----------------
 CATS = {"integrity": ("Целостность Союза", "ktits_is_soviet = yes"), "paranoia": ("Паранойя Пименова", f"ktits_is_soviet = yes\n        has_country_flag = {P}para_on"),
-        "balance": ("Баланс Пименов — Партия", f"ktits_is_soviet = yes\n        has_country_flag = {P}para_on"), "church": ("Церковь Древнего Динозавра", f"ktits_is_soviet = yes\n        has_idea = {P}sp_church"),
+        "balance": ("Баланс Пименов — Партия", "ktits_is_soviet = yes"), "church": ("Церковь Древнего Динозавра", f"ktits_is_soviet = yes\n        has_idea = {P}sp_church"),
         "export": ("Коммунизм на экспорт", f"ktits_is_soviet = yes\n        has_country_flag = {P}export_on")}
 CDESC = {"integrity": "Целостность Союза: §Y[?ktits_sov_integrity]§! из 100. Союз держится на съездах, рельсах и печатях. Если печати кончатся, разойдутся и республики.",
          "paranoia": "Паранойя Генсека: §Y[?ktits_sov_paranoia]§!. Личности: Самодержец §Y[?ktits_sov_p_auto]§!, Мягкий §Y[?ktits_sov_p_soft]§!, Жёсткий §Y[?ktits_sov_p_hard]§!, Шиз §Y[?ktits_sov_p_schizo]§!. Чья личность дойдёт до 100, тот и правит.",
-         "balance": "Баланс сил: §Y[?ktits_sov_balance]§! (минус к Партии, плюс к Пименову). Пленум спорит с Генсеком: кто громче, тот и прав.",
+         "balance": "Баланс сил Пименов — Партия показан панелью ниже (механика «Баланс сил» игры, как у Италии). Пленум спорит с Генсеком: кто громче, тот и прав.",
          "church": "Покаяние мира: §Y[?ktits_sov_repent]§! из 100. Кости ящеров ждут, когда мир признает вину.",
          "export": "Стран, где коммунизм не ниже 30 %: §Y[?ktits_sov_export]§!. Красная агитация Союза: книги, кино и комиссары с улыбкой. Страны с вечным нейтралитетом не слушают."}
-BARS_ = {"integrity": "ktits_sint", "paranoia": "ktits_spar", "balance": "ktits_sbal", "church": "ktits_srep"}
+BARS_ = {"integrity": "ktits_sint", "paranoia": "ktits_spar", "church": "ktits_srep"}
 cats = ""
 for k, (nm, vis) in CATS.items():
     cats += f"{P}{k}_category = {{\n    icon = generic_propaganda\n    picture = GFX_decision_cat_picture_generic_border_conflicts\n" + (f"    scripted_gui = {BARS_[k]}_ui\n" if k in BARS_ else "") + f"    visible = {{\n        {vis}\n    }}\n}}\n\n"
@@ -183,9 +180,9 @@ PA = f"has_country_flag = {P}para_on\n            NOT = {{ has_country_flag = {P
 for k, nm, d_ in (("auto", "Самодержец", "Генсек примеряет корону перед зеркалом."), ("soft", "Мягкий коммунист", "Генсек гладит по голове подчинённых и просит не бояться."), ("hard", "Жёсткий коммунист", "Генсек стучит кулаком по столу, стол скрипит."), ("schizo", "Шиз", "Генсек считает лампочки и ищет среди них заговорщиков.")):
     D("paranoia", f"dc_p_{k}", f"Усилить личность: {nm}", d_, 50, 30, V("p_" + k, 10) + V("paranoia", 2), PA)
 D("paranoia", "dc_calm", "Бессонная ночь без охраны", "Генсек отпускает охрану на одну ночь. Утром охрана аккуратно удивлена.", 60, 90, V("paranoia", -8), PA)
-D("balance", "dc_plenum", "Пленум ЦК", "Пленум собрался и единогласно решил, что Партия мудра. Генсек подписал.", 60, 60, V("balance", -15, -100, 100))
-D("balance", "dc_order", "Личный приказ Генсека", "Генсек написал приказ собственной рукой. Рука дрожала, приказ нет.", 60, 60, V("balance", 15, -100, 100))
-D("balance", "dc_politburo", "Обновить Политбюро", "В Политбюро заменили троих. Остальные пересели ближе к выходу.", 80, 90, V("balance", -10, -100, 100) + V("paranoia", 3))
+D("balance", "dc_plenum", "Пленум ЦК", "Пленум собрался и единогласно решил, что Партия мудра. Генсек подписал.", 60, 60, BV(-0.15))
+D("balance", "dc_order", "Личный приказ Генсека", "Генсек написал приказ собственной рукой. Рука дрожала, приказ нет.", 60, 60, BV(0.15))
+D("balance", "dc_politburo", "Обновить Политбюро", "В Политбюро заменили троих. Остальные пересели ближе к выходу.", 80, 90, BV(-0.1) + V("paranoia", 3))
 CH = f"has_idea = {P}sp_church"
 D("church", "dc_preach", "Проповедь у костей", "Священник читает проповедь над рёбрами ящера. Прихожане стоят молча: так ближе к костям.", 50, 20, "add_popularity = { ideology = theology popularity = 0.07 }\n", vis=CH)
 D("church", "dc_dig", "Раскопки для веры", "Землекопы раскапывают всё новые кости. Верующим достаточно одной, но она, как водится, неполная.", 60, 60, V("repent", 2) + "random_owned_controlled_state = { limit = { impassable = no } add_extra_state_shared_building_slots = 1 add_building_construction = { type = industrial_complex level = 1 instant_build = yes } }\n", f"has_completed_focus = {P}ch1", vis=CH)
@@ -243,7 +240,7 @@ w("common/on_actions/ktits_soviet_mech_on_actions.txt", f"on_actions = {{\n    o
 # graphic bars of the scales (the segments and the frame of make_casuality.py): integrity, paranoia (steps of 5), balance (steps of 10 from -100), repentance
 SEG_N, SEG_W, GAP, BAR_X = 20, 22, 1, 14
 BARS = {"integrity": ("ktits_sint", "ktits_sov_integrity", 0, 5, "Целостность Союза"), "paranoia": ("ktits_spar", "ktits_sov_paranoia", 0, 5, "Паранойя Пименова"),
-        "balance": ("ktits_sbal", "ktits_sov_balance", -100, 10, "Баланс (минус к Партии)"), "church": ("ktits_srep", "ktits_sov_repent", 0, 5, "Покаяние мира")}
+        "church": ("ktits_srep", "ktits_sov_repent", 0, 5, "Покаяние мира")}
 sg, gg = "", ""
 for k, (pre, var, lo, step, lab) in BARS.items():
     trg = "".join(f"            {pre}_seg_{i}_visible = {{\n                check_variable = {{ var = {var} value = {lo + i * step} compare = greater_than_or_equals }}\n            }}\n" for i in range(1, SEG_N + 1))
@@ -257,6 +254,28 @@ for k, (pre, var, lo, step, lab) in BARS.items():
     add(f"{pre}_bar_label", f"{lab}: [?{var}|0]"); add(f"{pre}_bar_tt", "Каждое деление — " + (f"{step}" ) + " пунктов шкалы.")
 w("common/scripted_guis/ktits_soviet.txt", "scripted_gui = {\n\n" + sg + "}\n")
 w("interface/ktits_soviet.gui", "guiTypes = {\n\n" + gg + "}\n")
+
+
+# ---------------- Balance of Power Pimenov - Party (vanilla mechanic of Italy: common/bop/ITA.txt); values -1..1, < 0 towards the Party, > 0 towards Pimenov ----------------
+def rng(rid, lo, hi, mods="", act="", deact=""):
+    return (f"        range = {{\n            id = {rid}\n            min = {lo}\n            max = {hi}\n            modifier = {{\n{mods}            }}\n            on_activate = {{\n{act}            }}\n            on_deactivate = {{\n{deact}            }}\n        }}\n")
+def mods(d): return "".join(f"                {k} = {v}\n" for k, v in d.items())
+bop_txt = (f"{BOP} = {{\n    initial_value = 0.25\n    left_side = ktits_sov_party_side\n    right_side = ktits_sov_pimenov_side\n    decision_category = ktits_sov_balance_category\n\n"
+           + rng("ktits_sov_balance_range", -0.2, 0.2).replace("        range", "    range") .replace("\n        ", "\n    ") + "\n"
+           + "    side = {\n        id = ktits_sov_party_side\n        icon = GFX_bop_ITA_grand_council_side\n\n"
+           + rng("ktits_sov_party_low", -0.5, -0.2)
+           + rng("ktits_sov_party_high", -0.9, -0.5, mods({"political_power_factor": -0.1, "stability_factor": 0.05}))
+           + rng("ktits_sov_party_total", -1, -0.9, "", f"                add_ideas = {P}sp_party_dict\n", f"                remove_ideas = {P}sp_party_dict\n")
+           + "    }\n\n    side = {\n        id = ktits_sov_pimenov_side\n        icon = GFX_bop_ITA_mussolini_side\n\n"
+           + rng("ktits_sov_pimenov_low", 0.2, 0.5, mods({"political_power_factor": 0.1}))
+           + rng("ktits_sov_pimenov_high", 0.5, 0.9, mods({"political_power_factor": 0.2}))
+           + rng("ktits_sov_pimenov_total", 0.9, 1, "", f"                add_ideas = {P}sp_pcult\n", f"                remove_ideas = {P}sp_pcult\n")
+           + "    }\n}\n")
+w("common/bop/ktits_sov.txt", bop_txt)
+for k_, r_ in ((BOP, "Баланс Пименов — Партия"), ("ktits_sov_party_side", "Партия"), ("ktits_sov_pimenov_side", "Генсек Пименов"), ("ktits_sov_balance_range", "Равновесие"),
+               ("ktits_sov_party_low", "Влияние Партии"), ("ktits_sov_party_high", "Власть Партии"), ("ktits_sov_party_total", "Партийная диктатура"),
+               ("ktits_sov_pimenov_low", "Рука Генсека"), ("ktits_sov_pimenov_high", "Личная власть Генсека"), ("ktits_sov_pimenov_total", "Культ личности")):
+    add(k_, r_)
 
 L.write_yml(str(M / "localisation/russian/ktits_soviet_mech_l_russian.yml"), "russian", ru)
 L.write_yml(str(M / "localisation/english/ktits_soviet_mech_l_english.yml"), "english", en)

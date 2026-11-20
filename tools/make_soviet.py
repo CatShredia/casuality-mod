@@ -73,7 +73,10 @@ def var(name, v, ru_, lo=0, hi=100):
     return f"custom_effect_tooltip = {k}\nadd_to_variable = {{ var = {P}{name} value = {v} }}\nclamp_variable = {{ var = {P}{name} min = {lo} max = {hi} }}\n"
 def INT(v): return var("integrity", v, "Целостность Союза")
 def PAR(v): return var("paranoia", v, "Паранойя Пименова")
-def BAL(v): return var("balance", v, "Баланс (+ к Пименову)", -100, 100)
+def BAL(v):
+    k = f"{P}tt_balance_{'p' if v > 0 else 'm'}{abs(v)}"
+    ttl(k, f"Баланс сил: §Y{v:+g} %§! ({'к Пименову' if v > 0 else 'к Партии'})")
+    return f"custom_effect_tooltip = {k}\nadd_power_balance_value = {{ id = ktits_sov_power_balance value = {v / 100:g} }}\n"
 def PERS(k, v): return var("p_" + k, v, {"auto": "Личность «Самодержец»", "soft": "Личность «Мягкий коммунист»", "hard": "Личность «Жёсткий коммунист»", "schizo": "Личность «Шиз»"}[k])
 def REP(v): return var("repent", v, "Покаяние мира")
 def CAS(v):
@@ -390,7 +393,7 @@ w("common/scripted_triggers/ktits_soviet_triggers.txt", f"ktits_is_soviet = {{\n
 w("common/scripted_effects/ktits_soviet_effects.txt",
   "# scope = Soviet Union at the start of the game: laws (partial mobilisation = early_war_economy [INVENTED: the closest law], limited conscription), variables of the scales\n"
   f"ktits_sov_start = {{\n    add_ideas = early_war_economy\n    add_ideas = limited_conscription\n"
-  f"    set_variable = {{ var = {P}integrity value = 70 }}\n    set_variable = {{ var = {P}paranoia value = 20 }}\n    set_variable = {{ var = {P}balance value = 20 }}\n"
+  f"    set_variable = {{ var = {P}integrity value = 70 }}\n    set_variable = {{ var = {P}paranoia value = 20 }}\n    set_power_balance = {{ id = ktits_sov_power_balance left_side = ktits_sov_party_side right_side = ktits_sov_pimenov_side set_value = 0.2 }}\n"
   f"    set_variable = {{ var = {P}p_auto value = 20 }}\n    set_variable = {{ var = {P}p_soft value = 20 }}\n    set_variable = {{ var = {P}p_hard value = 20 }}\n    set_variable = {{ var = {P}p_schizo value = 20 }}\n"
   f"    set_variable = {{ var = {P}repent value = 0 }}\n}}\n")
 w("common/on_actions/ktits_soviet_on_actions.txt",
