@@ -73,10 +73,17 @@ def blocks(text):
         i += 1
     return out
 
+def add_recruit(ht, cid):
+    nl = chr(10)
+    if re.search("^recruit_character", ht, re.M):
+        return re.sub("^(recruit_character[^" + nl + "]*)$", lambda mm: mm.group(1) + nl + "recruit_character = " + cid, ht, count=1, flags=re.M)
+    return ht.rstrip() + nl + nl + "recruit_character = " + cid + nl
+
 info = L.load_mod(M)
 lore2tag = {}
 for tag, lt in info["tag2lore"].items():
     lore2tag[lt] = tag
+START_POPS = {"CSL": {"casuality": 90, "democratic": 5, "neutrality": 5}}   # lore tag -> popularities, percent
 rows, missing = [], []
 for lt, (name, grp, lore_ideo, sub) in RULERS.items():
     tag = lore2tag.get(lt)
@@ -113,6 +120,10 @@ for lt, (name, grp, lore_ideo, sub) in RULERS.items():
             ct = ct[:k] + blk + ct[k:]
         done = cid
     chf.write_text(ct, encoding="utf-8", newline="")
+    if done and re.search(r"^\s*recruit_character\s*=\s*" + done + r"\s*$", ht, re.M) is None and done.endswith("_leader"):
+        # a leader created here (new ideology group) must be recruited, otherwise the game generates a random ruler
+        ht = add_recruit(ht, done)
+        hf.write_text(ht, encoding="utf-8", newline="")
     ruling_note = f"ruling_party {rp}"
     if grp and grp != rp:
         ht = re.sub(r"ruling_party\s*=\s*\w+", f"ruling_party = {grp}", ht, count=1)
@@ -133,7 +144,29 @@ for lt, (name, grp, lore_ideo, sub) in RULERS.items():
         ht = re.sub(r"set_popularities\s*=\s*\{[^}]*\}", nb, ht, count=1)
         hf.write_text(ht, encoding="utf-8", newline="")
         ruling_note += f"; elections {ea}, popularities {pp}"
+    if lt in START_POPS:      # author's start popularities of Kazualia (docs/countries/Scuocolo): all groups not listed are 0
+        ht = hf.read_text(encoding="utf-8", errors="ignore")
+        nb = "set_popularities = {\n" + "".join(f"\t{g} = {START_POPS[lt].get(g, 0)}\n" for g in IDEO.GROUP_ORDER if START_POPS[lt].get(g, 0) or g in ("democratic", "fascism", "communism", "neutrality")) + "}"
+        ht = re.sub(r"set_popularities\s*=\s*\{[^}]*\}", nb, ht, count=1)
+        hf.write_text(ht, encoding="utf-8", newline="")
+        ruling_note += f"; start popularities {START_POPS[lt]}"
     rows.append((tag, lt, name, target, lore_ideo, sub or "", ("INVENTED " if lt in INV.INVENTED_RULERS and lt not in LORE_ONLY else "") + ("placeholder sub-ideology" if PLACEHOLDER.get(lt) else ""), done, ruling_note))
+
+# extra rulers made from scratch (user decision): new characters with their own portrait (wired later by make_icons.py PORTRAITS, so make_icons runs after this step)
+# tag -> [(character id, literal name, ideology)]; each ideology must be a sub-ideology of its group so the leader can rule once that group becomes ruling_party
+EXTRA_LEADERS = {"SCU": [("SCU_Sabirov", "Товарищ Сабиров", "stalinism"), ("SCU_Bulldog_Kazual", "Лорд Бульдог Казуал", "conservatism")]}
+for tag, lst in EXTRA_LEADERS.items():
+    hist = glob.glob(str(M / "history/countries" / f"{tag} - *.txt")); chf = M / "common/characters" / f"{tag}.txt"
+    if not hist or not chf.exists(): print("extra leaders: no files for", tag); continue
+    hf = Path(hist[0]); ct = chf.read_text(encoding="utf-8"); ht = hf.read_text(encoding="utf-8", errors="ignore")
+    for cid, nm, ideo in lst:
+        assert ideo in SUB2GROUP, ideo
+        if cid not in ct:
+            blk = "\t" + cid + "={\n\t\tname=\"" + nm + "\"\n\n\t\tcountry_leader={\n\t\t\tideology=" + ideo + "\n\t\t\ttraits = { }\n\t\t\texpire=\"1965.1.1.1\"\n\t\t\tid=-1\n\t\t}\n\n\t}\n"
+            k = ct.rindex("}"); ct = ct[:k] + blk + ct[k:]
+        if not re.search(r"^\s*recruit_character\s*=\s*" + cid + r"\s*$", ht, re.M): ht = add_recruit(ht, cid)
+        print("extra leader:", tag, cid, nm, ideo)
+    chf.write_text(ct, encoding="utf-8", newline=""); hf.write_text(ht, encoding="utf-8", newline="")
 
 rep = L.REPO / "no_commit/temp/rulers_report.csv"
 with open(rep, "w", newline="", encoding="utf-8-sig") as f:

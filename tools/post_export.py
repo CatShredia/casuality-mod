@@ -1,6 +1,6 @@
 """Run every post-export step on the freshly exported mod, check it, and zip it. Run this after each RandomParadox export.
 
-Order: rivers -> iberia (new country Z06 split off the old Iberadia) -> population -> state names -> city names -> countries -> ideologies -> rulers -> casuality -> focuses -> game rules -> vanilla leftovers -> education -> splits -> alliances -> terrain -> strategic regions -> check -> zip.
+Order: rivers -> iberia (new country Z06 split off the old Iberadia) -> population -> state names -> city names -> countries -> ideologies -> rulers -> casuality -> focuses -> game rules -> vanilla leftovers -> education -> splits -> alliances -> continuous -> terrain -> kazualia -> kazouter -> debug (journal, last of the generators) -> strategic regions -> check -> zip.
 Each step is its own script and can still be run alone. The steps are idempotent, so running the whole chain twice is safe.
 
 Rivers: RandomParadox's own rivers.bmp is saved as no_commit/temp/rivers.bmp.orig whenever the mod's file is not the one this chain built
@@ -9,7 +9,7 @@ Rivers: RandomParadox's own rivers.bmp is saved as no_commit/temp/rivers.bmp.ori
 Usage: python tools/post_export.py [--names-mode style|lore] [--max-idx N] [--no-zip] [--skip a,b] [--mod PATH]
   --names-mode  how states/cities without lore names are named (default: style = generated names in the country's style; lore = "<country> N")
   --max-idx     widest river palette index (default 3: width by index is not confirmed in the game yet)
-  --skip        comma separated steps to skip: rivers,iberia,population,states,cities,countries,ideologies,rulers,casuality,focuses,gamerules,leftovers,education,splits,alliances,terrain,regions,check,zip
+  --skip        comma separated steps to skip: rivers,iberia,population,states,cities,countries,ideologies,rulers,casuality,focuses,gamerules,leftovers,education,splits,alliances,continuous,terrain,kazualia,kazouter,debug,regions,advisors,flags,goals,pictures,icons,check,zip
 """
 import argparse, hashlib, shutil, subprocess, sys, time
 from pathlib import Path
@@ -60,6 +60,7 @@ steps = [("iberia", ["make_iberia_split.py", *m]),
          ("countries", ["make_countries.py", *m]),
          ("ideologies", ["make_ideologies.py", *m]),
          ("rulers", ["make_rulers.py", *m]),
+         ("casual_advisors", ["make_casual_advisors.py", *m]),
          ("casuality", ["make_casuality.py", *m]),
          ("focuses", ["make_focuses.py", *m]),
          ("gamerules", ["make_game_rules.py", *m]),
@@ -67,8 +68,17 @@ steps = [("iberia", ["make_iberia_split.py", *m]),
          ("education", ["make_education.py", *m]),
          ("splits", ["make_splits.py", *m]),
          ("alliances", ["make_alliances.py", *m]),
+         ("continuous", ["make_continuous.py", *m]),
          ("terrain", ["set_terrain.py", *m]),
+         ("kazualia", ["make_kazualia.py", *m]),
+         ("kazouter", ["make_kazualia_outer.py", *m]),
+         ("debug", ["make_debug.py", *m]),
          ("regions", ["name_regions.py", *m]),
+         ("advisors", ["make_advisor_rules.py", *m]),
+         ("flags", ["apply_flags.py", *m]),
+         ("goals", ["make_goals.py", *m]),
+         ("pictures", ["make_pictures.py", *m]),
+         ("icons", ["make_icons.py", *m]),
          ("check", ["check_mod.py", *m])]
 for name, args in steps:
     if name not in skip:

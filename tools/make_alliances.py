@@ -118,12 +118,14 @@ def build(M, lore2tag):
         tr += f"\t\tAND = {{\n\t\t\thas_government = {g}\n\t\t\tFROM = {{ has_government = {g} }}\n\t\t}}\n"
     tr += "\t}\n}\n\n"
     tr += "# ROOT = the alliance leader that invites, FROM = the candidate: the candidate is at war with a country that is at war with ROOT too (invitation across ideologies)\nktits_ally_common_enemy = {\n\tany_country = {\n\t\thas_war_with = ROOT\n\t\thas_war_with = FROM\n\t}\n}\n\n"
-    tr += "# ROOT = the leader, FROM = the invited country: the same ideology group or a common enemy\nktits_ally_invite_match = {\n\tOR = {\n\t\tktits_ally_group_match = yes\n\t\tktits_ally_common_enemy = yes\n\t}\n}\n\n"
+    tr += "# author's rule: a country with the ruling ideology Casuality never joins an alliance whose leader is not Casuality. ROOT = the leader, FROM = the candidate\nktits_ally_kaz_ok = {\n\tOR = {\n\t\thas_government = casuality\n\t\tFROM = { NOT = { has_government = casuality } }\n\t}\n}\n\n"
+    tr += "# scope = a member: it rules with Casuality and the leader of its alliance does not (author's rule, applies to puppets too; checked by ktits_ally_purge_kaz)\nktits_ally_kaz_excluded = {\n\thas_government = casuality\n\tis_in_faction = yes\n\tis_faction_leader = no\n\tany_allied_country = {\n\t\tis_faction_leader = yes\n\t\tNOT = { has_government = casuality }\n\t}\n}\n\n"
+    tr += "# ROOT = the leader, FROM = the invited country: the same ideology group or a common enemy\nktits_ally_invite_match = {\n\tktits_ally_kaz_ok = yes\n\tOR = {\n\t\tktits_ally_group_match = yes\n\t\tktits_ally_common_enemy = yes\n\t}\n}\n\n"
     tr += "# any scope = a country: a spirit that bars founding, requesting, accepting and being invited to an alliance (Eternal Neutrality and, for now identical to it, Baku Powder Keg)\nktits_ally_barred = {\n\tOR = {\n\t\thas_idea = ktits_eternal_neutrality\n\t\thas_idea = ktits_baku_powder_keg\n\t}\n}\n\n"
     tr += ("# scope = a member that joined an alliance of ANOTHER ideology group through the common-enemy rule (flag ktits_ally_war_guest): the leader of its alliance is still at war with a country that is at war with the member\n"
            "# (inside any_country PREV = the leader, PREV.PREV = the member). When this stops being true the flag is cleared by ktits_ally_check_ideology and the ideology check applies again\n"
            "ktits_ally_war_guest_ok = {\n\tany_allied_country = {\n\t\tis_faction_leader = yes\n\t\tany_country = {\n\t\t\thas_war_with = PREV\n\t\t\thas_war_with = PREV.PREV\n\t\t}\n\t}\n}\n\n")
-    tr += ("# scope = the founder: a major power or a medium one (at least %d factories), outside any alliance, not a subject, without Eternal Neutrality or Baku Powder Keg. The vanilla template ktits_alliance_template is visible only when it holds, so the vanilla button \"create faction\" works only for allowed founders\nktits_ally_can_found = {\n\tcustom_trigger_tooltip = {\n\t\ttooltip = ktits_ally_can_found_tt\n\t\tOR = {\n\t\t\tis_major = yes\n\t\t\tnum_of_factories > %d\n\t\t}\n\t}\n"
+    tr += ("# scope = the founder: a major power or a medium one (at least %d factories), outside any alliance, not a subject, without Eternal Neutrality or Baku Powder Keg. The vanilla template ktits_alliance_template is visible only when it holds, so the vanilla button \"create faction\" works only for allowed founders\nktits_ally_can_found = {\n\tcustom_trigger_tooltip = {\n\t\ttooltip = ktits_ally_can_found_tt\n\t\tOR = {\n\t\t\tis_major = yes\n\t\t\tnum_of_factories > %d\n\t\t\thas_country_flag = ktits_ally_found_any\n\t\t}\n\t}\n"
            "\tis_in_faction = no\n\tis_subject = no\n\tNOT = { ktits_ally_barred = yes }\n\t# an AI alliance dissolved as lone cannot be founded again for a year (a human can)\n\tOR = {\n\t\tis_ai = no\n\t\tNOT = { has_country_flag = ktits_ally_lone_fail }\n\t}\n}\n\n" % (FOUND_FACTORIES, FOUND_FACTORIES - 1))
     tr += "# ROOT (overlord) and FROM (its subject) have different ruling ideology groups\nktits_ally_course_needed = {\n\tOR = {\n"
     for g in GROUPS:
@@ -171,15 +173,23 @@ def build(M, lore2tag):
     ef += "\t" + own.replace("\n\t\t", "\n\t")
     ef += "\tevery_faction_member = {\n\t\t" + own + "\t}\n}\n\n"
     ef += "# leader scope: scale changes. Every positive change also marks the alliance as active this month (no cooling)\n"
-    for name, d, busy in (("p5", 5, True), ("p10", 10, True), ("m5", -5, False), ("m20", -20, False)):
+    for name, d, busy in (("p1", 1, True), ("p5", 5, True), ("p10", 10, True), ("m5", -5, False), ("m20", -20, False)):
         ef += (f"ktits_ally_coop_{name} = {{\n\tadd_to_variable = {{ var = ktits_alliance_coop value = {d} }}\n"
                + ("\tset_country_flag = ktits_ally_busy\n" if busy else "") + "\tktits_ally_update = yes\n}\n\n")
     ef += "# scope = a member (the leader too): the same changes on the leader of my alliance\n"
-    for name in ("p5", "p10"):
+    for name in ("p1", "p5", "p10"):
         ef += (f"ktits_ally_member_coop_{name} = {{\n\tif = {{\n\t\tlimit = {{ is_faction_leader = yes }}\n\t\tktits_ally_coop_{name} = yes\n\t}}\n"
                f"\telse = {{\n\t\tevery_other_country = {{\n\t\t\tlimit = {{\n\t\t\t\tis_faction_leader = yes\n\t\t\t\tis_in_faction_with = PREV\n\t\t\t}}\n\t\t\tktits_ally_coop_{name} = yes\n\t\t}}\n\t}}\n}}\n\n")
     ef += ("# scope = a member that leaves or is expelled for a change of ideology: the leader forgets one member, so the monthly check does not take the author's -5\n"
            "ktits_ally_forget_member = {\n\tevery_other_country = {\n\t\tlimit = {\n\t\t\tis_faction_leader = yes\n\t\t\tis_in_faction_with = PREV\n\t\t}\n\t\tadd_to_variable = { var = ktits_ally_size value = -1 }\n\t}\n}\n\n")
+    # costs of the cooperation decisions: the decisions read the variables ktits_ally_cost_<tag>; continuous focus "Укрепление альянса" (flag ktits_ally_f_strong, tools/make_continuous.py): 10 % cheaper
+    ef += "# scope = any country: costs of the cooperation decisions (variables ktits_ally_cost_<tag>); flag ktits_ally_f_strong (continuous focus) = -10 %\nktits_ally_costs = {\n"
+    for _k, _n, _t, _c, _cd, _tag in COOP:
+        ef += f"\tset_variable = {{ var = ktits_ally_cost_{_tag} value = {_c} }}\n"
+    ef += "\tif = {\n\t\tlimit = { has_country_flag = ktits_ally_f_strong }\n"
+    for _k, _n, _t, _c, _cd, _tag in COOP:
+        ef += f"\t\tmultiply_variable = {{ var = ktits_ally_cost_{_tag} value = 0.9 }}\n\t\tround_variable = ktits_ally_cost_{_tag}\n"
+    ef += "\t}\n}\n\n"
     ef += "# scope = any country at the start of the game: no alliance exists at the start (author's decision), all are founded with the vanilla button. Here: spirits of neutral and powder-keg countries, subject sync, purge of barred\nktits_ally_start = {\n"
     for lt in NEUTRAL_LORE:
         t = lore2tag.get(lt)
@@ -189,13 +199,16 @@ def build(M, lore2tag):
         t = lore2tag.get(lt)
         if t:
             ef += f"\tif = {{\n\t\tlimit = {{ country_exists = {t} }}\n\t\t{t} = {{\n\t\t\tadd_ideas = ktits_baku_powder_keg\n\t\t}}\n\t}}\n"
-    ef += "\tevery_country = {\n\t\tktits_ally_purge_barred = yes\n\t\tktits_ally_sync_subjects = yes\n\t}\n}\n\n"
+    ef += "\tevery_country = {\n\t\tktits_ally_costs = yes\n\t\tktits_ally_allow_found = yes\n\t\tktits_ally_purge_barred = yes\n\t\tktits_ally_purge_kaz = yes\n\t\tktits_ally_sync_subjects = yes\n\t}\n}\n\n"
+    ef += "# scope = any country: the engine rule can_create_factions is off by default (vanilla gives it with spirits and focuses removed from the mod); the rule is yes only for ktits_ally_can_found, no for the others outside an alliance (a real ban). Members and leaders are not touched (does set_rule no dissolve a faction? [uncertain]). Monthly too: released countries appear later\nktits_ally_allow_found = {\n\tif = {\n\t\tlimit = { ktits_ally_can_found = yes }\n\t\tset_rule = { can_create_factions = yes }\n\t}\n\telse_if = {\n\t\tlimit = { is_in_faction = no }\n\t\tset_rule = { can_create_factions = no }\n\t}\n}\n\n"
     ef += ("# scope = an overlord: its subjects are always in its alliance (author's rule). Scope inside: the subject, PREV = the overlord. Subjects cannot leave (the diplomacy trigger is blocked), the monthly check repairs the rest\n"
            "ktits_ally_sync_subjects = {\n\tevery_subject_country = {\n\t\tif = {\n\t\t\tlimit = {\n\t\t\t\tPREV = { is_in_faction = no }\n\t\t\t\tis_in_faction = yes\n\t\t\t}\n\t\t\tleave_faction = yes\n\t\t}\n"
            "\t\tif = {\n\t\t\tlimit = {\n\t\t\t\tPREV = { is_in_faction = yes }\n\t\t\t\tNOT = { is_in_faction_with = PREV }\n\t\t\t}\n\t\t\tif = {\n\t\t\t\tlimit = { is_in_faction = yes }\n\t\t\t\tleave_faction = yes\n\t\t\t}\n"
-           "\t\t\tif = {\n\t\t\t\tlimit = { NOT = { ktits_ally_barred = yes } }\n\t\t\t\tPREV = { add_to_faction = PREV }\n\t\t\t}\n\t\t}\n\t}\n}\n\n")
+           "\t\t\tif = {\n\t\t\t\tlimit = {\n\t\t\t\t\tNOT = { ktits_ally_barred = yes }\n\t\t\t\t\t# author's rule: a Casuality subject does not enter the alliance of a non-Casuality overlord\n\t\t\t\t\tOR = {\n\t\t\t\t\t\tNOT = { has_government = casuality }\n\t\t\t\t\t\tPREV = { has_government = casuality }\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\tPREV = { add_to_faction = PREV }\n\t\t\t}\n\t\t}\n\t}\n}\n\n")
     ef += ("# scope = any country: a country with Eternal Neutrality or Baku Powder Keg is never a member of an alliance (the engine puts subjects into the faction of the overlord by itself, so the check runs on startup and monthly)\n"
            "ktits_ally_purge_barred = {\n\tif = {\n\t\tlimit = {\n\t\t\tktits_ally_barred = yes\n\t\t\tis_in_faction = yes\n\t\t\tis_faction_leader = no\n\t\t}\n\t\tktits_ally_forget_member = yes\n\t\tleave_faction = yes\n\t}\n}\n\n")
+    ef += ("# scope = any country: author's rule, a country that rules with Casuality is never a member of an alliance led by a non-Casuality leader (an exception to \"subjects are always in the alliance of the overlord\"): leaves, also after a change of ideology to Casuality\n"
+           "ktits_ally_purge_kaz = {\n\tif = {\n\t\tlimit = { ktits_ally_kaz_excluded = yes }\n\t\tktits_ally_forget_member = yes\n\t\tktits_ally_news_leave = yes\n\t\tleave_faction = yes\n\t}\n}\n\n")
     ef += ("# scope = a member: a ruling ideology group that differs from the leader's -> the event \"Чужая среди своих\" (once per difference; the flag is dropped when the groups match again or the country leaves).\n"
            "# A guest of the common-enemy rule (flag ktits_ally_war_guest, set on joining across ideologies) is skipped while the shared war lasts; the flag is cleared first when the war is over or the country left\n"
            "ktits_ally_check_ideology = {\n\tif = {\n\t\tlimit = {\n\t\t\thas_country_flag = ktits_ally_war_guest\n\t\t\tOR = {\n\t\t\t\tis_in_faction = no\n\t\t\t\tNOT = { ktits_ally_war_guest_ok = yes }\n\t\t\t}\n\t\t}\n\t\tclr_country_flag = ktits_ally_war_guest\n\t}\n"
@@ -212,7 +225,7 @@ def build(M, lore2tag):
            "\t\tif = {\n\t\t\tlimit = { has_war = yes }\n\t\t\tif = {\n\t\t\t\tlimit = { any_allied_country = { has_war_together_with = PREV } }\n\t\t\t\tadd_to_variable = { var = ktits_alliance_coop value = 2 }\n\t\t\t}\n\t\t}\n"
            "\t\telse = {\n\t\t\tif = {\n\t\t\t\tlimit = { NOT = { has_country_flag = ktits_ally_busy } }\n\t\t\t\tadd_to_variable = { var = ktits_alliance_coop value = -1 }\n\t\t\t}\n\t\t}\n\t}\n"
            "\tclr_country_flag = ktits_ally_busy\n\tset_variable = { var = ktits_ally_size value = ktits_ally_n }\n\tktits_ally_update = yes\n}\n\n")
-    ef += ("# on_monthly, scope = every country\nktits_ally_monthly = {\n\tktits_ally_purge_barred = yes\n\tktits_ally_sync_subjects = yes\n\tktits_ally_check_ideology = yes\n"
+    ef += ("# on_monthly, scope = every country\nktits_ally_monthly = {\n\tktits_ally_costs = yes\n\tktits_ally_allow_found = yes\n\tktits_ally_purge_barred = yes\n\tktits_ally_purge_kaz = yes\n\tktits_ally_sync_subjects = yes\n\tktits_ally_check_ideology = yes\n"
            "\t# a former leader: the scale is not its own any more\n\tif = {\n\t\tlimit = {\n\t\t\thas_country_flag = ktits_ally_keeper\n\t\t\tis_faction_leader = no\n\t\t}\n"
            "\t\tclr_country_flag = ktits_ally_keeper\n\t\tset_variable = { var = ktits_alliance_coop value = 0 }\n\t\tset_variable = { var = ktits_ally_size value = 0 }\n\t}\n"
            "\tif = {\n\t\tlimit = {\n\t\t\tis_faction_leader = yes\n\t\t\thas_country_flag = ktits_ally_keeper\n\t\t}\n\t\tktits_ally_leader_monthly = yes\n\t}\n"
@@ -321,7 +334,10 @@ ktits_ally_track = {
 				limit = {
 					OR = {
 						has_country_flag = ktits_ally_member
-						any_faction_member = { has_country_flag = ktits_ally_member }
+						any_other_country = {
+							is_in_faction_with = ROOT
+							has_country_flag = ktits_ally_member
+						}
 					}
 				}
 				ktits_ally_leader_changed = yes
@@ -508,7 +524,7 @@ ktits_ally_track = {
     for key, name, txt, cost, cd, tag in COOP:
         delta = "p10" if tag == "fund" else "p5"
         d += (f"\t{key} = {{\n\t\ticon = generic_propaganda\n\t\tvisible = {{\n\t\t\tis_in_faction = yes\n\t\t\tNOT = {{ ktits_ally_in_kaz = yes }}\n\t\t}}\n"
-              f"\t\tavailable = {{\n\t\t\tis_in_faction = yes\n\t\t\tnum_faction_members > 1\n\t\t}}\n\t\tcost = {cost}\n\t\tdays_re_enable = {cd}\n\t\tfire_only_once = no\n\t\tcomplete_effect = {{\n"
+              f"\t\tavailable = {{\n\t\t\tis_in_faction = yes\n\t\t\tnum_faction_members > 1\n\t\t}}\n\t\tcost = ktits_ally_cost_{tag}\n\t\tdays_re_enable = {cd}\n\t\tfire_only_once = no\n\t\tcomplete_effect = {{\n"
               f"\t\t\tcustom_effect_tooltip = ktits_ally_tt_{delta}\n\t\t\thidden_effect = {{ ktits_ally_member_coop_{delta} = yes }}\n{effects[tag]}\t\t}}\n"
               f"\t\tai_will_do = {{\n\t\t\tbase = 3\n\t\t\tmodifier = {{\n\t\t\t\tfactor = 0\n\t\t\t\tcheck_variable = {{ var = ktits_ally_view value = 75 compare = greater_than_or_equals }}\n\t\t\t}}\n"
               f"\t\t\tmodifier = {{\n\t\t\t\tfactor = 0\n\t\t\t\thas_political_power < {cost + 25}\n\t\t\t}}\n\t\t}}\n\t}}\n\n")
@@ -573,6 +589,7 @@ ktits_ally_track = {
         add(f"ktits_ally_{k}", kn); add(f"ktits_ally_{k}_desc", kd)
     for key, (n, dd, mod) in TIMED.items():
         add(key, n); add(key + "_desc", dd)
+    add("DIPLOMACY_CREATE_FACTION_NOT_RULE", "Создать альянс может только великая держава или страна с 30+ фабриками, не состоящая в альянсе и не марионетка", "Only a major power or a country with 30+ factories that is not in an alliance and not a puppet can create an alliance")  # overrides the vanilla key
     add("ktits_ally_can_found_tt", "Страна великая или средняя держава: не менее 30 фабрик (военных и гражданских вместе)", "The country is a major or a medium power: at least 30 factories (military and civilian together)")
     add("ktits_ally_invite_match_tt", "Та же идеологическая группа или общий враг: приглашаемая страна воюет хотя бы с одной страной, которая воюет с лидером альянса", "The same ideology group or a common enemy: the invited country is at war with a country that is at war with the alliance leader")
     add("ktits_ally_request", "Просить о вступлении: [FROM.GetName]", "Request to join: [FROM.GetName]")
@@ -690,10 +707,18 @@ def patch_diplomacy(M):
     p.write_bytes(("﻿" if raw.startswith(b"\xef\xbb\xbf") else "").encode() + text.encode("utf-8"))
     return done
 
+VANILLA_TEMPLATES = Path("D:/SteamLibrary/steamapps/common/Hearts of Iron IV/common/factions/templates")
+
 def patch_templates(M):
-    """every vanilla faction template becomes invisible: the list of templates of the vanilla \"create faction\" action is empty (scripts create factions from the template by name)"""
+    """every vanilla faction template becomes invisible: the list of templates of the vanilla "create faction" action is empty (scripts create factions from the template by name).
+    A template WITHOUT a visible block is visible and available to everybody (vanilla allies.txt, axis.txt, unique_minor_factions.txt ... have none), so vanilla files absent from the mod
+    are copied into it first and a visible block = always no is added to every template that lacks one"""
     n = 0
-    for p in sorted((M / "common/factions/templates").glob("*.txt")):
+    d = M / "common/factions/templates"
+    if VANILLA_TEMPLATES.exists():
+        for v in sorted(VANILLA_TEMPLATES.glob("*.txt")):
+            if not (d / v.name).exists(): (d / v.name).write_bytes(v.read_bytes())
+    for p in sorted(d.glob("*.txt")):
         if p.name == "ktits_alliance_templates.txt": continue   # ours: visible to allowed founders
         raw = p.read_bytes(); text = raw.decode("utf-8-sig"); orig = text
         pos = 0
@@ -704,8 +729,19 @@ def patch_templates(M):
             new = f"{m.group(1)}visible = {{\n{m.group(1)}\talways = no # Ktits: factions are made by decisions (tools/make_alliances.py)\n{m.group(1)}}}"
             text = text[:m.start()] + new + text[e:]
             pos = m.start() + len(new); n += 1
+        # templates without a visible block (top level `name = {`): the block is added right after the opening line
+        out = []; pos = 0
+        for m in re.finditer(r"(?m)^([A-Za-z_]\w*)\s*=\s*\{[^\n]*\n", text):
+            if m.start() < pos: continue
+            e = block_end(text, m.start())
+            body = text[m.end():e]
+            out.append(text[pos:m.end()])
+            if not re.search(r"(?m)^[ \t]*visible\s*=\s*\{", body):
+                out.append("\tvisible = {\n\t\talways = no # Ktits: factions are made by decisions (tools/make_alliances.py)\n\t}\n"); n += 1
+            out.append(body); pos = e
+        out.append(text[pos:]); text = "".join(out)
         if text != orig:
-            p.write_bytes(("﻿".encode() if raw.startswith(b"\xef\xbb\xbf") else b"") + text.encode("utf-8"))
+            p.write_bytes((b"\xef\xbb\xbf" if raw.startswith(b"\xef\xbb\xbf") else b"") + text.encode("utf-8"))
     return n
 
 def strip_rp_factions(M):
@@ -769,8 +805,12 @@ def main():
     for rel, text in out.items():
         p = M / rel; p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(text, encoding="utf-8", newline="\n")
-    L.write_yml(str(M / "localisation/russian/ktits_alliance_l_russian.yml"), "russian", ru)
-    L.write_yml(str(M / "localisation/english/ktits_alliance_l_english.yml"), "english", en)
+    # keys that override vanilla text go to localisation/replace (else the log reports a duplicate key)
+    REPL = {"DIPLOMACY_CREATE_FACTION_NOT_RULE"}
+    L.write_yml(str(M / "localisation/russian/ktits_alliance_l_russian.yml"), "russian", [x for x in ru if x[0] not in REPL])
+    L.write_yml(str(M / "localisation/english/ktits_alliance_l_english.yml"), "english", [x for x in en if x[0] not in REPL])
+    L.write_yml(str(M / "localisation/replace/ktits_alliance_replace_l_russian.yml"), "russian", [x for x in ru if x[0] in REPL])
+    L.write_yml(str(M / "localisation/replace/ktits_alliance_replace_l_english.yml"), "english", [x for x in en if x[0] in REPL])
     for old in ("common/scripted_diplomatic_actions/ktits_alliance_actions.txt", "common/opinion_modifiers/ktits_alliance_opinion.txt"):
         if (M / old).exists(): (M / old).unlink()
     write_bar(M)

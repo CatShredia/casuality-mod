@@ -1,3 +1,4 @@
-no_commit/
+no_commit/*
+gfx_src/*
 
 __pycache__/

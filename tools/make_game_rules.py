@@ -1,7 +1,7 @@
 """Leave in the game-rules screen only generic vanilla rules: override common/game_rules/00_game_rules.txt with a copy without the rules of countries that do not exist in the mod.
 Removed (docs/map/build/Map-Finish-Plan.md): <TAG>_ai_behavior (all AI-behavior rules of vanilla countries), <xxx>_fragmentation_status, quebec_colonization_status (country/region specific setup rules).
 Kept: foreign policy, covert actions, gameplay, UI, peace score, continent colonization status [uncertain: continents may be dropped too].
-The rule of the mod itself lives in common/game_rules/ktits_casuality_rules.txt (make_casuality.py).
+The rules of the mod itself live in common/game_rules/ktits_casuality_rules.txt and ktits_kaz_paths_rules.txt (make_casuality.py, which also writes their localisation).
 Usage: python tools/make_game_rules.py [--mod PATH] [--game PATH]
 """
 import argparse, re

@@ -85,7 +85,10 @@ ktits_education_update = {{
 	if = {{
 		limit = {{
 			OR = {{
-				ktits_is_kazualia = yes
+				AND = {{
+					ktits_is_kazualia = yes
+					NOT = {{ has_country_flag = ktits_kaz_edu_open }}
+				}}
 				is_puppet_of = {KAZ}
 			}}
 		}}
@@ -120,7 +123,10 @@ ktits_education_monthly = {{
 	if = {{
 		limit = {{
 			OR = {{
-				ktits_is_kazualia = yes
+				AND = {{
+					ktits_is_kazualia = yes
+					NOT = {{ has_country_flag = ktits_kaz_edu_open }}
+				}}
 				is_puppet_of = {KAZ}
 			}}
 		}}
