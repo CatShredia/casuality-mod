@@ -113,6 +113,12 @@ def wargoal(tag, ids, key, r):   # [uncertain: take_claimed_state with generator
 def annex_wg(tag, key, r):
     ttl(key, r)
     return f"custom_effect_tooltip = {key}\nhidden_effect = {{ create_wargoal = {{ type = annex_everything target = {tag} }} }}\n"
+def expansion(tag, ids, key, name):
+    # Keep the existing limited territorial war goal and encourage the AI to use it.
+    return (f"if = {{ limit = {{ country_exists = {tag} }}\n"
+            + wargoal(tag, ids, key, f"Цель войны на претензионные штаты: {name}")
+            + f"add_ai_strategy = {{ type = conquer id = {tag} value = 200 }}\n"
+            + f"add_ai_strategy = {{ type = prepare_for_war id = {tag} value = 100 }}\n}}\n")
 def ev(tag, eid, key, r):
     ttl(key, r)
     return f"custom_effect_tooltip = {key}\nhidden_effect = {{ {tag} = {{ country_event = {{ id = ktits_soviet.{eid} }} }} }}\n"
@@ -209,16 +215,16 @@ fc("x3", "Великая Континентальная империя", "ext", 
 fc("x4", "Демократический щит", "ext", [["x0"]], ["x1", "x2", "x3"], "has_government = democratic", OP(BRT, 50) + OP(SOYA, 50), ai=30)
 fc("x5", "Договор с Тямовским рейхом", "ext", [["x2"]], [], exists(REI), ev(REI, 20, P + "tt_reich_ev", "Событие рейха: договор (технологии и торговля) или отказ") + OP(REI, 10), ai=30)
 fc("x6", "Временный союз с рейхом", "ext", [["x3"]], [], exists(REI), ev(REI, 21, P + "tt_reich_ally", "Событие рейха: союз на 2 года"), ai=30)
-fc("x7", "Континент под Союзом", "ext", [["x6"]], [], None, claims(ASM_ST + DMK_ST, P + "tt_cont_claims", "Претензии на соседние штаты Ассамблеи и Княжества", ("asm", "dmk")), ai=30)
+fc("x7", "Континент под Союзом", "ext", [["x6"]], [], None, claims(ASM_ST + DMK_ST, P + "tt_cont_claims", "Претензии на соседние штаты Ассамблеи и Княжества", ("asm", "dmk")) + expansion(ASM, ASM_ST, P + "tt_cont_asm_wg", "Северная Ассамблея") + expansion(DMK, DMK_ST, P + "tt_cont_dmk_wg", "Димитровское Княжество"), ai=30)
 fc("x8", "Союз с Бриттаном и Соевой Республикой", "ext", [["x4"]], [], None, OP(BRT, 40) + OP(SOYA, 40), ai=30)
 fc("x9", "Уничтожение угроз", "ext", [["x8"]], [], None, annex_wg(KAZ, P + "tt_threat_wg", "Цель войны против Казуалии [uncertain: полный список фашистских и казуальных соседей]"), ai=30)
 # --- Рубежи Союза
 RX = [["x2"]]
-fc("ra1", "Претензии на Северную Ассамблею", "rub_a", RX, [], exists(ASM), claims(ASM_ST, P + "tt_asm_claims", "Претензии на 5 ближайших штатов Северной Ассамблеи; открывает решение-ультиматум", ("asm",)) + OP(ASM, -30), ai=30)
-fc("ra2", "Отторжение окраин", "rub_a", [["ra1"]], [], None, wargoal(ASM, ASM_ST, P + "tt_asm_wg", "Цель войны на претензионные штаты Ассамблеи (без аннексии)"), ai=30)
+fc("ra1", "Претензии на Северную Ассамблею", "rub_a", RX, [], exists(ASM), claims(ASM_ST, P + "tt_asm_claims", "Претензии на 5 ближайших штатов Северной Ассамблеи; открывает решение-ультиматум", ("asm",)) + expansion(ASM, ASM_ST, P + "tt_asm_wg", "Северная Ассамблея") + OP(ASM, -30), ai=30)
+fc("ra2", "Отторжение окраин", "rub_a", [["ra1"]], [], None, flag(P + "asm_expansion"), ai=30)
 fc("ra3", "Освоение окраин", "rub_a", [["ra2"]], [], None, civ(1) + infra(1), ai=30)
-fc("rd1", "Взгляд за хребет", "rub_d", RX, [], exists(DMK), OP(DMK, -20) + "add_war_support = 0.03\n" + claims(DMK_ST, P + "tt_dmk_claims", "Претензии на 5 прикуштунских штатов Княжества; открывает решение-ультиматум", ("dmk",)), ai=30)
-fc("rd2", "Урок Княжеству", "rub_d", [["rd1"], ["rc2"], ["rc4"]], [], None, wargoal(DMK, DMK_ST, P + "tt_dmk_wg", "Цель войны на прикуштунскую полосу Княжества"), ai=30)
+fc("rd1", "Взгляд за хребет", "rub_d", RX, [], exists(DMK), OP(DMK, -20) + "add_war_support = 0.03\n" + claims(DMK_ST, P + "tt_dmk_claims", "Претензии на 5 прикуштунских штатов Княжества; открывает решение-ультиматум", ("dmk",)) + expansion(DMK, DMK_ST, P + "tt_dmk_wg", "Димитровское Княжество"), ai=30)
+fc("rd2", "Урок Княжеству", "rub_d", [["rd1"], ["rc2"], ["rc4"]], [], None, flag(P + "dmk_expansion"), ai=30)
 fc("rc0", "Казачий вопрос", "rub_c", RX, [], exists(CSK), OP(CSK, 10), ai=30)
 fc("rc1", "Помощь без обязательств", "rub_c", [["rc0"]], ["rc3"], None, OP(CSK, 40) + tip(P + "tt_help", "Казачья Земля получает 2000 единиц пехотного снаряжения от Союза, без альянса и гарантий 2 добровольческие дивизии в её столице; Союз получает ванильное действие «Отправить добровольцев»") + f"hidden_effect = {{ {CSK} = {{ add_equipment_to_stockpile = {{ type = infantry_equipment amount = 2000 producer = {SOV} }}\n {VOL_TPL}\n capital_scope = {{ {VOL_UNIT} {VOL_UNIT} }} }} }}\nadd_ideas = {P}sp_volunteers\n", ai=30)
 fc("rc2", "Станичные поставки", "rub_c", [["rc1"]], [], None, tip(P + "tt_supply", "Торговый договор: снабжение Казачьей Земли +15 % [следующая фаза]") + flag(P + "cossack_supply"), ai=30)
@@ -226,10 +232,10 @@ fc("rc3", "Давление на Казачью Землю", "rub_c", [["rc0"]],
 fc("rc4", "Ультиматум присоединения", "rub_c", [["rc3"]], [], None, ev(CSK, 10, P + "tt_ultimatum", "Событие Казачьей Земли: стать марионеткой Союза или получить войну"), ai=30)
 fc("rk1", "Карантин на юге", "rub_k", RX, [], CASUAL, CAS(-1) + tip(P + "tt_quarantine", "Укрепления на границе с Казуалией +1 [uncertain: массовая стройка укреплений]"), ai=30)
 fc("rk2", "Конец Ставки", "rub_k", [["rk1"]], [], exists(KAZ), annex_wg(KAZ, P + "tt_kaz_wg", "Цель войны (аннексия) против Казуалии"), ai=30)
-fc("ry1", "Претензии на север Кытая", "rub_y", RX, [], exists(KYT), claims(KYT_ST, P + "tt_kyt_claims", "Претензии на 6 самых северных штатов Кытая; открывает решение-ультиматум", ("kyt",)) + OP(KYT, -30), ai=30)
-fc("ry2", "Северные провинции", "rub_y", [["ry1"]], [], None, wargoal(KYT, KYT_ST, P + "tt_kyt_wg", "Цель войны на северные штаты Кытая"), ai=30)
+fc("ry1", "Претензии на север Кытая", "rub_y", RX, [], exists(KYT), claims(KYT_ST, P + "tt_kyt_claims", "Претензии на 6 самых северных штатов Кытая; открывает решение-ультиматум", ("kyt",)) + expansion(KYT, KYT_ST, P + "tt_kyt_wg", "Кытай") + OP(KYT, -30), ai=30)
+fc("ry2", "Северные провинции", "rub_y", [["ry1"]], [], None, flag(P + "kyt_expansion"), ai=30)
 for _k, (_tg, _ids, _dat, _ch) in NT.items():
-    fc("r" + _ch + "1", "Претензии на " + _dat, "rub_" + _ch, RX, [], exists(_tg), claims(_ids, P + f"tt_{_k}_claims", f"Претензии на {len(_ids)} ближайших штатов; открывает решение-ультиматум", (_k,)) + OP(_tg, -20), ai=30)
+    fc("r" + _ch + "1", "Претензии к " + _dat, "rub_" + _ch, RX, [], exists(_tg), claims(_ids, P + f"tt_{_k}_claims", f"Претензии на {len(_ids)} ближайших штатов; открывает решение-ультиматум", (_k,)) + expansion(_tg, _ids, P + f"tt_{_k}_wg", _dat) + OP(_tg, -20), ai=30)
 fc("ry3", "Северные заставы", "rub_y", [["ry2"]], [], None, spirit("north_posts", "Северные заставы", "Новые границы, новые заставы. Заставы пока пустые, но флаг уже есть.", {"supply_consumption_factor": -0.1}), ai=30)
 # --- Экономика
 IC = "GFX_goal_generic_construct_civ_factory"

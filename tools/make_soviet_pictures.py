@@ -40,7 +40,7 @@ EXTRA_SPIRIT = {"ktits_sov_sp_pcult": "cult", "ktits_sov_sp_party_dict": "collec
 FOCUS = {"paranoia": 2, "unthinkable": 1, "reforms": 2, "softcomm": 1, "hardcomm": 2, "casual": 1, "church": 2, "fascism": 1, "anticas": 1, "foreign": 1, "econ": 2,
          "army": 2, "zone_stay": 2, "zone_exit": 2}
 FOCUS_RULES = [(r"p[0a-z]", "paranoia"), (r"cong|u\d+|g\d+", "unthinkable"), (r"r\d+", "reforms"), (r"m\d+", "softcomm"), (r"t\d+", "hardcomm"), (r"k\d+", "casual"),
-               (r"ch\d+", "church"), (r"f\d+", "fascism"), (r"a\d+", "anticas"), (r"x\d+|ra\d+|rd\d+|rc\d+|rk\d+|ry\d+", "foreign"), (r"eb\d+", "zone_stay"), (r"e\d+", "econ"), (r"ar\d+", "army")]
+               (r"ch\d+", "church"), (r"f\d+", "fascism"), (r"a\d+", "anticas"), (r"x\d+|r[adckyfgmhs]\d+", "foreign"), (r"eb\d+", "zone_stay"), (r"e\d+", "econ"), (r"ar\d+", "army")]
 def focus_img(i):
     for pat, img in FOCUS_RULES:
         if re.fullmatch(pat, i): return img
