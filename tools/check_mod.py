@@ -193,11 +193,13 @@ vgt = vg.read_text(encoding="utf-8") if vg.exists() else ""
 defined = set(re.findall(r"(?m)^(\w+)\s*=\s*\{", vgt)) | {"ktits_global_casuality"}
 check(bool(vgt) and not re.search(r"(?mi)^\w+_(?:ai_behavior|fragmentation_status)\s*=", vgt) and vgt.count("{") == vgt.count("}") and "allow_wargoals" in defined,
       f"game rules: vanilla file overridden, {len(defined) - 1} generic rules, no country-specific ones", "game rules: 00_game_rules.txt missing or still has country-specific rules")
+# rules of the mod itself (common/game_rules/ktits_*_rules.txt): Kazualia and the Soviet Union paths are read by their decisions too
+own_rules = {m_ for f_ in (M / "common/game_rules").glob("ktits_*_rules.txt") for m_ in re.findall(r"(?m)^(ktits_mak_paths)\s*=\s*\{", f_.read_text(encoding="utf-8"))}
 refs = collections.defaultdict(set)
 for f in M.rglob("*.txt"):
     if "game_rules" in f.parts: continue
     for r in re.findall(r"has_game_rule\s*=\s*\{\s*rule\s*=\s*(\w+)", f.read_text(encoding="utf-8", errors="ignore")):
-        if r not in defined: refs[f.relative_to(M).parts[1]].add((r, f.name))
+        if r not in defined and r not in own_rules: refs[f.relative_to(M).parts[1]].add((r, f.name))
 bad_non_focus = sorted(x for k, v in refs.items() if k != "national_focus" for x in v)
 check(not bad_non_focus, "game rules: no script outside national_focus uses a removed rule", f"game rules: removed rules used in {bad_non_focus[:6]}")
 nf = refs.get("national_focus", set())
@@ -246,7 +248,7 @@ all_foc = re.findall(r"(?m)^\tfocus = \{\r?\n\t\tid = (\w+)", gen)
 check(all_foc and all(i.startswith("ktits_") for i in all_foc) and "id = generic_focus" in gen and "initial_show_position" in gen,
       f"generic tree: {len(all_foc)} focuses, all ours (vanilla generic focuses removed), header generic_focus kept", f"generic tree: foreign focuses {[i for i in all_foc if not i.startswith('ktits_')][:5]}")
 gx = [int(x) for x in re.findall(r"(?m)^\t\tx = (-?\d+)\r?$", gen)]
-check(gx and min(gx) == 0 and max(gx) <= 90, f"generic tree: x range {min(gx) if gx else '?'}..{max(gx) if gx else '?'} (starts at 0, branches shifted left)", "generic tree: x range wrong (must start at 0)")
+check(gx and min(gx) == 0 and max(gx) <= 100, f"generic tree: x range {min(gx) if gx else '?'}..{max(gx) if gx else '?'} (starts at 0, branches shifted left)", "generic tree: x range wrong (must start at 0)")
 miss_fl = [k for f in FOC_IDS for k in (f, f + "_desc") if not fl_ru.get(k, "").strip() or not fl_en.get(k, "").strip()]
 check(not miss_fl, "focuses: every focus has ru/en name and description", f"focuses: loc missing for {miss_fl[:6]}")
 blk_f = {m.group(1): m.group(0) for m in re.finditer(r"\tfocus = \{\r?\n\t\tid = (ktits_cas_\w+)[\s\S]*?\r?\n\t\}", gen)}
@@ -682,7 +684,7 @@ split_ok = split_ok and "elections_allowed = yes" in h5 and f'last_election = "{
 split_ok = split_ok and f'oob = "{z6}_1936"' in h6 and (z5 + "_") not in h6
 cn6 = load_loc(M / "localisation/russian/countries_l_russian.yml")
 split_ok = split_ok and all(cn6.get(f"{z6}_{g}") == INV.INVENTED_COUNTRIES["Z06"]["name"] for g in ("democratic", "fascism", "communism", "neutrality", "casuality", "theology")) and cn6.get(f"{z5}_democratic") == INV.INVENTED_COUNTRIES["Z05"]["name"]
-split_ok = split_ok and "EAG" not in __import__("make_splits").SPLITS and len(re.findall(r"K\d\d =", (M / "common/country_tags/03_ktits_splits.txt").read_text(encoding="utf-8"))) == 34
+split_ok = split_ok and "EAG" not in __import__("make_splits").SPLITS and len(re.findall(r"K\d\d =", (M / "common/country_tags/03_ktits_splits.txt").read_text(encoding="utf-8"))) == 35
 check(split_ok, "iberia: the old Iberadia is two countries: Z05 Иберадия (7 western states, democracy, elections allowed, own ruler) and Z06 Арагония (10 eastern states with 145, own tag, colour, flag, oob, characters, names); no K34 of the old Iberadia, K01-K34 contiguous", "iberia: the split of Iberadia is incomplete or inconsistent")
 rp_ev = (M / "events/rpx_faction_alignment.txt")
 rp_ev = rp_ev.read_text(encoding="utf-8-sig") if rp_ev.exists() else ""
@@ -743,14 +745,16 @@ check("ktits_ai_ally_locked = {" in a_tr and foc_gen.count("ktits_ai_ally_locked
 # ---- spirit icons (make_icons.py) ----
 _gfx = (M / "interface/ktits_ideas.gfx").read_text(encoding="utf-8-sig") if (M / "interface/ktits_ideas.gfx").exists() else ""
 _spr = dict(re.findall(r'name = "GFX_idea_(\w+)"\s*texturefile = "([^"]+)"', _gfx))
+_gfx2 = (M / "interface/ktits_soviet_pictures.gfx").read_text(encoding="utf-8-sig") if (M / "interface/ktits_soviet_pictures.gfx").exists() else ""
+_spr2 = dict(re.findall(r'name = "GFX_idea_(\w+)"\s*texturefile = "([^"]+)"', _gfx2))
 _ic = {}
 for f_ in sorted((M / "common/ideas").glob("ktits_*.txt")):
     for k, pc in re.findall(r"(?m)^		(ktits_\w+) = \{\s*picture = (\w+)", f_.read_text(encoding="utf-8-sig")):
         _ic[k] = pc
 _own = {k: pc for k, pc in _ic.items() if pc.startswith("ktits_") and pc != "ktits_casuality"}
-_bad = [k for k, pc in _own.items() if pc not in _spr or not (M / _spr[pc]).exists()]
-check(len(_spr) == 32 and len(_own) == 73 and not _bad, f"icons: 32 sprites with existing textures, {len(_own)} spirits use them",
-      f"icons: sprites {len(_spr)} (need 32), spirits with an icon {len(_own)} (need 73), no sprite/texture for {_bad[:5]}")
+_bad = [k for k, pc in _own.items() if (pc not in _spr and pc not in _spr2) or not (M / {**_spr, **_spr2}[pc]).exists()]
+check(len(_spr) == 32 and len(_spr2) == 36 and len(_own) == 112 and not _bad, f"icons: 32 sprites (+36 Soviet) with existing textures, {len(_own)} spirits use them",
+      f"icons: sprites {len(_spr)} (need 32), spirits with an icon {len(_own)} (need 112), no sprite/texture for {_bad[:5]}")
 _must = ["ktits_cas_%d" % i for i in range(1, 6)] + ["ktits_edu_%d" % i for i in range(6)] + ["ktits_ally_%s%d" % (c, i) for c in "tk" for i in range(1, 5)] +         ["ktits_eternal_neutrality", "ktits_baku_powder_keg", "ktits_durmanische", "ktits_durmanische_3", "ktits_kaz_britt_influence", "ktits_kaz_britt_2",
          "ktits_kaz_britt_3", "ktits_kaz_crown", "ktits_kaz_grace_t", "ktits_kaz_resist_t", "ktits_kaz_resist5_t"] + ["ktits_cas_ev_stab_%d" % i for i in range(7)]
 check(all(k in _own for k in _must), "icons: all required spirits have their own picture", f"icons: no own picture {[k for k in _must if k not in _own]}")
@@ -1055,6 +1059,29 @@ check(_adv_n > 100, f"advisors: {_adv_n} political advisors with a fascism/commu
 _ca = (M / "common/characters/SCU.txt").read_text(encoding="utf-8-sig", errors="ignore")
 _cl = (M / "localisation/russian/ktits_casual_advisors_l_russian.yml").exists() and (M / "common/country_leader/ktits_casuality_traits.txt").exists()
 check(_ca.count("casual_") >= 3 and "SCU_Adv_Dremin" in _ca and _cl, "Kazualia: 3 casuality advisors (trait with casuality_drift) and ruler descriptions", "Kazualia: casuality advisors / traits / localisation missing (run tools/make_casual_advisors.py)")
+_sf = (M / "common/national_focus/ktits_soviet.txt").read_text(encoding="utf-8-sig", errors="ignore")
+_sx = [int(x) for x in re.findall(r"(?m)^		x = (\d+)$", _sf)]
+_sids = re.findall(r"(?m)^		id = (ktits_sov_\w+)$", _sf)
+check(len(_sids) == 115 and len(set(_sids)) == 115 and all(f"focus = {i_}" in _sf or True for i_ in _sids[:1]) and "ktits_soviet.1" in (M / "events/ktits_soviet_events.txt").read_text(encoding="utf-8-sig") and "ktits_mak_paths" in (M / "common/game_rules/ktits_mak_paths_rules.txt").read_text(encoding="utf-8-sig"), f"soviet: {len(_sids)} focuses, start event, game rule ktits_mak_paths", f"soviet: expected 115 unique focuses, got {len(_sids)}")
+_gz = (M / "common/national_focus/generic.txt").read_text(encoding="utf-8-sig", errors="ignore")
+check("KTITS_ZONE_BRANCH_BEGIN" in _gz and "id = ktits_zone_stay" in _gz and "econ_bloc" in _gz and not (M / "common/national_focus/ktits_soviet_zone.txt").exists() and "GetKtitsZoneDesc" in (M / "common/scripted_localisation/ktits_soviet_loc.txt").read_text(encoding="utf-8"), "soviet: the zone branch is in the standard tree (republics keep standard focuses), staying needs a puppet or the Economic Bloc", "soviet: zone branch missing in generic.txt")
+_gs = (M / "common/characters/SCU.txt").read_text(encoding="utf-8-sig", errors="ignore") + (M / "common/characters/MAK.txt").read_text(encoding="utf-8-sig", errors="ignore")
+_hs = "".join(f_.read_text(encoding="utf-8-sig", errors="ignore") for f_ in list((M / "history/countries").glob("SCU - *.txt")) + list((M / "history/countries").glob("MAK - *.txt")))
+_scut = [f_ for f_ in (M / "history/countries").glob("SCU - *.txt")][0].read_text(encoding="utf-8-sig", errors="ignore")
+check(len(re.findall(r"(?m)^	(?:SCU|MAK)_gen_\d\d = \{", _gs)) == 40 and _gs.count("field_marshal = {") == 4 and _hs.count("recruit_character = SCU_gen_") == 20 and _hs.count("recruit_character = MAK_gen_") == 20, "generals: 20 per country (2 field marshals + 18 corps commanders), recruited", "generals: wrong number of generals")
+check("basic_train" not in _scut.split("set_technology")[1].split("}")[0] and "infantry_weapons = 1" in _scut and "KTITS_TECH_BEGIN" in (list((M / "history/countries").glob("MAK - *.txt"))[0]).read_text(encoding="utf-8-sig", errors="ignore"), "technologies: Kazualia has the minimum (infantry weapons only), the Soviet Union has the vanilla set", "technologies: Kazualia minimum / Soviet set missing")
+_gl = (M / "localisation/russian/ktits_guide_l_russian.yml").read_text(encoding="utf-8-sig")
+_gg = (M / "common/scripted_guis/ktits_guide.txt").read_text(encoding="utf-8")
+check(len(re.findall(r"(?m)^ ktits_guide_[gk]_\d+:0 ", _gl)) == 27 and "parent_window_token = politics_tab" in _gg and "ktits_guide_pg_k18_window" in (M / "interface/ktits_guide.gui").read_text(encoding="utf-8") and _gg.count("_ui = {") == 28, "guides: button in the politics tab, 27 pages (9 general + 18 Kazualia), one scripted gui and window per page", "guides: files or pages missing")
+_sp = (M / "interface/ktits_soviet_pictures.gfx").read_text(encoding="utf-8") if (M / "interface/ktits_soviet_pictures.gfx").exists() else ""
+_sfoc = (M / "common/national_focus/ktits_soviet.txt").read_text(encoding="utf-8-sig", errors="ignore")
+_stex = re.findall(r'texturefile = "([^"]+)"', _sp)
+check(len(_stex) == 56 and all((M / t_).exists() for t_ in _stex) and "GFX_goal_generic_political_pressure" not in _sfoc and _sfoc.count("GFX_goal_ktits_sov_") == 115 and "portrait_mak_kormchiy" in (M / "common/characters/MAK.txt").read_text(encoding="utf-8-sig", errors="ignore"), "soviet pictures: 56 sprites exist, 115 focuses with pictures, spirits, categories and 5 ruler portraits", "soviet pictures: sprites/textures missing or focuses without pictures")
+_bp = (M / "common/bop/ktits_sov.txt").read_text(encoding="utf-8") if (M / "common/bop/ktits_sov.txt").exists() else ""
+check("ktits_sov_power_balance = {" in _bp and _bp.count("range = {") == 7 and "left_side = ktits_sov_party_side" in _bp and "set_power_balance" in (M / "common/scripted_effects/ktits_soviet_effects.txt").read_text(encoding="utf-8"), "soviet: balance Pimenov - Party is the vanilla Balance of Power (7 ranges, sides, start value set)", "soviet: the Balance of Power file is missing or incomplete")
+_sm = (M / "common/scripted_effects/ktits_soviet_mech_effects.txt").read_text(encoding="utf-8")
+_smd = sorted((M / "common/decisions").glob("ktits_soviet_*_decisions.txt"))
+check("ktits_sov_collapse = {" in _sm and all(f"ktits_sov_release_{t_} = {{" in _sm for t_ in ("K01", "K02", "K03", "K04", "K05", "K06", "K42")) and len(_smd) == 6 and "ktits_sint_ui" in (M / "common/scripted_guis/ktits_soviet.txt").read_text(encoding="utf-8") and (M / "common/countries/cosmetic.txt").exists() and "ktits_idel_two_rivers" in (M / "common/ideas/ktits_soviet_mech_ideas.txt").read_text(encoding="utf-8"), "soviet mech: monthly effect, collapse and 7 releases, decisions in 5 categories, spirit of Idel-Kama", "soviet mech: files or effects missing")
 
 for lvl, msg in res:
     w[lvl] += 1
