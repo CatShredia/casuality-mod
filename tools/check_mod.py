@@ -12,6 +12,7 @@ import numpy as np
 from PIL import Image
 import lore_data as L
 import invented_lore as INV
+import kytai_irakut_data as KID
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--mod", default=L.DEFAULT_MOD)
@@ -65,9 +66,33 @@ check(not vp_out, "victory points: all lie in their own state", f"victory points
 
 # population against the lore
 tot = collections.Counter()
-for s in states.values(): tot[tag2lore.get(s["owner"])] += s["manpower"]
+for sid, s in states.items():
+    origin = KID.ENCLAVES[sid][0] if sid in KID.ENCLAVES else ('AFR' if s['owner'] in KID.KYT else s['owner'])
+    tot[tag2lore.get(origin)] += s["manpower"]
 bad_pop = {lt: (round(tot[lt] / 1e6, 2), m) for lt, m in {**INV.INVENTED_POP, **L.LORE_POP}.items() if abs(tot[lt] - int(m * 1_000_000)) > 12}
-check(not bad_pop, f"population: {len(L.LORE_POP) + len(INV.INVENTED_POP)} countries match their totals ({len(L.LORE_POP)} lore, {len(INV.INVENTED_POP)} invented)", f"population differs from the lore (now, lore, millions): {bad_pop}")
+check(not bad_pop, f"population: {len(L.LORE_POP) + len(INV.INVENTED_POP)} original regions match their totals", f"population differs from the lore by original region (now, lore, millions): {bad_pop}")
+bad_kytai = [(sid, tag, states.get(sid, {}).get('owner')) for tag, (_, _, ids) in KID.KYT.items() for sid in ids if states.get(sid, {}).get('owner') != tag]
+bad_ports = [(sid, dest, states.get(sid, {}).get('owner')) for sid, (_, dest) in KID.ENCLAVES.items() if states.get(sid, {}).get('owner') != dest]
+check(not bad_kytai and all(tag in info['tags'] for tag in KID.KYT), 'Kytai: ten starting countries own all assigned states', f'Kytai: wrong owners or missing tags: {bad_kytai[:5]}')
+check(not bad_ports, 'Irakut: five assigned states owned by Brittan and Soy Republic', f'Irakut: wrong owners: {bad_ports}')
+bad_cores = []
+for tag, (_, _, ids) in KID.KYT.items():
+    for sid in ids:
+        text = Path(states[sid]['file']).read_text(encoding='utf-8-sig', errors='ignore')
+        cores = set(re.findall(r'\badd_core_of\s*=\s*(\w+)', text))
+        if not {'AFR', tag} <= cores: bad_cores.append((sid, tag, sorted(cores)))
+for sid, (original, _) in KID.ENCLAVES.items():
+    text = Path(states[sid]['file']).read_text(encoding='utf-8-sig', errors='ignore')
+    if not re.search(r'\badd_core_of\s*=\s*' + original + r'\b', text): bad_cores.append((sid, original))
+check(not bad_cores, 'Kytai and Irakut: national cores retained for former territories', f'missing expected national cores: {bad_cores[:5]}')
+bad_units = []
+for tag in KID.KYT:
+    own_provs = {p for state in states.values() if state['owner'] == tag for p in state['provs']}
+    for unit_file in (M / 'history/units').glob(f'{tag}_1936*.txt'):
+        for location in re.findall(r'\b(?:location|naval_base)\s*=\s*(\d+)', unit_file.read_text(encoding='utf-8-sig', errors='ignore')):
+            if int(location) not in own_provs:
+                bad_units.append((unit_file.name, int(location)))
+check(not bad_units, 'Kytai: starting unit locations belong to their countries', f'Kytai: units outside owned territory: {bad_units[:10]}')
 
 # ---- localisation ----
 def load_loc(path):
@@ -684,7 +709,9 @@ split_ok = split_ok and "elections_allowed = yes" in h5 and f'last_election = "{
 split_ok = split_ok and f'oob = "{z6}_1936"' in h6 and (z5 + "_") not in h6
 cn6 = load_loc(M / "localisation/russian/countries_l_russian.yml")
 split_ok = split_ok and all(cn6.get(f"{z6}_{g}") == INV.INVENTED_COUNTRIES["Z06"]["name"] for g in ("democratic", "fascism", "communism", "neutrality", "casuality", "theology")) and cn6.get(f"{z5}_democratic") == INV.INVENTED_COUNTRIES["Z05"]["name"]
-split_ok = split_ok and "EAG" not in __import__("make_splits").SPLITS and len(re.findall(r"K\d\d =", (M / "common/country_tags/03_ktits_splits.txt").read_text(encoding="utf-8"))) == 35
+split_tags = set(re.findall(r"\b(K\d\d) =", (M / "common/country_tags/03_ktits_splits.txt").read_text(encoding="utf-8")))
+expected_splits = {f'K{i:02d}' for i in list(range(1, 20)) + list(range(24, 35)) + [42]}
+split_ok = split_ok and "EAG" not in __import__("make_splits").SPLITS and split_tags == expected_splits
 check(split_ok, "iberia: the old Iberadia is two countries: Z05 Иберадия (7 western states, democracy, elections allowed, own ruler) and Z06 Арагония (10 eastern states with 145, own tag, colour, flag, oob, characters, names); no K34 of the old Iberadia, K01-K34 contiguous", "iberia: the split of Iberadia is incomplete or inconsistent")
 rp_ev = (M / "events/rpx_faction_alignment.txt")
 rp_ev = rp_ev.read_text(encoding="utf-8-sig") if rp_ev.exists() else ""

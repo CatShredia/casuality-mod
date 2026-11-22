@@ -1,6 +1,6 @@
 """Run every post-export step on the freshly exported mod, check it, and zip it. Run this after each RandomParadox export.
 
-Order: rivers -> iberia (new country Z06 split off the old Iberadia) -> population -> state names -> city names -> countries -> ideologies -> rulers -> casuality -> focuses -> game rules -> vanilla leftovers -> education -> splits -> alliances -> continuous -> terrain -> kazualia -> kazouter -> debug (journal, last of the generators) -> strategic regions -> check -> zip.
+Order includes startmap_restore before iberia/population and startmap after rulers, before casuality, education and splits; all other steps follow the list below, with debug late and check last.
 Each step is its own script and can still be run alone. The steps are idempotent, so running the whole chain twice is safe.
 
 Rivers: RandomParadox's own rivers.bmp is saved as no_commit/temp/rivers.bmp.orig whenever the mod's file is not the one this chain built
@@ -9,7 +9,7 @@ Rivers: RandomParadox's own rivers.bmp is saved as no_commit/temp/rivers.bmp.ori
 Usage: python tools/post_export.py [--names-mode style|lore] [--max-idx N] [--no-zip] [--skip a,b] [--mod PATH]
   --names-mode  how states/cities without lore names are named (default: style = generated names in the country's style; lore = "<country> N")
   --max-idx     widest river palette index (default 3: width by index is not confirmed in the game yet)
-  --skip        comma separated steps to skip: rivers,iberia,population,states,cities,countries,ideologies,rulers,casuality,focuses,gamerules,leftovers,education,splits,alliances,continuous,terrain,kazualia,kazouter,debug,regions,advisors,flags,goals,pictures,icons,check,zip
+  --skip        comma separated steps to skip; startmap_restore and startmap must normally run together, and check must run last
 """
 import argparse, hashlib, shutil, subprocess, sys, time
 from pathlib import Path
@@ -53,13 +53,15 @@ if "rivers" not in skip:
     results["rivers"] = run("rivers", "build_rivers.py", *m, "--max-idx", str(a.max_idx))
     if results["rivers"] == 0:
         SHA.write_text(sha(mod_rivers))
-steps = [("iberia", ["make_iberia_split.py", *m]),
+steps = [("startmap_restore", ["make_kytai_irakut.py", *m, "--restore"]),
+         ("iberia", ["make_iberia_split.py", *m]),
          ("population", ["set_population.py", *m]),
          ("states", ["make_state_names.py", *m, "--mode", a.names_mode]),
          ("cities", ["make_city_names.py", *m, "--mode", a.names_mode]),
          ("countries", ["make_countries.py", *m]),
          ("ideologies", ["make_ideologies.py", *m]),
          ("rulers", ["make_rulers.py", *m]),
+         ("startmap", ["make_kytai_irakut.py", *m]),
          ("casual_advisors", ["make_casual_advisors.py", *m]),
          ("generals", ["make_generals.py", *m]),
          ("casuality", ["make_casuality.py", *m]),

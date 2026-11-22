@@ -26,7 +26,7 @@ for l in open(M / "map/definition.csv", encoding="latin1"):
     if len(p) > 4 and p[0].isdigit(): ptype[int(p[0])] = p[4]
 prov_country = {}
 for sid, s in info["states"].items():
-    for p in s["provs"]: prov_country[p] = info["tag2lore"].get(s["owner"])
+    for p in s["provs"]: prov_country[p] = "KTY" if s["owner"] in {f"X{i:02d}" for i in range(1, 10)} else info["tag2lore"].get(s["owner"])
 adj = L.province_adjacency(M)
 nb = collections.defaultdict(set)
 for x, y in adj:

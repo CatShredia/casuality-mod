@@ -39,7 +39,11 @@ def nearest(tag, ref, k):
     return sorted(sorted(owned(tag), key=lambda s: min(math.dist(cen(s), r) for r in refc))[:k])
 ASM_ST = nearest(ASM, SOV, 5)
 DMK_ST = nearest(DMK, CSK, 5)
-KYT_ST = sorted(sorted(owned(KYT), key=lambda s: cen(s)[1])[:6])
+import kytai_irakut_data as KID
+KYT_LANDS = {s for _, _, ids in KID.KYT.values() for s in ids}
+KYT_ST = sorted(sorted(KYT_LANDS, key=lambda s: cen(s)[1])[:6])
+KYT_TARGETS = {tag: [sid for sid in KYT_ST if st[sid]["owner"] == tag] for tag in KID.KYT}
+KYT_TARGETS = {tag: ids for tag, ids in KYT_TARGETS.items() if ids}
 NEW_T = [("fdp", "FDP", "Федерации Депутатов", 5, "f"), ("ara", "Z06", "Арагонии", 5, "g"), ("mgn", "MGN", "Магнолии", 5, "m"), ("clb", "CLB", "Челябе", 4, "h"), ("srk", "SRK", "Сарайкумскому Ханству", 5, "s")]   # (key, lore tag, dative, states, focus letter)
 NT = {k: (lore2tag[lt], nearest(lore2tag[lt], SOV, n), dat, ch) for k, lt, dat, n, ch in NEW_T}
 _hc = next((M / "history/countries").glob(f"{CSK} - *.txt"))
@@ -232,7 +236,7 @@ fc("rc3", "Давление на Казачью Землю", "rub_c", [["rc0"]],
 fc("rc4", "Ультиматум присоединения", "rub_c", [["rc3"]], [], None, ev(CSK, 10, P + "tt_ultimatum", "Событие Казачьей Земли: стать марионеткой Союза или получить войну"), ai=30)
 fc("rk1", "Карантин на юге", "rub_k", RX, [], CASUAL, CAS(-1) + tip(P + "tt_quarantine", "Укрепления на границе с Казуалией +1 [uncertain: массовая стройка укреплений]"), ai=30)
 fc("rk2", "Конец Ставки", "rub_k", [["rk1"]], [], exists(KAZ), annex_wg(KAZ, P + "tt_kaz_wg", "Цель войны (аннексия) против Казуалии"), ai=30)
-fc("ry1", "Претензии на север Кытая", "rub_y", RX, [], exists(KYT), claims(KYT_ST, P + "tt_kyt_claims", "Претензии на 6 самых северных штатов Кытая; открывает решение-ультиматум", ("kyt",)) + expansion(KYT, KYT_ST, P + "tt_kyt_wg", "Кытай") + OP(KYT, -30), ai=30)
+fc("ry1", "Претензии на север Кытая", "rub_y", RX, [], "OR = { " + " ".join(exists(t) for t in KYT_TARGETS) + " }", claims(KYT_ST, P + "tt_kyt_claims", "Претензии на 6 самых северных штатов Кытая; открывает решение-ультиматум", ("kyt",)) + "".join(expansion(t, ids, P + "tt_kyt_wg_" + t, "Север Кытая") + f"if = {{ limit = {{ country_exists = {t} }}\n" + OP(t, -30) + "}\n" for t, ids in KYT_TARGETS.items()), ai=30)
 fc("ry2", "Северные провинции", "rub_y", [["ry1"]], [], None, flag(P + "kyt_expansion"), ai=30)
 for _k, (_tg, _ids, _dat, _ch) in NT.items():
     fc("r" + _ch + "1", "Претензии к " + _dat, "rub_" + _ch, RX, [], exists(_tg), claims(_ids, P + f"tt_{_k}_claims", f"Претензии на {len(_ids)} ближайших штатов; открывает решение-ультиматум", (_k,)) + expansion(_tg, _ids, P + f"tt_{_k}_wg", _dat) + OP(_tg, -20), ai=30)

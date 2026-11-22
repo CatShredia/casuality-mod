@@ -199,7 +199,11 @@
   <circle class="cap" cx="540" cy="410" r="3.5"/><text class="cl" x="546" y="414">Барбинсберг</text>
   <circle class="cap" cx="340" cy="540" r="3.5"/><text class="cl" x="346" y="544">Поридж-Сити</text>
 
-  <!-- британские базы и колония Сои на юге Муси -->
+  <!-- Иностранные владения в Иракуте: условные маркеры существующих штатов, не границы -->
+  <rect x="954" y="785" width="7" height="7" fill="#b79ad0" stroke="#222"/>
+  <rect x="1040" y="875" width="7" height="7" fill="#b79ad0" stroke="#222"/>
+  <rect x="1190" y="850" width="7" height="7" fill="#b79ad0" stroke="#222"/>
+  <rect x="1215" y="831" width="7" height="7" fill="#7fa7e0" stroke="#222"/>
   <circle cx="1170" cy="862" r="5" fill="#b79ad0" stroke="#222"/>
   <rect x="1230" y="836" width="9" height="9" fill="#7fa7e0" stroke="#222"/>
 
@@ -267,7 +271,7 @@
   <circle class="cap" cx="1215" cy="872" r="2.5"/><text class="cl" x="1221" y="876">Сингапара</text>
   <circle class="cap" cx="1238" cy="838" r="2.5"/><text class="cl" x="1232" y="842" style="text-anchor:end">Рангавади</text>
   <circle class="cap" cx="1240" cy="530" r="4.5"/><text class="cl" x="1247" y="534" style="font-weight:700">Улан-Батыр</text>
-  <text class="t tag" x="1245" y="478" style="font-size:14px">Магнолия</text><text class="t sm" x="1245" y="403">Первый улус</text><text class="t sm" x="1245" y="500">Третий улус</text><text class="t sm" x="1245" y="596">Второй улус</text><text class="t tag big" x="1450" y="485">Кытай</text>
+  <text class="t tag" x="1245" y="478" style="font-size:14px">Магнолия</text><text class="t sm" x="1245" y="403">Первый улус</text><text class="t sm" x="1245" y="500">Третий улус</text><text class="t sm" x="1245" y="596">Второй улус</text><text class="t tag big" x="1450" y="485">Кытай</text><text class="t sm" x="1450" y="503">10 государств (границы в игре)</text>
 
   <!-- Травинная, Соевая, Магнолия (4) -->
   <path class="river" d="M1180,958 L1190,985 L1185,1005"/>
@@ -352,8 +356,8 @@
   </g>
 
   <!-- легенда -->
-  <g transform="translate(20,820)">
-    <rect width="590" height="210" rx="6" fill="#fff" stroke="#444" opacity="0.96"/>
+  <g transform="translate(20,810)">
+    <rect width="590" height="220" rx="6" fill="#fff" stroke="#444" opacity="0.96"/>
     <text x="12" y="22" font-size="14" font-weight="700" fill="#111">Схема по docs/01-Contries-Description.md. Не в масштабе</text>
     <rect x="12" y="34" width="18" height="12" class="c" fill="#e07a74"/>
     <text x="36" y="45" font-size="12" fill="#111">страна описана в документе, положение следует из текста</text>
@@ -366,12 +370,13 @@
     <rect x="12" y="122" width="18" height="12" fill="#b79ad0" stroke="#222"/>
     <text x="36" y="133" font-size="12" fill="#111">Бриттан и его колонии (Айцланд светлее)</text>
     <circle cx="21" cy="149" r="5" fill="#b79ad0" stroke="#222"/><text x="36" y="153" font-size="12" fill="#111">британские военные базы</text>
-    <rect x="262" y="144" width="9" height="9" fill="#7fa7e0" stroke="#222"/><text x="278" y="153" font-size="12" fill="#111">провинция-колония Сои (юг Муси)</text>
+    <rect x="262" y="144" width="9" height="9" fill="#7fa7e0" stroke="#222"/><text x="278" y="153" font-size="12" fill="#111">владения Сои в Муси</text>
     <rect x="330" y="100" width="18" height="12" fill="#cfe5c9" stroke="#2e7d4f"/><path d="M335 110 L339 102 L343 110 Z" fill="#2e7d4f"/>
     <text x="354" y="111" font-size="12" fill="#111">леса</text>
     <rect x="330" y="122" width="18" height="12" fill="#ecd9a0" stroke="#222"/>
     <text x="354" y="133" font-size="12" fill="#111">пустыня (Магнолия)</text>
     <circle cx="21" cy="170" r="4" class="cap"/><text x="36" y="174" font-size="12" fill="#111">столица и города, названные в тексте</text>
     <text x="12" y="196" font-size="11" fill="#444">Каспийская Дырка (аналог Каспийского моря) добавлена по запросу: в документе пока не описана.</text>
+    <text x="12" y="211" font-size="11" fill="#444">Квадраты в Иракуте: владения Бриттана и Сои; положение условное.</text>
   </g>
 </svg>

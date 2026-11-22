@@ -1,7 +1,7 @@
 """Splittable states for big countries (> 15 states): INVENTED names, see docs/countries/Splits.md.
 
 For each big country (SPLITS) its states are divided into contiguous parts (region growing over state adjacency, parent keeps the part with
-its capital). Each other part becomes a new country K01..K34 (tags file 03_ktits_splits.txt, country file, colour, flag copied from the parent,
+its capital). Each other part becomes a K-tag country (K20-K23 retired; other tags preserved; tags file 03_ktits_splits.txt, country file, colour, flag copied from the parent,
 history without states, neutral ruler, localisation). Manual release is BLOCKED: effects ktits_release_Kxx are guarded by ktits_splits_enabled (= the country fell into casuality), so only
 ktits_split_on_fall (called by the fall event of make_casuality.py) releases the parts, makes them casuality countries and puppets of Kazualia.
 Writes: common/country_tags/03_ktits_splits.txt, common/countries/Kxx.txt, history/countries/Kxx - *.txt, common/characters/Kxx.txt,
@@ -12,6 +12,7 @@ Usage: python tools/make_splits.py [--mod PATH]
 import argparse, colorsys, math, re, shutil
 from pathlib import Path
 import lore_data as L
+from kytai_irakut_data import ENCLAVES
 
 # parent tag -> [(russian name, english name)]  INVENTED
 SPLITS = {
@@ -19,7 +20,6 @@ SPLITS = {
     "CHE": ["Фигарийская Лига", "Вертоградия", "Нижнее Фигарье", "Горный Кантон", "Приморская Коммуна"],
     "WRM": ["Бобовая Автономия", "Северный Соевый Союз", "Тофу-Республика", "Миндальный Берег"],
     "AHA": ["Западная Палата", "Ледяной Совет", "Приречная Курия", "Восточное Собрание"],
-    "AFR": ["Южный Кытай", "Чайная Империя", "Нефритовое Ханство", "Шёлковый Предел"],
     "FAR": ["Луговая Республика", "Клеверный Союз", "Полынный Край"],
     "GHI": ["Северный Тямов", "Герцогство Тямов-Ост"],
     "FIU": ["Княжество Заречное", "Дмитровская Марка"],
@@ -102,7 +102,9 @@ if __name__ == "__main__":
     entries, rows = [], []
     n = 0
     for parent, names in SPLITS.items():
-        own = {sid for sid, s in states.items() if s["owner"] == parent and sid in cen}
+        if parent == "FAR": n = 23  # K20-K23 formerly described unified Kytai; keep K24+ stable
+        # Foreign enclaves remain with their colonial owner, never part of an overseas split.
+        own = {sid for sid, s in states.items() if s["owner"] == parent and sid in cen and sid not in ENCLAVES}
         lt = info["tag2lore"].get(parent)
         capital = info["capital_state"].get(lt) if info["capital_state"].get(lt) in own else max(own, key=lambda s: states[s]["manpower"])
         if parent in FIXED:
